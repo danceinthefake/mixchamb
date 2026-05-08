@@ -23,6 +23,12 @@ export async function ensureStarted(): Promise<void> {
 export interface InstrumentEngine {
   play(note: string): void
   stopAll(): void
+  /**
+   * Optional. Called when a user *selects* this flavor (not every
+   * play). Sampled engines override this to start downloading their
+   * samples ahead of the first hit so there's no awkward silence.
+   */
+  preload?(): void
 }
 
 const engines = new Map<string, InstrumentEngine>()
@@ -41,6 +47,10 @@ export function play(instrument: string, style: string, note: string) {
 
 export function stopAll(instrument: string, style: string) {
   getEngine(instrument, style)?.stopAll()
+}
+
+export function preload(instrument: string, style: string) {
+  getEngine(instrument, style)?.preload?.()
 }
 
 // ── Drums : Synth ──────────────────────────────────────────────────
@@ -386,6 +396,85 @@ function makeKeyboardSynth(): InstrumentEngine {
 }
 
 register("keyboard", "synth", makeKeyboardSynth())
+
+// ── Keyboard : Lead ────────────────────────────────────────────────
+// Sawtooth + sweeping lowpass filter envelope, Moog-y solo voice.
+
+function makeKeyboardLead(): InstrumentEngine {
+  let poly: Tone.PolySynth | null = null
+
+  function ensure() {
+    if (poly) return
+    poly = new Tone.PolySynth(Tone.MonoSynth, {
+      oscillator: { type: "sawtooth" },
+      envelope: { attack: 0.01, decay: 0.4, sustain: 0.4, release: 0.5 },
+      filter: { type: "lowpass", frequency: 1500, Q: 6 },
+      filterEnvelope: {
+        attack: 0.04,
+        decay: 0.4,
+        sustain: 0.3,
+        release: 0.5,
+        baseFrequency: 300,
+        octaves: 3,
+      },
+    }).toDestination()
+    poly.volume.value = -12
+  }
+
+  return {
+    play(note) {
+      ensure()
+      poly!.triggerAttackRelease(note, "8n", Tone.now())
+    },
+    stopAll() {
+      poly?.releaseAll()
+    },
+  }
+}
+
+register("keyboard", "lead", makeKeyboardLead())
+
+// ── Keyboard : Piano (Salamander, sampled) ─────────────────────────
+// Real piano samples streamed from the Tone.js community CDN. Three
+// anchor samples (A3 / A4 / A5) are enough for our C4–C5 keyboard
+// range — Sampler pitch-shifts between them. ~150 KB total download,
+// only fetched when the user actually picks Piano (preload() hook).
+
+function makeKeyboardPiano(): InstrumentEngine {
+  let sampler: Tone.Sampler | null = null
+
+  function ensure() {
+    if (sampler) return
+    sampler = new Tone.Sampler({
+      urls: {
+        A3: "A3.mp3",
+        A4: "A4.mp3",
+        A5: "A5.mp3",
+      },
+      release: 1,
+      baseUrl: "https://tonejs.github.io/audio/salamander/",
+    }).toDestination()
+    sampler.volume.value = -6
+  }
+
+  return {
+    play(note) {
+      ensure()
+      // Tone.Sampler triggers are silent until samples finish loading.
+      // After the user picks Piano, preload() fires the fetch; by the
+      // time they hit a key, samples are usually ready.
+      sampler!.triggerAttackRelease(note, "2n", Tone.now())
+    },
+    stopAll() {
+      sampler?.releaseAll()
+    },
+    preload() {
+      ensure()
+    },
+  }
+}
+
+register("keyboard", "piano", makeKeyboardPiano())
 
 // ── Guitar : Synth ─────────────────────────────────────────────────
 // PolySynth(MonoSynth) with a sweeping filter envelope. We'd love to

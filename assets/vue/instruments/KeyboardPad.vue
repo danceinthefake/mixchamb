@@ -10,11 +10,20 @@
 
 import { onMounted, onUnmounted, ref } from "vue"
 import { useLiveVue } from "live_vue"
-import { ensureStarted, play, stopAll } from "@/lib/audio"
-
-const style = "synth"
+import { ensureStarted, play, stopAll, preload } from "@/lib/audio"
 
 const live = useLiveVue()
+
+type KeyboardStyle = "synth" | "lead" | "piano"
+type StyleOption = { id: KeyboardStyle; label: string }
+
+const styles: StyleOption[] = [
+  { id: "synth", label: "Synth" },
+  { id: "lead", label: "Lead" },
+  { id: "piano", label: "Piano" },
+]
+
+const style = ref<KeyboardStyle>("synth")
 
 type WhiteKey = { note: string; key: string; label: string }
 type BlackKey = { note: string; key: string; label: string; afterIdx: number }
@@ -52,9 +61,19 @@ function flash(note: string) {
 
 async function hit(note: string) {
   await ensureStarted()
-  play("keyboard", style, note)
+  play("keyboard", style.value, note)
   flash(note)
-  live.pushEvent("note", { instrument: "keyboard", style, note })
+  live.pushEvent("note", { instrument: "keyboard", style: style.value, note })
+}
+
+function selectStyle(id: KeyboardStyle) {
+  if (id === style.value) return
+  // Cut held notes on the previous flavor before switching.
+  stopAll("keyboard", style.value)
+  style.value = id
+  // Sampled flavors (Piano) start their CDN download here so the
+  // first key press isn't silent while samples load.
+  preload("keyboard", id)
 }
 
 const allKeys = [
@@ -82,13 +101,33 @@ onUnmounted(() => {
   controller?.abort()
   if (flashTimer !== null) window.clearTimeout(flashTimer)
   // BRAINSTORM §9: held notes cut off on instrument switch.
-  stopAll("keyboard", style)
+  stopAll("keyboard", style.value)
 })
 </script>
 
 <template>
-  <div class="relative h-44 select-none mx-auto" style="max-width: 560px;">
-    <!-- white keys -->
+  <div class="space-y-4">
+    <!-- Style selector -->
+    <div class="flex items-center gap-1">
+      <span class="text-xs uppercase tracking-wider text-muted-foreground mr-2">Style</span>
+      <button
+        v-for="s in styles"
+        :key="s.id"
+        @click="selectStyle(s.id)"
+        :class="[
+          'px-3 py-1 text-xs rounded-md border transition-colors',
+          style === s.id
+            ? 'bg-primary text-primary-foreground border-primary'
+            : 'bg-card hover:bg-accent text-muted-foreground border-input'
+        ]"
+      >
+        {{ s.label }}
+      </button>
+    </div>
+
+    <!-- Keyboard -->
+    <div class="relative h-44 select-none mx-auto" style="max-width: 560px;">
+      <!-- white keys -->
     <div class="absolute inset-0 flex">
       <button
         v-for="key in whiteKeys"
@@ -121,5 +160,6 @@ onUnmounted(() => {
       <span class="text-[10px]">{{ bk.label }}</span>
       <kbd class="mt-1 text-[9px] px-1 rounded bg-slate-700 text-slate-300">{{ bk.key }}</kbd>
     </button>
+    </div>
   </div>
 </template>
