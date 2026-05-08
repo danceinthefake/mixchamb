@@ -121,7 +121,7 @@ onUnmounted(() => {
   controller?.abort()
   if (flashTimer !== null) window.clearTimeout(flashTimer)
   if (remoteFlashTimer !== null) window.clearTimeout(remoteFlashTimer)
-  // BRAINSTORM §9: held notes cut off on instrument switch.
+  // Cut held notes when leaving the instrument.
   stopAll("keyboard", style.value)
 })
 </script>

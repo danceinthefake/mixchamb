@@ -107,8 +107,7 @@ onUnmounted(() => {
   controller?.abort()
   if (flashTimer !== null) window.clearTimeout(flashTimer)
   if (remoteFlashTimer !== null) window.clearTimeout(remoteFlashTimer)
-  // Cut any chord still ringing — BRAINSTORM §9: held notes cut off
-  // on instrument switch.
+  // Cut any chord still ringing when leaving the instrument.
   stopAll("guitar", style.value)
 })
 </script>

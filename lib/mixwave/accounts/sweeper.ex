@@ -3,11 +3,9 @@ defmodule Mixwave.Accounts.Sweeper do
   Background sweeper that deletes anonymous users idle for more than
   24 hours. Runs hourly under the application supervisor.
 
-  This GenServer is the simplest of the three flagship OTP demos in
-  the project: kill it on the supervisor LiveView (v2) and the
-  supervisor restarts it; it picks its schedule back up on the next
-  hour boundary. Crashes here cannot lose data — the work it does is
-  idempotent.
+  Restartable and idempotent — if the process is killed, the
+  supervisor restarts it and it picks its schedule back up on the
+  next hour boundary. The work itself can't lose data.
   """
   use GenServer
   require Logger

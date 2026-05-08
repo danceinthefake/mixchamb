@@ -9,7 +9,6 @@ defmodule Mixwave.Accounts.NameGenerator do
   without collision in practice; if it does collide on insert, the
   caller retries.
 
-  Wordlists are sourced from BRAINSTORM §4.
   """
 
   @adjectives ~w(

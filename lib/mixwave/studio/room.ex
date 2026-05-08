@@ -1,14 +1,13 @@
 defmodule Mixwave.Studio.Room do
   @moduledoc """
-  Supervised GenServer holding per-room state: the last N note events
-  for join-time replay.
+  Supervised GenServer holding per-room state: the last N note events.
 
-  This is the second flagship OTP demo (after AnonSweeper). On the v2
-  supervisor LiveView, killing this process triggers a supervisor
-  restart in <100 ms; users see a brief "reconnecting" but the jam
-  resumes as soon as Presence reconverges. The recent-events buffer
-  is intentionally not persisted — that's the point of "the jam is
-  the moment."
+  Used for two things: a newly-joining client replays the recent
+  buffer so they don't drop into silence, and the "Replay 30 s"
+  control reads from the same buffer.
+
+  The buffer is intentionally not persisted — when this process
+  restarts (after a crash or kill), the jam resumes empty.
   """
   use GenServer
 

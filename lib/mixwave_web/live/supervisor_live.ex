@@ -1,15 +1,14 @@
 defmodule MixwaveWeb.SupervisorLive do
   @moduledoc """
-  The chaos board — BRAINSTORM §7 step 13. Lists the supervised
-  processes that drive the studio, shows their PID + memory + restart
-  count, and lets you click a "Kill" button to send `:kill` to them.
-  The supervisor restarts them within milliseconds and the counter
-  ticks up live (no polling — `RestartWatcher` broadcasts).
+  Process supervisor view. Lists the supervised processes that
+  back the studio, shows their PID, memory usage, message-queue
+  length, and restart count, and exposes a Kill button per row.
+  Kill sends `:kill` to the process; the supervisor restarts it,
+  the counter ticks up.
 
-  Headline OTP demo. Open it side-by-side with a studio tab on stage:
-  click Kill on `Studio.Room`, watch the count increment, watch the
-  jam keep going. The second flagship demo of the project (after the
-  cross-node Presence demo in v3).
+  Updates push live via `RestartWatcher`'s PubSub topic; a 1-second
+  polling tick keeps memory and queue numbers fresh between
+  restarts.
   """
   use MixwaveWeb, :live_view
   require Logger
@@ -47,7 +46,7 @@ defmodule MixwaveWeb.SupervisorLive do
 
       pid ->
         Logger.warning(
-          "[chaos] kill issued from supervisor LiveView: #{inspect(mod)} (pid #{inspect(pid)})"
+          "[supervisor] kill issued from /ops/supervisor: #{inspect(mod)} (pid #{inspect(pid)})"
         )
 
         Process.exit(pid, :kill)
@@ -70,10 +69,11 @@ defmodule MixwaveWeb.SupervisorLive do
     ~H"""
     <Layouts.app flash={@flash}>
       <.header>
-        Chaos board
+        Supervisor
         <:subtitle>
-          Kill any supervised process; the supervisor restarts it. The
-          jam in another tab keeps going while the count ticks up.
+          Supervised processes that back the studio. Kill one and the
+          supervisor restarts it; the studio in another tab keeps
+          running through the restart.
         </:subtitle>
         <:actions>
           <.link navigate={~p"/"} class="text-sm underline">← back to studio</.link>

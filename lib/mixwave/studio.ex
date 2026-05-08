@@ -9,9 +9,7 @@ defmodule Mixwave.Studio do
 
   `Mixwave.Studio.Room` is a supervised GenServer that holds the
   last N note events so a newly-joining client can replay the recent
-  past to feel "the jam was already going" instead of "I joined an
-  empty room." It also gives us something to put in the v2 chaos
-  board — kill it on stage and watch the supervisor restart it.
+  past instead of dropping into silence.
   """
 
   alias Mixwave.Studio.Room
