@@ -634,7 +634,7 @@ function makeGuitarPluck(): InstrumentEngine {
       })
     },
     stopAll() {
-      // Cut every currently-ringing string — BRAINSTORM §9.
+      // Cut every currently-ringing string.
       const strings = activeStrings.slice()
       activeStrings = []
       for (const s of strings) s.dispose()

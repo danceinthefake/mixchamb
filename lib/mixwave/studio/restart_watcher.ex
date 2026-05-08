@@ -1,13 +1,12 @@
 defmodule Mixwave.Studio.RestartWatcher do
   @moduledoc """
-  Monitors the supervised processes the v2 supervisor LiveView lets
-  you chaos-kill, and counts how many times each one has restarted.
+  Tracks restart counts for a fixed set of supervised processes.
 
-  Restart counts aren't tracked by `Supervisor` natively in a way
-  we can read — we maintain them ourselves by `Process.monitor/1`-ing
+  `Supervisor` doesn't expose its restart history in a way callers
+  can read, so we maintain our own counter by `Process.monitor/1`-ing
   each target. When a `:DOWN` message arrives we bump the counter
-  and broadcast to PubSub so the LiveView re-renders without
-  polling. Then we re-monitor the freshly-restarted PID.
+  and broadcast to PubSub so subscribers re-render without polling,
+  then re-monitor the freshly-restarted PID.
   """
   use GenServer
   require Logger
@@ -77,8 +76,8 @@ defmodule Mixwave.Studio.RestartWatcher do
         refs = Map.delete(state.refs, mod)
 
         Logger.warning(
-          "[chaos] #{inspect(mod)} (pid #{inspect(pid)}) DOWN: #{inspect(reason)} — " <>
-            "restart count: #{counts[mod]}; supervisor will restart it"
+          "[supervisor] #{inspect(mod)} (pid #{inspect(pid)}) DOWN: " <>
+            "#{inspect(reason)} — restart count: #{counts[mod]}; supervisor will restart"
         )
 
         # The supervisor restarts within a few ms; re-monitor shortly.
@@ -98,7 +97,7 @@ defmodule Mixwave.Studio.RestartWatcher do
 
       pid ->
         ref = Process.monitor(pid)
-        Logger.info("[chaos] #{inspect(mod)} restarted (pid #{inspect(pid)})")
+        Logger.info("[supervisor] #{inspect(mod)} restarted (pid #{inspect(pid)})")
         broadcast()
         {:noreply, %{state | refs: Map.put(state.refs, mod, ref)}}
     end

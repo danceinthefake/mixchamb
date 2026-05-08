@@ -12,17 +12,13 @@ defmodule Mixwave.Application do
       Mixwave.Repo,
       {DNSCluster, query: Application.get_env(:mixwave, :dns_cluster_query) || :ignore},
       {Phoenix.PubSub, name: Mixwave.PubSub},
-      # Anon-user sweeper: hourly tick deletes users idle > 24h.
-      # First flagship OTP demo — supervised, restartable, idempotent.
+      # Hourly tick deletes anonymous users idle for more than 24 h.
       Mixwave.Accounts.Sweeper,
-      # Studio room: supervised GenServer holding recent note events
-      # for join-time replay. Second flagship OTP demo — kill it in
-      # the v2 chaos board, watch it restart, jam resumes.
+      # Holds recent note events for join-time replay.
       Mixwave.Studio.Room,
-      # Restart watcher: counts how many times each supervised
-      # process has been restarted. Powers the v2 chaos board.
+      # Counts how many times each supervised process has restarted.
       Mixwave.Studio.RestartWatcher,
-      # Phoenix.Presence module — tracks who's in the studio.
+      # Tracks who's in the studio + their selected instrument.
       MixwaveWeb.Presence,
       # Start to serve requests, typically the last entry
       MixwaveWeb.Endpoint

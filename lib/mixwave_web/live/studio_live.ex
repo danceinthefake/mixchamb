@@ -1,15 +1,15 @@
 defmodule MixwaveWeb.StudioLive do
   @moduledoc """
-  The studio. One global jam room. Every visitor lands here.
+  The studio. One global jam room — every visitor lands here.
 
   Wires:
     - `Mixwave.Studio.subscribe/0` for note-event broadcasts
     - `MixwaveWeb.Presence` for "who's here, on what instrument"
-    - Server-side cooldown on instrument switch (1s; BRAINSTORM §9)
+    - 1-second server-side cooldown on instrument switch
 
-  Instrument pads themselves are Vue islands — DrumPad, KeyboardPad,
-  GuitarPad — and live in `assets/vue/instruments/`. They land in
-  the next commit.
+  Instrument pads are Vue islands rendered inside a single
+  `assets/vue/Studio.vue` parent island. See that file for why
+  pads aren't rendered as separate islands.
   """
   use MixwaveWeb, :live_view
 
@@ -213,7 +213,7 @@ defmodule MixwaveWeb.StudioLive do
 
       <p class="mt-6 text-center text-xs text-muted-foreground">
         Best-effort sync — distant users may sound a beat off. ·
-        <.link navigate={~p"/ops/supervisor"} class="underline">chaos board</.link>
+        <.link navigate={~p"/ops/supervisor"} class="underline">supervisor</.link>
       </p>
     </Layouts.app>
     """
