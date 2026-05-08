@@ -88,7 +88,16 @@ function transposeNotes(notes: readonly string[], octaveOffset: number): string[
 // (hi-hat / open hat / crash). Per-voice schedule tracking keeps
 // rapid retriggers from tripping Tone's "strictly greater" assertion.
 
-export type DrumName = "kick" | "snare" | "hihat" | "open_hat" | "crash"
+export type DrumName =
+  | "kick"
+  | "snare"
+  | "hihat"
+  | "open_hat"
+  | "crash"
+  | "ride"
+  | "tom_high"
+  | "tom_mid"
+  | "tom_floor"
 
 // Shared "overhead room" reverb for the crash cymbals across all
 // three drum styles. Plain MetalSynth on its own sounds like a tight
@@ -114,6 +123,10 @@ function makeDrumSynth(): InstrumentEngine {
   let hihat: Tone.MetalSynth | null = null
   let openHat: Tone.MetalSynth | null = null
   let crash: Tone.MetalSynth | null = null
+  let ride: Tone.MetalSynth | null = null
+  let tomHigh: Tone.MembraneSynth | null = null
+  let tomMid: Tone.MembraneSynth | null = null
+  let tomFloor: Tone.MembraneSynth | null = null
 
   const lastScheduled: Record<DrumName, number> = {
     kick: 0,
@@ -121,6 +134,10 @@ function makeDrumSynth(): InstrumentEngine {
     hihat: 0,
     open_hat: 0,
     crash: 0,
+    ride: 0,
+    tom_high: 0,
+    tom_mid: 0,
+    tom_floor: 0,
   }
 
   function ensure() {
@@ -164,6 +181,41 @@ function makeDrumSynth(): InstrumentEngine {
     }).toDestination()
     crash.volume.value = -12
     crash.connect(getCymbalReverb())
+
+    // Ride — brighter ping than crash, less inharmonic, shorter
+    // wash. Skips the reverb send so rhythmic ride patterns stay
+    // tight.
+    ride = new Tone.MetalSynth({
+      envelope: { attack: 0.001, decay: 0.8, release: 0.6 },
+      harmonicity: 9.0,
+      modulationIndex: 35,
+      resonance: 6000,
+      octaves: 0.7,
+    }).toDestination()
+    ride.volume.value = -10
+
+    // Toms — MembraneSynth tuned high/mid/low so the three drums
+    // have distinct pitches and read as separate kit pieces.
+    tomHigh = new Tone.MembraneSynth({
+      pitchDecay: 0.04,
+      octaves: 4,
+      oscillator: { type: "sine" },
+      envelope: { attack: 0.001, decay: 0.4, sustain: 0, release: 0.5 },
+    }).toDestination()
+
+    tomMid = new Tone.MembraneSynth({
+      pitchDecay: 0.04,
+      octaves: 4,
+      oscillator: { type: "sine" },
+      envelope: { attack: 0.001, decay: 0.5, sustain: 0, release: 0.6 },
+    }).toDestination()
+
+    tomFloor = new Tone.MembraneSynth({
+      pitchDecay: 0.05,
+      octaves: 5,
+      oscillator: { type: "sine" },
+      envelope: { attack: 0.001, decay: 0.7, sustain: 0, release: 0.8 },
+    }).toDestination()
   }
 
   function schedule(name: DrumName): number {
@@ -194,6 +246,18 @@ function makeDrumSynth(): InstrumentEngine {
         case "crash":
           crash!.triggerAttackRelease("C5", "1n", when)
           break
+        case "ride":
+          ride!.triggerAttackRelease("C6", "4n", when)
+          break
+        case "tom_high":
+          tomHigh!.triggerAttackRelease("A3", "8n", when)
+          break
+        case "tom_mid":
+          tomMid!.triggerAttackRelease("E3", "8n", when)
+          break
+        case "tom_floor":
+          tomFloor!.triggerAttackRelease("A2", "8n", when)
+          break
       }
     },
     // Drums are short percussion — no held notes to release.
@@ -214,6 +278,10 @@ function makeDrum808(): InstrumentEngine {
   let hihat: Tone.MetalSynth | null = null
   let openHat: Tone.MetalSynth | null = null
   let crash: Tone.MetalSynth | null = null
+  let ride: Tone.MetalSynth | null = null
+  let tomHigh: Tone.MembraneSynth | null = null
+  let tomMid: Tone.MembraneSynth | null = null
+  let tomFloor: Tone.MembraneSynth | null = null
 
   const lastScheduled: Record<DrumName, number> = {
     kick: 0,
@@ -221,6 +289,10 @@ function makeDrum808(): InstrumentEngine {
     hihat: 0,
     open_hat: 0,
     crash: 0,
+    ride: 0,
+    tom_high: 0,
+    tom_mid: 0,
+    tom_floor: 0,
   }
 
   function ensure() {
@@ -271,6 +343,38 @@ function makeDrum808(): InstrumentEngine {
     }).toDestination()
     crash.volume.value = -14
     crash.connect(getCymbalReverb())
+
+    ride = new Tone.MetalSynth({
+      envelope: { attack: 0.001, decay: 1.0, release: 0.8 },
+      harmonicity: 11,
+      modulationIndex: 40,
+      resonance: 5000,
+      octaves: 0.8,
+    }).toDestination()
+    ride.volume.value = -12
+
+    // 808-style toms: longer pitch envelope and decay than synth,
+    // so they boom rather than thud.
+    tomHigh = new Tone.MembraneSynth({
+      pitchDecay: 0.06,
+      octaves: 6,
+      oscillator: { type: "sine" },
+      envelope: { attack: 0.001, decay: 0.7, sustain: 0, release: 0.7 },
+    }).toDestination()
+
+    tomMid = new Tone.MembraneSynth({
+      pitchDecay: 0.07,
+      octaves: 6,
+      oscillator: { type: "sine" },
+      envelope: { attack: 0.001, decay: 0.9, sustain: 0, release: 0.9 },
+    }).toDestination()
+
+    tomFloor = new Tone.MembraneSynth({
+      pitchDecay: 0.08,
+      octaves: 6,
+      oscillator: { type: "sine" },
+      envelope: { attack: 0.001, decay: 1.2, sustain: 0, release: 1.2 },
+    }).toDestination()
   }
 
   function schedule(name: DrumName): number {
@@ -302,6 +406,18 @@ function makeDrum808(): InstrumentEngine {
         case "crash":
           crash!.triggerAttackRelease("C5", "1n", when)
           break
+        case "ride":
+          ride!.triggerAttackRelease("C6", "4n", when)
+          break
+        case "tom_high":
+          tomHigh!.triggerAttackRelease("A3", "8n", when)
+          break
+        case "tom_mid":
+          tomMid!.triggerAttackRelease("E3", "8n", when)
+          break
+        case "tom_floor":
+          tomFloor!.triggerAttackRelease("A2", "8n", when)
+          break
       }
     },
     stopAll() {},
@@ -322,6 +438,10 @@ function makeDrumAcoustic(): InstrumentEngine {
   let hihat: Tone.MetalSynth | null = null
   let openHat: Tone.MetalSynth | null = null
   let crash: Tone.MetalSynth | null = null
+  let ride: Tone.MetalSynth | null = null
+  let tomHigh: Tone.MembraneSynth | null = null
+  let tomMid: Tone.MembraneSynth | null = null
+  let tomFloor: Tone.MembraneSynth | null = null
 
   const lastScheduled: Record<DrumName, number> = {
     kick: 0,
@@ -329,6 +449,10 @@ function makeDrumAcoustic(): InstrumentEngine {
     hihat: 0,
     open_hat: 0,
     crash: 0,
+    ride: 0,
+    tom_high: 0,
+    tom_mid: 0,
+    tom_floor: 0,
   }
 
   function ensure() {
@@ -381,6 +505,38 @@ function makeDrumAcoustic(): InstrumentEngine {
     }).toDestination()
     crash.volume.value = -14
     crash.connect(getCymbalReverb())
+
+    ride = new Tone.MetalSynth({
+      envelope: { attack: 0.001, decay: 0.9, release: 0.7 },
+      harmonicity: 7.0,
+      modulationIndex: 32,
+      resonance: 5500,
+      octaves: 0.6,
+    }).toDestination()
+    ride.volume.value = -10
+
+    // Acoustic toms: shorter and tighter than 808 but with enough
+    // body to read as drum hits rather than blips.
+    tomHigh = new Tone.MembraneSynth({
+      pitchDecay: 0.03,
+      octaves: 3,
+      oscillator: { type: "sine" },
+      envelope: { attack: 0.001, decay: 0.3, sustain: 0, release: 0.4 },
+    }).toDestination()
+
+    tomMid = new Tone.MembraneSynth({
+      pitchDecay: 0.04,
+      octaves: 3,
+      oscillator: { type: "sine" },
+      envelope: { attack: 0.001, decay: 0.4, sustain: 0, release: 0.5 },
+    }).toDestination()
+
+    tomFloor = new Tone.MembraneSynth({
+      pitchDecay: 0.05,
+      octaves: 4,
+      oscillator: { type: "sine" },
+      envelope: { attack: 0.001, decay: 0.6, sustain: 0, release: 0.7 },
+    }).toDestination()
   }
 
   function schedule(name: DrumName): number {
@@ -411,6 +567,18 @@ function makeDrumAcoustic(): InstrumentEngine {
           break
         case "crash":
           crash!.triggerAttackRelease("C5", "2n", when)
+          break
+        case "ride":
+          ride!.triggerAttackRelease("C6", "4n", when)
+          break
+        case "tom_high":
+          tomHigh!.triggerAttackRelease("A3", "8n", when)
+          break
+        case "tom_mid":
+          tomMid!.triggerAttackRelease("E3", "8n", when)
+          break
+        case "tom_floor":
+          tomFloor!.triggerAttackRelease("A2", "8n", when)
           break
       }
     },
