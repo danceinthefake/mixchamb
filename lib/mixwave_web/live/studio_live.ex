@@ -44,7 +44,11 @@ defmodule MixwaveWeb.StudioLive do
      socket
      |> assign(:instruments, @instruments)
      |> assign(:current_instrument, :drums)
-     |> assign(:last_switch_at, 0)
+     # Initialize so the first switch is never blocked. BEAM's
+     # monotonic time can be a large negative integer at startup, so
+     # `0` here would make the cooldown check (`now - last_switch_at`)
+     # produce a negative result and reject every switch.
+     |> assign(:last_switch_at, System.monotonic_time(:millisecond) - @switch_cooldown_ms)
      |> assign(:presences, presences)}
   end
 
