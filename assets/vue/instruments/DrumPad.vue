@@ -1,21 +1,30 @@
 <script setup lang="ts">
-// Drum pad — laid out as a real kit from the drummer's perspective:
+// Drum pad — laid out as a full kit from the drummer's top-down
+// perspective, with all the pieces a typical rock kit ships with:
 //
-//   1 hi-hat (one cymbal pair, played open or closed)
-//   1 snare drum
-//   2 crash cymbals (typical rock/metal kit)
-//   1 kick drum with a double pedal — two trigger pads, both play
-//     the same kick sound
+//   2 crash cymbals (left, right)         ← upper corners
+//   3 toms (small, mid, floor)            ← mounted small/mid above
+//                                            the bass drum, floor
+//                                            tom on the lower right
+//   1 ride cymbal                          ← upper right
+//   1 bass drum + foot pedal               ← centre column
+//   1 hi-hat (closed + open) + foot pedal  ← left side
+//   1 snare                                ← lower centre
+//   1 throne                                ← drummer's seat, decorative
 //
-// Seven pads total. Keyboard shortcuts mirror the kit's spatial
-// layout — cymbals on the home row, snare + kicks on the row below:
+// 11 playable pads. Hi-Hat Pedal and Throne are visual-only — they
+// complete the kit picture without adding extra triggers.
 //
-//   f g       h j      ← hi-hat, open, crash 1, crash 2
-//      v b n            ← kick L, snare, kick R
+// Keyboard shortcuts mirror the kit shape:
 //
-// Both kick pads trigger the same `kick` drum so remote players
-// hear one kick regardless of which foot pressed it; both crashes
-// do the same.
+//   q w e   r t              ← Crash 1, Sm Tom, Mid Tom, Ride, Bass
+//   f g       j               ← Hi-hat, Open, Crash 2
+//      v   b n                 ← Bass Pedal, Snare, Floor Tom
+//
+// Bass Drum and Bass Pedal both trigger `kick` — two ways to play
+// the same drum, like a double-pedal setup. Both crash pads
+// trigger `crash`. Remote players hear one of each regardless of
+// which trigger the sender used.
 //
 // Local audio plays immediately on tap; the note + the player's
 // chosen style are pushed to LiveView for broadcast. Remote players
@@ -35,15 +44,17 @@ const live = useLiveVue()
 type DrumStyle = "synth" | "808" | "acoustic"
 // Each visible pad has its own `id` (so two crashes don't flash
 // each other on local taps) and a `drum` (the actual sound to
-// trigger). The `pos` is a percentage box inside the kit container,
-// painting each piece where it would sit on a real kit.
+// trigger; null for purely-decorative pieces like the throne or
+// hi-hat foot pedal). The `pos` is a percentage box inside the
+// kit container, painting each piece where it would sit on a
+// real kit.
 type Pad = {
   id: string
-  drum: DrumName
+  drum: DrumName | null
   label: string
-  key: string
+  key: string | null
   pos: { left: string; top: string; width: string; height: string }
-  shape: "round" | "square"
+  shape: "round" | "square" | "oval"
 }
 type StyleOption = { id: DrumStyle; label: string }
 
@@ -56,14 +67,55 @@ const styles: StyleOption[] = [
 const style = ref<DrumStyle>("synth")
 
 const pads: Pad[] = [
-  // Cymbals across the top. Hi-hat pair on the left (drummer's left
-  // hand), crash pair on the right.
+  // Top row: outer crashes + mounted toms + ride.
+  {
+    id: "crash_l",
+    drum: "crash",
+    label: "Crash 1",
+    key: "q",
+    pos: { left: "1%", top: "2%", width: "16%", height: "22%" },
+    shape: "round",
+  },
+  {
+    id: "tom_high",
+    drum: "tom_high",
+    label: "Sm Tom",
+    key: "w",
+    pos: { left: "31%", top: "5%", width: "13%", height: "20%" },
+    shape: "round",
+  },
+  {
+    id: "tom_mid",
+    drum: "tom_mid",
+    label: "Mid Tom",
+    key: "e",
+    pos: { left: "47%", top: "5%", width: "13%", height: "20%" },
+    shape: "round",
+  },
+  {
+    id: "ride",
+    drum: "ride",
+    label: "Ride",
+    key: "r",
+    pos: { left: "82%", top: "2%", width: "16%", height: "22%" },
+    shape: "round",
+  },
+  // Bass drum just below the mounted toms — large round at centre.
+  {
+    id: "kick_drum",
+    drum: "kick",
+    label: "Bass",
+    key: "t",
+    pos: { left: "37%", top: "27%", width: "23%", height: "22%" },
+    shape: "round",
+  },
+  // Hi-hat pair on the left, second crash on the right.
   {
     id: "hihat",
     drum: "hihat",
     label: "Hi-hat",
     key: "f",
-    pos: { left: "2%", top: "2%", width: "18%", height: "36%" },
+    pos: { left: "2%", top: "50%", width: "13%", height: "17%" },
     shape: "round",
   },
   {
@@ -71,15 +123,7 @@ const pads: Pad[] = [
     drum: "open_hat",
     label: "Open",
     key: "g",
-    pos: { left: "22%", top: "5%", width: "18%", height: "36%" },
-    shape: "round",
-  },
-  {
-    id: "crash_l",
-    drum: "crash",
-    label: "Crash 1",
-    key: "h",
-    pos: { left: "58%", top: "2%", width: "18%", height: "36%" },
+    pos: { left: "16%", top: "50%", width: "13%", height: "17%" },
     shape: "round",
   },
   {
@@ -87,34 +131,52 @@ const pads: Pad[] = [
     drum: "crash",
     label: "Crash 2",
     key: "j",
-    pos: { left: "78%", top: "5%", width: "18%", height: "36%" },
+    pos: { left: "82%", top: "48%", width: "16%", height: "20%" },
     shape: "round",
   },
-  // Snare in the middle.
+  // Snare lower-centre, floor tom lower-right.
   {
     id: "snare",
     drum: "snare",
     label: "Snare",
     key: "b",
-    pos: { left: "36%", top: "38%", width: "28%", height: "30%" },
+    pos: { left: "26%", top: "68%", width: "18%", height: "19%" },
     shape: "round",
   },
-  // Double-pedal kick: two trigger pads, both play the same kick.
   {
-    id: "kick_l",
-    drum: "kick",
-    label: "Kick L",
-    key: "v",
-    pos: { left: "20%", top: "70%", width: "28%", height: "28%" },
+    id: "tom_floor",
+    drum: "tom_floor",
+    label: "Floor Tom",
+    key: "n",
+    pos: { left: "55%", top: "65%", width: "21%", height: "23%" },
+    shape: "round",
+  },
+  // Pedals + throne along the bottom. Hi-hat pedal and throne are
+  // decorative (no drum, no key) — they complete the kit picture
+  // without adding extra triggers.
+  {
+    id: "hihat_pedal",
+    drum: null,
+    label: "HH Pedal",
+    key: null,
+    pos: { left: "5%", top: "88%", width: "11%", height: "8%" },
     shape: "square",
   },
   {
-    id: "kick_r",
+    id: "kick_pedal",
     drum: "kick",
-    label: "Kick R",
-    key: "n",
-    pos: { left: "52%", top: "70%", width: "28%", height: "28%" },
+    label: "Bass Pedal",
+    key: "v",
+    pos: { left: "40%", top: "85%", width: "16%", height: "10%" },
     shape: "square",
+  },
+  {
+    id: "throne",
+    drum: null,
+    label: "Throne",
+    key: null,
+    pos: { left: "44%", top: "96%", width: "10%", height: "4%" },
+    shape: "oval",
   },
 ]
 
@@ -140,7 +202,17 @@ function flashRemote(name: DrumName) {
   remoteFlashTimer = window.setTimeout(() => (remoteFlashing.value = null), 200)
 }
 
-const drumNames = new Set<DrumName>(["kick", "snare", "hihat", "open_hat", "crash"])
+const drumNames = new Set<DrumName>([
+  "kick",
+  "snare",
+  "hihat",
+  "open_hat",
+  "crash",
+  "ride",
+  "tom_high",
+  "tom_mid",
+  "tom_floor",
+])
 
 watch(
   () => props.remoteHit,
@@ -151,6 +223,9 @@ watch(
 )
 
 async function hit(pad: Pad) {
+  // Decorative pads (throne, hi-hat foot pedal) have no drum
+  // attached and don't make sound when tapped.
+  if (!pad.drum) return
   await ensureStarted()
   play("drums", style.value, pad.drum)
   flash(pad.id)
@@ -212,12 +287,13 @@ onUnmounted(() => {
          width; on narrow screens it just gets smaller, not crushed. -->
     <div
       class="relative w-full mx-auto"
-      style="max-width: 640px; aspect-ratio: 5 / 3;"
+      style="max-width: 720px; aspect-ratio: 4 / 3;"
     >
       <button
         v-for="p in pads"
         :key="p.id"
         @pointerdown.prevent="hit(p)"
+        :disabled="!p.drum"
         :style="{
           left: p.pos.left,
           top: p.pos.top,
@@ -225,14 +301,24 @@ onUnmounted(() => {
           height: p.pos.height,
         }"
         :class="[
-          'absolute border bg-card flex flex-col items-center justify-center gap-1 select-none transition-all active:scale-95 hover:bg-accent',
-          p.shape === 'round' ? 'rounded-full' : 'rounded-lg',
+          'absolute border flex flex-col items-center justify-center gap-1 select-none transition-all',
+          p.shape === 'round'
+            ? 'rounded-full'
+            : p.shape === 'oval'
+              ? 'rounded-full'
+              : 'rounded-lg',
+          p.drum
+            ? 'bg-card hover:bg-accent active:scale-95 cursor-pointer'
+            : 'bg-muted/40 text-muted-foreground/60 cursor-default',
           flashing === p.id && 'ring-4 ring-primary scale-95',
           remoteFlashing === p.drum && flashing !== p.id && 'ring-4 ring-orange-400'
         ]"
       >
-        <div class="text-sm font-medium">{{ p.label }}</div>
-        <kbd class="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground">{{ p.key }}</kbd>
+        <div class="text-xs font-medium">{{ p.label }}</div>
+        <kbd
+          v-if="p.key"
+          class="text-[10px] px-1 py-0.5 rounded bg-muted text-muted-foreground"
+        >{{ p.key }}</kbd>
       </button>
     </div>
   </div>
