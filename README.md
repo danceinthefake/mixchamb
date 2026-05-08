@@ -1,111 +1,134 @@
 # mixwave
 
-A music app rebuilt to make the case for **Vue + Elixir** as a stack
-worth knowing. Anonymous users upload audio files, browse a public
-library, and play tracks through a persistent footer player. Same
-domain as [`vue-ztm/music`](../vue-ztm/music) (a Zero-To-Mastery
-course follow-along) — but the goal here is no longer "introduce Vue
-to my team." It's **show what this stack can do that other stacks
-make harder.**
+A real-time collaborative studio. **One global jam room** — anyone
+who hits the URL joins a single shared session, picks an instrument
+(drums, keyboard, guitar), picks a flavor for that instrument, and
+plays alongside everyone else online. No accounts, no separate rooms.
 
-See [BRAINSTORM.md](./BRAINSTORM.md) for the full audience, talk
-shape, and per-layer flagship features.
+The project's framing is *"my tech learning journey"*: Vue and
+Elixir/Phoenix/LiveView are the two stacks I picked up over the last
+year, and mixwave is the project where they finally meet. See
+[BRAINSTORM.md](./BRAINSTORM.md) for the audience, talk shape, and
+per-layer flagship features.
 
-## What it is right now (v1)
+## What it does (v1)
 
-Same surface area as the original ZTM course's app, on the new stack:
+- **Anonymous identity, no signup.** First visit gets you a
+  Javanese-flavored handle (`ayu-merak-42`, `wani-macan-17`). Idle
+  users (24 h+) are reaped by a supervised GenServer.
+- **Three instruments, three flavors each — nine engines total:**
 
-- **Anonymous auth** — visit the site and you're handed a Javanese-
-  flavored handle (`ayu-merak-42`, `wani-macan-17`) on first request.
-  Idle users (24h+) are reaped by a supervised GenServer.
-- **Upload** — drag-and-drop an mp3 / m4a / ogg / flac, ≤25 MB. The
-  browser PUTs directly to Cloudflare R2 via a short-lived presigned
-  URL; Phoenix never touches the bytes.
-- **Library** — paginated public feed of every uploaded song.
-- **Song detail** — title, description, genre, who uploaded, comments.
-- **Manage** — your songs, delete (cascades to R2 + comments).
-- **Persistent player** — Vue island in the root layout. Click play
-  on a song; the footer player picks up the track and survives
-  navigation (LiveView re-renders never reset playback).
+  | Instrument | Flavors |
+  | --- | --- |
+  | **Drums** (5 pads — kick / snare / hi-hat / open hat / crash) | Synth · 808 · Acoustic |
+  | **Keyboard** (one octave C4–C5) | Synth · Lead · **Piano** *(sampled)* |
+  | **Guitar** (8 chord buttons) | Synth · **Pluck** *(hand-rolled Karplus-Strong)* · **Acoustic** *(sampled)* |
 
-What lands in **v2** (BRAINSTORM §7): listen-together rooms (Phoenix
-Presence + sync'd playback), live comments stream (PubSub), waveform
-island with click-to-seek, background transcoder + orphan sweeper,
-supervisor LiveView with the chaos button. **v3** is multi-node + the
-public release.
+  Seven flavors are pure DSP (Tone.js synths). Two are sampled —
+  Salamander piano and acoustic guitar — streamed lazily from a
+  CDN the first time someone picks them.
 
-## Stack at a glance
+- **Tap pads or use keyboard shortcuts.** Drums on `1–5`, keyboard
+  on the QWERTY row (`a w s e d f t g y h u j k`), guitar chords
+  on `1–8`.
+- **Everyone hears everyone.** Notes broadcast via Phoenix.PubSub
+  on a single global topic; an always-mounted Vue island
+  (`JamReceiver`/`Studio.vue`) plays them locally on every other
+  connected user. Listeners hear the *sender's* chosen flavor —
+  coherent jam sound for the whole room.
+- **Presence sidebar** shows who's in the room and what each
+  player has on screen, updates live on join/leave/switch.
+- **1-second cooldown** on instrument switch. Held notes cut off
+  on switch (no bleed across instruments or flavors).
+- **Latency hint** in the footer: *"best-effort sync — distant
+  users may sound a beat off."* WebSocket delay between players is
+  ~50–150 ms; this is an honest jam-along, not a synchronized
+  performance.
+
+### What's planned
+
+- **v2:** save the last 30 seconds of jam → playback widget;
+  supervisor LiveView with a chaos button that kills
+  `Studio.Room` and watches the supervisor restart it; per-user
+  volume; more instruments.
+- **v3:** Fly.io multi-node deploy with `dns_cluster` auto-clustering;
+  cluster LiveView showing nodes / process counts / drain-node
+  button (cross-node Presence rebalancing live); public release.
+
+## Stack
 
 | Layer | What |
 | --- | --- |
-| Backend | Elixir 1.18+, **Phoenix 1.8** + **LiveView 1.1**, Ecto + Postgres, Bandit, DNSCluster |
-| Frontend | **Vue 3.5** + TypeScript, Vite 8, Tailwind v4, **shadcn-vue** (Reka UI primitives), Lucide icons |
-| LV ↔ Vue glue | **`live_vue` 1.2** (`<.vue v-component="…">` islands inside LiveView) |
-| Storage | **Cloudflare R2** (S3-compatible), presigned PUT/GET via `ex_aws_s3` |
-| Audio | `howler.js` |
-| Hosting (planned) | Fly.io, with `dns_cluster` autowiring for v3 multi-node |
+| Backend | Elixir 1.18+, **Phoenix 1.8** + **LiveView 1.1**, Ecto + Postgres, Bandit, `dns_cluster` |
+| Realtime | **Phoenix.PubSub** for note broadcasts, **Phoenix.Presence** for the sidebar |
+| Frontend | **Vue 3.5** + TypeScript (strict), Vite 8, Tailwind v4, **shadcn-vue** (Reka UI primitives), Lucide icons |
+| LV ↔ Vue | **`live_vue` 1.2** — Vue islands rendered inside LiveView |
+| Audio | **Tone.js** — 7 synth-based engines + 2 `Tone.Sampler` engines streaming from `tonejs.github.io/audio` and `nbrosowsky.github.io/tonejs-instruments` |
+| Hosting (planned) | Fly.io |
 
-The Phoenix HEEX side and the Vue island side share one design
-language — shadcn-vue's CSS variables (`bg-background`,
-`text-foreground`, `bg-primary`, etc.) are wired in `assets/css/app.css`
-and resolve to light/dark values via a `dark` class on `<html>`.
+The HEEX side and the Vue island side share one design language —
+shadcn-vue's CSS variables (`bg-background`, `text-foreground`,
+`bg-primary`, etc.) are wired in `assets/css/app.css` and resolve
+to light/dark values via a `dark` class on `<html>`.
 
 ## Run it locally
 
 ### Prerequisites
 
-- **Elixir 1.18+ and Erlang/OTP 27+** — `asdf install elixir 1.19.x`
-  or your distro's package
-- **Node 22+** — for Vite (Phoenix's asset pipeline goes through
-  `phoenix_vite` which calls `npm`; the project is on npm, not pnpm,
-  because `phoenix_vite` hardcodes the `npm` binary)
-- **Postgres 15+** — easiest path is Docker:
-  `docker run -d --name mixwave-pg -e POSTGRES_PASSWORD=postgres -e POSTGRES_USER=postgres -p 5432:5432 postgres:16-alpine`
-- **A Cloudflare R2 bucket + API token** — optional for first-boot;
-  required for actual uploads/playback. See `.env.example`.
+- **Elixir 1.18+ / OTP 27+** — `asdf install elixir 1.19.x` or your
+  distro's package
+- **Node 22+** — Phoenix's asset pipeline calls `npm` (the project
+  is on npm not pnpm because `phoenix_vite` hardcodes the npm binary)
+- **Postgres 15+** — easiest is Docker:
+  ```sh
+  docker run -d --name mixwave-pg \
+    -e POSTGRES_PASSWORD=postgres -e POSTGRES_USER=postgres \
+    -p 5432:5432 postgres:16-alpine
+  ```
+
+The studio doesn't use any external API keys or storage — Tone.js
+samples come from public CDN URLs the browser fetches directly.
 
 ### First-time setup
 
 ```sh
-# 1. Install all deps (Elixir + npm).
-mix setup
-
-# 2. Configure R2 (only required if you want uploads to work).
-cp .env.example .env.local
-# Fill in R2_ENDPOINT_HOST, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY,
-# R2_BUCKET. The host pattern is <account_id>.r2.cloudflarestorage.com.
-# Then in your shell:
-set -a && source .env.local && set +a
-
-# 3. Create + migrate the database.
-mix ecto.setup
-
-# 4. Run the server.
-mix phx.server
+mix setup        # install deps, create db, run migrations, build assets
+mix phx.server   # start the server
 ```
 
-Visit [`localhost:4000`](http://localhost:4000). You'll be handed an
-anonymous identity on first request.
+Visit [`localhost:4000`](http://localhost:4000). You're handed an
+anonymous identity on first request and dropped into the jam.
 
-### Without R2 configured
+### Multi-machine LAN testing
 
-The app still boots and renders. The library/manage/song pages work
-against the database. Upload won't function (the presigned-URL step
-calls R2), and the song-detail page replaces the play button with an
-"audio source unavailable" notice.
+The whole point of v1 is multi-user, so you'll want to test from a
+second device:
 
-That's by design — the BRAINSTORM commits to "fail loud on
-misconfiguration" rather than silently writing into the wrong bucket.
+1. Find this machine's LAN IP: `hostname -I`
+2. Open ports 4000 (Phoenix) + 5173 (Vite dev server) in your
+   firewall. With `firewalld`:
+   ```sh
+   sudo firewall-cmd --add-port=4000/tcp
+   sudo firewall-cmd --add-port=5173/tcp
+   ```
+3. Start the server with the LAN IP exposed:
+   ```sh
+   DEV_LAN_HOST=<your-lan-ip> mix phx.server
+   ```
+4. From the other device, browse to `http://<your-lan-ip>:4000`.
+
+Both devices land in the same global studio. Tap a drum on one,
+hear it on the other.
 
 ### Useful commands
 
 ```sh
-mix setup            # install deps + create db + run migrations + build assets
+mix setup            # install deps + db + assets
 mix ecto.reset       # drop + recreate db
-mix phx.server       # run the server (dev mode, with Vite hot reload)
-mix assets.build     # one-shot asset build via Vite
+mix phx.server       # dev server with Vite hot reload
+mix assets.build     # one-shot Vite build
 mix assets.deploy    # production asset build + digest
-mix test             # run the (currently small) test suite
+mix test             # run the test suite
 mix precommit        # compile --warnings-as-errors + format + test
 ```
 
@@ -113,37 +136,47 @@ mix precommit        # compile --warnings-as-errors + format + test
 
 ```
 mixwave/
-├── BRAINSTORM.md             goal + talk shape + decisions
-├── README.md                 this file
+├── BRAINSTORM.md                 goal + talk shape + locked decisions
+├── README.md                     this file
 ├── lib/
-│   ├── mixwave/              domain
-│   │   ├── accounts/         anonymous users + sweeper + name generator
-│   │   ├── library/          songs + comments schemas
-│   │   ├── library.ex        list/get/create context functions
-│   │   ├── storage.ex        R2 wrapper (presign, head, delete, list)
-│   │   └── application.ex    supervisor tree
+│   ├── mixwave/
+│   │   ├── application.ex        supervisor tree
+│   │   ├── repo.ex
+│   │   ├── accounts/             anonymous users + name generator + sweeper GenServer
+│   │   ├── accounts.ex           context: create / get / touch / sweep
+│   │   ├── studio/
+│   │   │   └── room.ex           supervised GenServer holding recent note events
+│   │   └── studio.ex             context: subscribe / broadcast_note
 │   └── mixwave_web/
-│       ├── components/       layouts.ex, core_components.ex (HEEX)
-│       ├── live/             LibraryLive, UploadLive, SongLive, ManageLive
-│       ├── plugs/            EnsureAnonUser
+│       ├── components/           layouts.ex, core_components.ex (HEEX)
+│       ├── channels/presence.ex  Phoenix.Presence module
+│       ├── live/
+│       │   └── studio_live.ex    the whole user-facing app
+│       ├── plugs/
+│       │   └── ensure_anon_user.ex  cookie-based anon identity
 │       ├── router.ex
-│       └── user_auth.ex      LV on_mount that injects current_user
+│       └── user_auth.ex          LV on_mount that injects current_user
 ├── assets/
-│   ├── css/app.css           Tailwind v4 + shadcn-vue tokens
-│   ├── js/app.js             Phoenix LiveView + LiveVue + Player bootstrap
+│   ├── css/app.css               Tailwind v4 + shadcn-vue tokens
+│   ├── js/app.js                 LiveSocket + LiveVue bootstrap
 │   ├── vue/
-│   │   ├── components/ui/    shadcn-vue starter components
-│   │   ├── lib/utils.ts      cn() helper
-│   │   ├── Player.vue        persistent footer player (howler)
-│   │   ├── VueDemo.vue       live_vue demo (LV-driven todos)
-│   │   └── index.ts          live_vue entry
+│   │   ├── Studio.vue            single live_vue island; v-ifs the active pad
+│   │   ├── instruments/
+│   │   │   ├── DrumPad.vue       3 flavors: synth / 808 / acoustic
+│   │   │   ├── KeyboardPad.vue   3 flavors: synth / lead / piano (sampled)
+│   │   │   └── GuitarPad.vue     3 flavors: synth / pluck (K-S) / acoustic (sampled)
+│   │   ├── lib/
+│   │   │   ├── audio.ts          Tone.js engine registry — 9 engines
+│   │   │   └── utils.ts          cn() helper
+│   │   ├── components/ui/        shadcn-vue starter components
+│   │   └── index.ts              live_vue entry
 │   └── vite.config.mjs
-├── priv/repo/migrations/     anonymous_users / songs / comments
-├── config/                   compile-time + runtime config
+├── priv/repo/migrations/         only anonymous_users — jams are ephemeral
+├── config/
 └── test/
 ```
 
 ## License
 
-Personal/learning project. See [BRAINSTORM.md](./BRAINSTORM.md) §1
-for the audience and goal.
+Personal / learning project. See [BRAINSTORM.md](./BRAINSTORM.md)
+§1 for the audience and goal.
