@@ -172,20 +172,11 @@ defmodule MixwaveWeb.StudioLive do
             </button>
           </div>
 
-          <%!-- Instrument pad. Each pad is a Vue island; only the
-               active one mounts. JamReceiver is always mounted so
-               we hear remote players regardless of which pad we
-               currently have on screen. --%>
-          <.JamReceiver />
+          <%!-- One live_vue island for the whole studio. Vue handles
+               the v-if swap between pads internally — see Studio.vue
+               for why we don't use three separate islands. --%>
           <div class="rounded-lg border bg-card p-6 min-h-[18rem]">
-            <%= case @current_instrument do %>
-              <% :drums -> %>
-                <.DrumPad />
-              <% :keyboard -> %>
-                <.KeyboardPad />
-              <% :guitar -> %>
-                <.GuitarPad />
-            <% end %>
+            <.Studio current_instrument={Atom.to_string(@current_instrument)} />
           </div>
         </section>
       </div>

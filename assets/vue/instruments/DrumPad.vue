@@ -48,9 +48,18 @@ function onKey(event: KeyboardEvent) {
   }
 }
 
-onMounted(() => window.addEventListener("keydown", onKey))
+// AbortController guarantees the listener is torn down even if Vue's
+// onUnmounted somehow runs out of order with the component's setup.
+// One .abort() removes everything attached with this signal.
+let controller: AbortController | null = null
+
+onMounted(() => {
+  controller = new AbortController()
+  window.addEventListener("keydown", onKey, { signal: controller.signal })
+})
+
 onUnmounted(() => {
-  window.removeEventListener("keydown", onKey)
+  controller?.abort()
   if (flashTimer !== null) window.clearTimeout(flashTimer)
 })
 </script>

@@ -8,7 +8,7 @@
 
 import { onMounted, onUnmounted, ref } from "vue"
 import { useLiveVue } from "live_vue"
-import { ensureStarted, playChord, type ChordName } from "@/lib/audio"
+import { ensureStarted, playChord, stopAllGuitar, type ChordName } from "@/lib/audio"
 
 const live = useLiveVue()
 
@@ -50,10 +50,19 @@ function onKey(event: KeyboardEvent) {
   }
 }
 
-onMounted(() => window.addEventListener("keydown", onKey))
+let controller: AbortController | null = null
+
+onMounted(() => {
+  controller = new AbortController()
+  window.addEventListener("keydown", onKey, { signal: controller.signal })
+})
+
 onUnmounted(() => {
-  window.removeEventListener("keydown", onKey)
+  controller?.abort()
   if (flashTimer !== null) window.clearTimeout(flashTimer)
+  // Cut any chord still ringing — BRAINSTORM §9: held notes cut off
+  // on instrument switch.
+  stopAllGuitar()
 })
 </script>
 
