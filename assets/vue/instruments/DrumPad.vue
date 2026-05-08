@@ -17,17 +17,17 @@
 //
 // Keyboard shortcuts cluster around v/b/n so both hands can play
 // the whole kit without leaving home position. Horizontal order
-// inside the cluster still matches the kit's left-to-right
-// ordering — the column you press goes up as the pad's position
-// in the kit goes right:
+// inside the cluster matches the kit's left-to-right ordering —
+// the column you press goes up as the pad's position goes right:
 //
-//          r t y u           ← Crash 1, Sm Tom, Mid Tom, Ride
-//          f g     j           ← Hi-hat, Open, Crash 2
-//        c v b n             ← HH Pedal, Snare, Bass Pedal, Floor Tom
+//        e r t y u         ← Crash 1, Sm Tom, Bass, Mid Tom, Ride
+//        f g     j           ← Hi-hat, Open, Crash 2
+//      c v b n             ← HH Pedal, Snare, Bass Pedal, Floor Tom
 //
-// Bass Drum (top centre) has no key — it triggers the same `kick`
-// as Bass Pedal (`b`), so a second key would just shadow `b`.
-// Click it directly if you want to hit the drum from the top.
+// Bass Drum (`t`) and Bass Pedal (`b`) both trigger `kick` and
+// share column 5 — vertically aligned on the keyboard the way
+// they're vertically aligned on the kit. Either one alone gets
+// you the kick; pressing both is the double-pedal pattern.
 //
 // Bass Drum and Bass Pedal both trigger `kick` — two ways to play
 // the same drum, like a double-pedal setup. Both crash pads
@@ -80,7 +80,7 @@ const pads: Pad[] = [
     id: "crash_l",
     drum: "crash",
     label: "Crash 1",
-    key: "r",
+    key: "e",
     pos: { left: "1%", top: "2%", width: "16%", height: "22%" },
     shape: "round",
   },
@@ -88,7 +88,7 @@ const pads: Pad[] = [
     id: "tom_high",
     drum: "tom_high",
     label: "Sm Tom",
-    key: "t",
+    key: "r",
     pos: { left: "31%", top: "5%", width: "13%", height: "20%" },
     shape: "round",
   },
@@ -109,13 +109,14 @@ const pads: Pad[] = [
     shape: "round",
   },
   // Bass drum just below the mounted toms — large round at centre.
-  // No key: Bass Pedal (`b`) plays the same `kick` sound, so this
-  // is click-only to keep the keyboard cluster tight.
+  // Shares col 5 with Bass Pedal (`b`) below: both trigger `kick`,
+  // both vertically aligned on the keyboard the way they are on
+  // the kit.
   {
     id: "kick_drum",
     drum: "kick",
     label: "Bass",
-    key: null,
+    key: "t",
     pos: { left: "37%", top: "27%", width: "23%", height: "22%" },
     shape: "round",
   },
