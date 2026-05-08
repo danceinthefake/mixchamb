@@ -66,24 +66,44 @@ function getDrums() {
 
 export type DrumName = "kick" | "snare" | "hihat" | "open_hat" | "crash"
 
+// Tone.js requires each scheduled time to be *strictly greater* than
+// the previous one on the same synth. Two rapid clicks inside the
+// same audio render tick can return the same Tone.now() and trip the
+// assertion. Track the last-scheduled time per-voice and bump by 1ms
+// if we'd otherwise collide.
+const drumLastScheduled: Record<DrumName, number> = {
+  kick: 0,
+  snare: 0,
+  hihat: 0,
+  open_hat: 0,
+  crash: 0,
+}
+
+function schedule(name: DrumName): number {
+  const candidate = Tone.now()
+  const when = Math.max(candidate, drumLastScheduled[name] + 0.001)
+  drumLastScheduled[name] = when
+  return when
+}
+
 export function playDrum(name: DrumName) {
   getDrums()
-  const now = Tone.now()
+  const when = schedule(name)
   switch (name) {
     case "kick":
-      kick!.triggerAttackRelease("C1", "8n", now)
+      kick!.triggerAttackRelease("C1", "8n", when)
       break
     case "snare":
-      snare!.triggerAttackRelease("4n", now)
+      snare!.triggerAttackRelease("4n", when)
       break
     case "hihat":
-      hihat!.triggerAttackRelease("C5", "32n", now)
+      hihat!.triggerAttackRelease("C5", "32n", when)
       break
     case "open_hat":
-      openHat!.triggerAttackRelease("C5", "16n", now)
+      openHat!.triggerAttackRelease("C5", "16n", when)
       break
     case "crash":
-      crash!.triggerAttackRelease("C5", "1n", now)
+      crash!.triggerAttackRelease("C5", "1n", when)
       break
   }
 }
@@ -127,9 +147,12 @@ function getPluckVoices(): Tone.PluckSynth[] {
 
     for (let i = 0; i < PLUCK_VOICES; i++) {
       const voice = new Tone.PluckSynth({
-        attackNoise: 0.5,
-        dampening: 4000,
-        resonance: 0.7,
+        // Heavier pluck noise + high resonance gives a more "strummed
+        // acoustic" feel; the string rings naturally for several
+        // seconds before the dampening filter quiets it.
+        attackNoise: 1,
+        dampening: 6000,
+        resonance: 0.97,
       }).connect(pluckBus)
       pluckVoices.push(voice)
     }
@@ -152,17 +175,40 @@ export const CHORDS = {
 
 export type ChordName = keyof typeof CHORDS
 
-export function playChord(name: ChordName, duration: string = "2n") {
+// Silence all currently-ringing keyboard notes. Called from
+// KeyboardPad's onUnmounted so a held key doesn't leak across an
+// instrument switch (BRAINSTORM §9).
+export function stopAllKeyboard() {
+  if (polysynth) polysynth.releaseAll()
+}
+
+// Silence all currently-ringing pluck voices. PluckSynth doesn't
+// have a public release API, but calling triggerRelease on each
+// voice damps it. Called from GuitarPad's onUnmounted.
+export function stopAllGuitar() {
+  for (const voice of pluckVoices) {
+    try {
+      voice.triggerRelease(Tone.now())
+    } catch {
+      // PluckSynth release is best-effort; swallow if the synth
+      // hasn't been set up yet or is already released.
+    }
+  }
+}
+
+export function playChord(name: ChordName) {
   const notes = CHORDS[name]
   if (!notes) return
   const voices = getPluckVoices()
   const now = Tone.now()
-  // Strum: stagger the voices very slightly across the chord so it
-  // sounds plucked rather than arrived-at-once. ~8 ms per string.
+  // Strum: stagger by ~12 ms per string so it sounds *strummed*
+  // rather than block-chord. We don't call triggerRelease — let
+  // the Karplus-Strong physics + dampening filter ring out
+  // naturally, like a real plucked string.
   notes.forEach((note, i) => {
     const voice = voices[nextPluckIdx]
     nextPluckIdx = (nextPluckIdx + 1) % PLUCK_VOICES
-    voice.triggerAttackRelease(note, duration, now + i * 0.008)
+    voice.triggerAttack(note, now + i * 0.012)
   })
 }
 
