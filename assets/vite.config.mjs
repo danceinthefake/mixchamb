@@ -6,10 +6,14 @@ import { fileURLToPath, URL } from "node:url";
 
 export default defineConfig({
   server: {
-    host: "127.0.0.1",
+    // 0.0.0.0 so other machines on the LAN can fetch dev assets
+    // when running with DEV_LAN_HOST set (see config/dev.exs).
+    host: "0.0.0.0",
     port: 5173,
     strictPort: true,
-    cors: { origin: "http://localhost:4000" },
+    // Permissive CORS in dev — the requesting origin will be the
+    // browser's window, which depends on which machine is connecting.
+    cors: true,
   },
   optimizeDeps: {
     // https://vitejs.dev/guide/dep-pre-bundling#monorepos-and-linked-dependencies

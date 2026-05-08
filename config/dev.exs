@@ -1,5 +1,13 @@
 import Config
-config :live_vue, vite_host: "http://localhost:5173", ssr_module: LiveVue.SSR.ViteJS
+
+# To test multi-user from another machine on your LAN:
+#   1. find this machine's LAN IP (e.g. `ip route get 1.1.1.1`)
+#   2. start the server with DEV_LAN_HOST=<that-ip> mix phx.server
+#   3. open http://<that-ip>:4000 from the other machine
+# Without DEV_LAN_HOST set, everything stays on localhost.
+dev_host = System.get_env("DEV_LAN_HOST") || "localhost"
+
+config :live_vue, vite_host: "http://#{dev_host}:5173", ssr_module: LiveVue.SSR.ViteJS
 
 # Configure your database
 config :mixwave, Mixwave.Repo,
@@ -18,15 +26,17 @@ config :mixwave, Mixwave.Repo,
 # watchers to your application. For example, we can use it
 # to bundle .js and .css sources.
 config :mixwave, MixwaveWeb.Endpoint,
-  # Binding to loopback ipv4 address prevents access from other machines.
-  # Change to `ip: {0, 0, 0, 0}` to allow access from other machines.
-  http: [ip: {127, 0, 0, 1}],
+  # Bind to all interfaces so other machines on the LAN can join the
+  # studio for multi-user testing. (Loopback-only is the safer default
+  # for normal Phoenix dev; we override because the whole point of
+  # mixwave's v1 is multi-user.)
+  http: [ip: {0, 0, 0, 0}],
   check_origin: false,
   code_reloader: true,
   debug_errors: true,
   secret_key_base: "HjTTfSpdfgWOj15/3CxN54DfYqiyBJWvcMrzcqOq4wpfSjpGgRqo5buJXsVWwU1M",
   watchers: [vite: {PhoenixVite.Npm, :run, [:vite, ~w(dev)]}],
-  static_url: [host: "localhost", port: 5173]
+  static_url: [host: dev_host, port: 5173]
 
 # ## SSL Support
 #
