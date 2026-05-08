@@ -182,7 +182,8 @@ defmodule MixwaveWeb.StudioLive do
       </div>
 
       <p class="mt-6 text-center text-xs text-muted-foreground">
-        Best-effort sync — distant users may sound a beat off.
+        Best-effort sync — distant users may sound a beat off. ·
+        <.link navigate={~p"/ops/supervisor"} class="underline">chaos board</.link>
       </p>
     </Layouts.app>
     """
