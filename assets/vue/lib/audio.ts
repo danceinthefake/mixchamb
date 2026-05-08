@@ -828,7 +828,11 @@ function makeBassSlap(): InstrumentEngine {
         octaves: 4,
       },
     }).toDestination()
-    synth.volume.value = -8
+    // Bandpass + short envelope makes Slap quieter than the other
+    // bass flavors at matched settings. -2 dB lifts it close to
+    // Synth/Sub so users don't need to chase the volume slider when
+    // switching styles.
+    synth.volume.value = -2
   }
 
   return {
