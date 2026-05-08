@@ -512,17 +512,33 @@ register("keyboard", "piano", makeKeyboardPiano())
 // AudioWorkletNode which the browser only allows in secure contexts
 // (HTTPS / localhost) — broken on LAN dev.
 
-export type ChordName = "C" | "Am" | "Dm" | "G" | "E" | "Em" | "F" | "B7"
+export type ChordName =
+  | "C"
+  | "D"
+  | "E"
+  | "F"
+  | "G"
+  | "A"
+  | "Am"
+  | "Dm"
+  | "Em"
+  | "B7"
+  | "A7"
+  | "D7"
 
 export const CHORDS: Record<ChordName, string[]> = {
   C: ["C3", "E3", "G3", "C4", "E4"],
+  D: ["D3", "A3", "D4", "F#4"],
+  E: ["E2", "B2", "E3", "G#3", "B3", "E4"],
+  F: ["F2", "C3", "F3", "A3", "C4", "F4"],
+  G: ["G2", "B2", "D3", "G3", "B3", "G4"],
+  A: ["A2", "E3", "A3", "C#4", "E4"],
   Am: ["A2", "E3", "A3", "C4", "E4"],
   Dm: ["D3", "A3", "D4", "F4"],
-  G: ["G2", "B2", "D3", "G3", "B3", "G4"],
-  E: ["E2", "B2", "E3", "G#3", "B3", "E4"],
   Em: ["E2", "B2", "E3", "G3", "B3", "E4"],
-  F: ["F2", "C3", "F3", "A3", "C4", "F4"],
   B7: ["B2", "D#3", "A3", "B3", "D#4", "F#4"],
+  A7: ["A2", "E3", "G3", "C#4", "E4"],
+  D7: ["D3", "A3", "C4", "F#4"],
 }
 
 function makeGuitarSynth(): InstrumentEngine {
@@ -589,7 +605,10 @@ function makeGuitarPluck(): InstrumentEngine {
 
   function ensure() {
     if (output) return
-    output = new Tone.Gain(0.5).toDestination()
+    // Karplus-Strong is intrinsically louder than the other guitar
+    // flavors because the noise burst hits the delay line at full
+    // amplitude. 0.3 brings it roughly in line with synth + acoustic.
+    output = new Tone.Gain(0.3).toDestination()
   }
 
   function pluckNote(note: string, when: number) {
