@@ -31,3 +31,8 @@ mixwave-*.tar
 # In case you use Node.js/npm, you want to ignore these.
 npm-debug.log
 node_modules/
+
+# Local env (R2 creds, etc.)
+.env
+.env.local
+.env.*.local
