@@ -18,7 +18,12 @@ defmodule MixwaveWeb.Router do
   scope "/", MixwaveWeb do
     pipe_through :browser
 
-    get "/", PageController, :home
+    live_session :default, on_mount: {MixwaveWeb.UserAuth, :current_user} do
+      live "/", LibraryLive
+      live "/upload", UploadLive
+      live "/song/:id", SongLive
+      live "/manage", ManageLive
+    end
   end
 
   # Other scopes may use custom stacks.
