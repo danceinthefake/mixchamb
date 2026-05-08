@@ -109,21 +109,32 @@ export function playKey(note: string, duration: string = "8n") {
 }
 
 // ── Guitar ─────────────────────────────────────────────────────────
-// PluckSynth (Karplus-Strong) — plucky string-flavored timbre. Wrap
-// it in a PolySynth so a chord plays multiple strings at once.
+// PluckSynth gives a plucky, Karplus-Strong timbre. It's *not*
+// Monophonic-derived, so PolySynth refuses to wrap it. Instead we
+// pool a handful of independent PluckSynths through a shared gain
+// node and round-robin them per chord-note so a chord plays all
+// strings simultaneously.
 
-let pluck: Tone.PolySynth | null = null
+const PLUCK_VOICES = 6
 
-function getPluck(): Tone.PolySynth {
-  if (!pluck) {
-    pluck = new Tone.PolySynth(Tone.PluckSynth, {
-      attackNoise: 0.5,
-      dampening: 4000,
-      resonance: 0.7,
-    }).toDestination()
-    pluck.volume.value = -8
+let pluckBus: Tone.Gain | null = null
+let pluckVoices: Tone.PluckSynth[] = []
+let nextPluckIdx = 0
+
+function getPluckVoices(): Tone.PluckSynth[] {
+  if (pluckVoices.length === 0) {
+    pluckBus = new Tone.Gain(0.5).toDestination()
+
+    for (let i = 0; i < PLUCK_VOICES; i++) {
+      const voice = new Tone.PluckSynth({
+        attackNoise: 0.5,
+        dampening: 4000,
+        resonance: 0.7,
+      }).connect(pluckBus)
+      pluckVoices.push(voice)
+    }
   }
-  return pluck
+  return pluckVoices
 }
 
 // Eight common chord voicings. Notes are listed low-to-high, roughly
@@ -143,7 +154,16 @@ export type ChordName = keyof typeof CHORDS
 
 export function playChord(name: ChordName, duration: string = "2n") {
   const notes = CHORDS[name]
-  if (notes) getPluck().triggerAttackRelease(notes as unknown as string[], duration, Tone.now())
+  if (!notes) return
+  const voices = getPluckVoices()
+  const now = Tone.now()
+  // Strum: stagger the voices very slightly across the chord so it
+  // sounds plucked rather than arrived-at-once. ~8 ms per string.
+  notes.forEach((note, i) => {
+    const voice = voices[nextPluckIdx]
+    nextPluckIdx = (nextPluckIdx + 1) % PLUCK_VOICES
+    voice.triggerAttackRelease(note, duration, now + i * 0.008)
+  })
 }
 
 export { Tone }
