@@ -15,13 +15,19 @@
 // 11 playable pads. Hi-Hat Pedal and Throne are visual-only — they
 // complete the kit picture without adding extra triggers.
 //
-// Keyboard shortcuts mirror each pad's horizontal position in the
-// kit, so the QWERTY column you press matches where the pad sits
-// from left to right:
+// Keyboard shortcuts cluster around v/b/n so both hands can play
+// the whole kit without leaving home position. Horizontal order
+// inside the cluster still matches the kit's left-to-right
+// ordering — the column you press goes up as the pad's position
+// in the kit goes right:
 //
-//   q .  . r t y . . o .       ← Crash 1, Sm Tom, Bass, Mid Tom, Ride
-//   a s . . . . . . l .         ← Hi-hat, Open, ...,  Crash 2
-//   z . . v b . m               ← HH Pedal, Snare, Bass Pedal, Floor Tom
+//          r t y u           ← Crash 1, Sm Tom, Mid Tom, Ride
+//          f g     j           ← Hi-hat, Open, Crash 2
+//        c v b n             ← HH Pedal, Snare, Bass Pedal, Floor Tom
+//
+// Bass Drum (top centre) has no key — it triggers the same `kick`
+// as Bass Pedal (`b`), so a second key would just shadow `b`.
+// Click it directly if you want to hit the drum from the top.
 //
 // Bass Drum and Bass Pedal both trigger `kick` — two ways to play
 // the same drum, like a double-pedal setup. Both crash pads
@@ -74,7 +80,7 @@ const pads: Pad[] = [
     id: "crash_l",
     drum: "crash",
     label: "Crash 1",
-    key: "q",
+    key: "r",
     pos: { left: "1%", top: "2%", width: "16%", height: "22%" },
     shape: "round",
   },
@@ -82,7 +88,7 @@ const pads: Pad[] = [
     id: "tom_high",
     drum: "tom_high",
     label: "Sm Tom",
-    key: "r",
+    key: "t",
     pos: { left: "31%", top: "5%", width: "13%", height: "20%" },
     shape: "round",
   },
@@ -98,16 +104,18 @@ const pads: Pad[] = [
     id: "ride",
     drum: "ride",
     label: "Ride",
-    key: "o",
+    key: "u",
     pos: { left: "82%", top: "2%", width: "16%", height: "22%" },
     shape: "round",
   },
   // Bass drum just below the mounted toms — large round at centre.
+  // No key: Bass Pedal (`b`) plays the same `kick` sound, so this
+  // is click-only to keep the keyboard cluster tight.
   {
     id: "kick_drum",
     drum: "kick",
     label: "Bass",
-    key: "t",
+    key: null,
     pos: { left: "37%", top: "27%", width: "23%", height: "22%" },
     shape: "round",
   },
@@ -116,7 +124,7 @@ const pads: Pad[] = [
     id: "hihat",
     drum: "hihat",
     label: "Hi-hat",
-    key: "a",
+    key: "f",
     pos: { left: "2%", top: "50%", width: "13%", height: "17%" },
     shape: "round",
   },
@@ -124,7 +132,7 @@ const pads: Pad[] = [
     id: "open_hat",
     drum: "open_hat",
     label: "Open",
-    key: "s",
+    key: "g",
     pos: { left: "16%", top: "50%", width: "13%", height: "17%" },
     shape: "round",
   },
@@ -132,7 +140,7 @@ const pads: Pad[] = [
     id: "crash_r",
     drum: "crash",
     label: "Crash 2",
-    key: "l",
+    key: "j",
     pos: { left: "82%", top: "48%", width: "16%", height: "20%" },
     shape: "round",
   },
@@ -149,7 +157,7 @@ const pads: Pad[] = [
     id: "tom_floor",
     drum: "tom_floor",
     label: "Floor Tom",
-    key: "m",
+    key: "n",
     pos: { left: "55%", top: "65%", width: "21%", height: "23%" },
     shape: "round",
   },
@@ -161,7 +169,7 @@ const pads: Pad[] = [
     id: "hihat_pedal",
     drum: "hihat_pedal",
     label: "HH Pedal",
-    key: "z",
+    key: "c",
     pos: { left: "5%", top: "88%", width: "11%", height: "8%" },
     shape: "square",
   },
