@@ -32,7 +32,13 @@ export function setMasterVolume(linearGain: number) {
 // Receive side: play(payload.instrument, payload.style, payload.note)
 
 export interface InstrumentEngine {
-  play(note: string): void
+  /**
+   * `octaveOffset` is in octaves, relative to the engine's default
+   * voicing. Drums and instruments that already encode the octave
+   * in `note` (keyboard, bass) ignore it; chord-based instruments
+   * (guitar, pad) use it to transpose all notes in the chord.
+   */
+  play(note: string, octaveOffset?: number): void
   stopAll(): void
   /**
    * Optional. Called when a user *selects* this flavor (not every
@@ -52,8 +58,13 @@ function getEngine(instrument: string, style: string): InstrumentEngine | undefi
   return engines.get(`${instrument}:${style}`)
 }
 
-export function play(instrument: string, style: string, note: string) {
-  getEngine(instrument, style)?.play(note)
+export function play(
+  instrument: string,
+  style: string,
+  note: string,
+  octaveOffset: number = 0,
+) {
+  getEngine(instrument, style)?.play(note, octaveOffset)
 }
 
 export function stopAll(instrument: string, style: string) {
@@ -62,6 +73,14 @@ export function stopAll(instrument: string, style: string) {
 
 export function preload(instrument: string, style: string) {
   getEngine(instrument, style)?.preload?.()
+}
+
+// Helper for chord-based engines — shifts every note in a list by
+// `octaveOffset` octaves. Tone.Frequency does the math in semitones.
+function transposeNotes(notes: readonly string[], octaveOffset: number): string[] {
+  if (octaveOffset === 0) return notes as string[]
+  const semitones = octaveOffset * 12
+  return notes.map((n) => Tone.Frequency(n).transpose(semitones).toNote())
 }
 
 // ── Drums : Synth ──────────────────────────────────────────────────
@@ -136,7 +155,7 @@ function makeDrumSynth(): InstrumentEngine {
   }
 
   return {
-    play(note) {
+    play(note, _octaveOffset) {
       const drum = note as DrumName
       ensure()
       const when = schedule(drum)
@@ -242,7 +261,7 @@ function makeDrum808(): InstrumentEngine {
   }
 
   return {
-    play(note) {
+    play(note, _octaveOffset) {
       const drum = note as DrumName
       ensure()
       const when = schedule(drum)
@@ -351,7 +370,7 @@ function makeDrumAcoustic(): InstrumentEngine {
   }
 
   return {
-    play(note) {
+    play(note, _octaveOffset) {
       const drum = note as DrumName
       ensure()
       const when = schedule(drum)
@@ -528,13 +547,14 @@ function makeGuitarSynth(): InstrumentEngine {
   }
 
   return {
-    play(chord) {
+    play(chord, octaveOffset = 0) {
       const notes = CHORDS[chord as ChordName]
       if (!notes) return
       ensure()
       const now = Tone.now()
+      const shifted = transposeNotes(notes, octaveOffset)
       // Strum: stagger ~12 ms per string.
-      notes.forEach((note, i) => {
+      shifted.forEach((note, i) => {
         poly!.triggerAttackRelease(note, "2n", now + i * 0.012)
       })
     },
@@ -624,12 +644,13 @@ function makeGuitarPluck(): InstrumentEngine {
   }
 
   return {
-    play(chord) {
+    play(chord, octaveOffset = 0) {
       const notes = CHORDS[chord as ChordName]
       if (!notes) return
       ensure()
       const now = Tone.now()
-      notes.forEach((note, i) => {
+      const shifted = transposeNotes(notes, octaveOffset)
+      shifted.forEach((note, i) => {
         pluckNote(note, now + i * 0.012)
       })
     },
@@ -668,12 +689,13 @@ function makeGuitarAcoustic(): InstrumentEngine {
   }
 
   return {
-    play(chord) {
+    play(chord, octaveOffset = 0) {
       const notes = CHORDS[chord as ChordName]
       if (!notes) return
       ensure()
       const now = Tone.now()
-      notes.forEach((note, i) => {
+      const shifted = transposeNotes(notes, octaveOffset)
+      shifted.forEach((note, i) => {
         sampler!.triggerAttackRelease(note, "2n", now + i * 0.012)
       })
     },
@@ -821,11 +843,12 @@ function makePadWarm(): InstrumentEngine {
   }
 
   return {
-    play(chord) {
+    play(chord, octaveOffset = 0) {
       const notes = CHORDS[chord as ChordName]
       if (!notes) return
       ensure()
-      poly!.triggerAttackRelease(notes as unknown as string[], "2n", Tone.now())
+      const shifted = transposeNotes(notes, octaveOffset)
+      poly!.triggerAttackRelease(shifted, "2n", Tone.now())
     },
     stopAll() {
       poly?.releaseAll()
@@ -855,11 +878,12 @@ function makePadBell(): InstrumentEngine {
   }
 
   return {
-    play(chord) {
+    play(chord, octaveOffset = 0) {
       const notes = CHORDS[chord as ChordName]
       if (!notes) return
       ensure()
-      poly!.triggerAttackRelease(notes as unknown as string[], "2n", Tone.now())
+      const shifted = transposeNotes(notes, octaveOffset)
+      poly!.triggerAttackRelease(shifted, "2n", Tone.now())
     },
     stopAll() {
       poly?.releaseAll()
@@ -895,11 +919,12 @@ function makePadSweep(): InstrumentEngine {
   }
 
   return {
-    play(chord) {
+    play(chord, octaveOffset = 0) {
       const notes = CHORDS[chord as ChordName]
       if (!notes) return
       ensure()
-      poly!.triggerAttackRelease(notes as unknown as string[], "2n", Tone.now())
+      const shifted = transposeNotes(notes, octaveOffset)
+      poly!.triggerAttackRelease(shifted, "2n", Tone.now())
     },
     stopAll() {
       poly?.releaseAll()

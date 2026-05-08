@@ -9,7 +9,7 @@
 // Bass is monophonic; one note at a time. Local play + push;
 // remote audio goes through Studio.vue's receiver.
 
-import { onMounted, onUnmounted, ref, watch } from "vue"
+import { computed, onMounted, onUnmounted, ref, watch } from "vue"
 import { useLiveVue } from "live_vue"
 import { ensureStarted, play, stopAll } from "@/lib/audio"
 
@@ -30,19 +30,31 @@ const styles: StyleOption[] = [
 
 const style = ref<BassStyle>("synth")
 
+// Absolute octave for the bass's lower C. Default 2 (C2-C3 range).
+const baseOctave = ref(2)
+const OCTAVE_MIN = 1
+const OCTAVE_MAX = 4
+
 type BassNote = { note: string; label: string; key: string }
 
-// C major scale, one octave starting at C2. Comfortable bass-line range.
-const notes: BassNote[] = [
-  { note: "C2", label: "C", key: "1" },
-  { note: "D2", label: "D", key: "2" },
-  { note: "E2", label: "E", key: "3" },
-  { note: "F2", label: "F", key: "4" },
-  { note: "G2", label: "G", key: "5" },
-  { note: "A2", label: "A", key: "6" },
-  { note: "B2", label: "B", key: "7" },
-  { note: "C3", label: "C", key: "8" },
-]
+// C major scale, one octave starting at baseOctave.
+const notes = computed<BassNote[]>(() => [
+  { note: `C${baseOctave.value}`, label: "C", key: "1" },
+  { note: `D${baseOctave.value}`, label: "D", key: "2" },
+  { note: `E${baseOctave.value}`, label: "E", key: "3" },
+  { note: `F${baseOctave.value}`, label: "F", key: "4" },
+  { note: `G${baseOctave.value}`, label: "G", key: "5" },
+  { note: `A${baseOctave.value}`, label: "A", key: "6" },
+  { note: `B${baseOctave.value}`, label: "B", key: "7" },
+  { note: `C${baseOctave.value + 1}`, label: "C", key: "8" },
+])
+
+function shiftOctave(delta: number) {
+  const next = baseOctave.value + delta
+  if (next < OCTAVE_MIN || next > OCTAVE_MAX) return
+  stopAll("bass", style.value)
+  baseOctave.value = next
+}
 
 const flashing = ref<string | null>(null)
 const remoteFlashing = ref<string | null>(null)
@@ -84,7 +96,7 @@ function selectStyle(id: BassStyle) {
 
 function onKey(event: KeyboardEvent) {
   if (event.repeat) return
-  const n = notes.find((x) => x.key === event.key)
+  const n = notes.value.find((x) => x.key === event.key)
   if (n) {
     event.preventDefault()
     hit(n.note)
@@ -108,22 +120,44 @@ onUnmounted(() => {
 
 <template>
   <div class="space-y-4">
-    <!-- Style selector -->
-    <div class="flex items-center gap-1">
-      <span class="text-xs uppercase tracking-wider text-muted-foreground mr-2">Style</span>
-      <button
-        v-for="s in styles"
-        :key="s.id"
-        @click="selectStyle(s.id)"
-        :class="[
-          'px-3 py-1 text-xs rounded-md border transition-colors',
-          style === s.id
-            ? 'bg-primary text-primary-foreground border-primary'
-            : 'bg-card hover:bg-accent text-muted-foreground border-input'
-        ]"
-      >
-        {{ s.label }}
-      </button>
+    <div class="flex flex-wrap items-center gap-3">
+      <!-- Style selector -->
+      <div class="flex items-center gap-1">
+        <span class="text-xs uppercase tracking-wider text-muted-foreground mr-2">Style</span>
+        <button
+          v-for="s in styles"
+          :key="s.id"
+          @click="selectStyle(s.id)"
+          :class="[
+            'px-3 py-1 text-xs rounded-md border transition-colors',
+            style === s.id
+              ? 'bg-primary text-primary-foreground border-primary'
+              : 'bg-card hover:bg-accent text-muted-foreground border-input'
+          ]"
+        >
+          {{ s.label }}
+        </button>
+      </div>
+
+      <!-- Octave shift -->
+      <div class="flex items-center gap-1 ml-auto">
+        <span class="text-xs uppercase tracking-wider text-muted-foreground mr-2">Oct</span>
+        <button
+          @click="shiftOctave(-1)"
+          :disabled="baseOctave <= OCTAVE_MIN"
+          class="px-2 py-1 text-xs rounded-md border bg-card hover:bg-accent text-muted-foreground border-input disabled:opacity-30 disabled:cursor-not-allowed"
+        >
+          −
+        </button>
+        <span class="text-sm tabular-nums w-6 text-center">{{ baseOctave }}</span>
+        <button
+          @click="shiftOctave(1)"
+          :disabled="baseOctave >= OCTAVE_MAX"
+          class="px-2 py-1 text-xs rounded-md border bg-card hover:bg-accent text-muted-foreground border-input disabled:opacity-30 disabled:cursor-not-allowed"
+        >
+          +
+        </button>
+      </div>
     </div>
 
     <!-- Notes -->
