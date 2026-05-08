@@ -20,6 +20,7 @@ defmodule MixwaveWeb.Router do
 
     live_session :default, on_mount: {MixwaveWeb.UserAuth, :current_user} do
       live "/", StudioLive
+      live "/ops/supervisor", SupervisorLive
     end
   end
 

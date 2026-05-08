@@ -19,6 +19,9 @@ defmodule Mixwave.Application do
       # for join-time replay. Second flagship OTP demo — kill it in
       # the v2 chaos board, watch it restart, jam resumes.
       Mixwave.Studio.Room,
+      # Restart watcher: counts how many times each supervised
+      # process has been restarted. Powers the v2 chaos board.
+      Mixwave.Studio.RestartWatcher,
       # Phoenix.Presence module — tracks who's in the studio.
       MixwaveWeb.Presence,
       # Start to serve requests, typically the last entry
