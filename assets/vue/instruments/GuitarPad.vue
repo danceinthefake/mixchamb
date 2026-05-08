@@ -47,19 +47,29 @@ function shiftOctave(delta: number) {
 // from low E (left) to high E (right). "x" = muted string, 0 = open
 // string, n = press at fret n. `barre` overlays a bar across all
 // strings at that fret (only F here, but easy to extend).
+//
+// 12 chords laid out 4 × 3 — the most common open-position chords
+// a beginner guitarist learns: 6 majors, 3 minors, 3 dominant 7ths.
 type FretPos = number | "x"
 type Fingering = { positions: FretPos[]; barre?: number }
 type Chord = { name: ChordName; key: string; fingering: Fingering }
 
 const chords: Chord[] = [
+  // Row 1 — popular open majors
   { name: "C", key: "1", fingering: { positions: ["x", 3, 2, 0, 1, 0] } },
-  { name: "Am", key: "2", fingering: { positions: ["x", 0, 2, 2, 1, 0] } },
-  { name: "Dm", key: "3", fingering: { positions: ["x", "x", 0, 2, 3, 1] } },
-  { name: "G", key: "4", fingering: { positions: [3, 2, 0, 0, 0, 3] } },
-  { name: "E", key: "5", fingering: { positions: [0, 2, 2, 1, 0, 0] } },
+  { name: "G", key: "2", fingering: { positions: [3, 2, 0, 0, 0, 3] } },
+  { name: "D", key: "3", fingering: { positions: ["x", "x", 0, 2, 3, 2] } },
+  { name: "A", key: "4", fingering: { positions: ["x", 0, 2, 2, 2, 0] } },
+  // Row 2 — minors + F barre
+  { name: "Am", key: "5", fingering: { positions: ["x", 0, 2, 2, 1, 0] } },
   { name: "Em", key: "6", fingering: { positions: [0, 2, 2, 0, 0, 0] } },
-  { name: "F", key: "7", fingering: { positions: [1, 3, 3, 2, 1, 1], barre: 1 } },
-  { name: "B7", key: "8", fingering: { positions: ["x", 2, 1, 2, 0, 2] } },
+  { name: "Dm", key: "7", fingering: { positions: ["x", "x", 0, 2, 3, 1] } },
+  { name: "F", key: "8", fingering: { positions: [1, 3, 3, 2, 1, 1], barre: 1 } },
+  // Row 3 — extras + dominant 7ths
+  { name: "E", key: "9", fingering: { positions: [0, 2, 2, 1, 0, 0] } },
+  { name: "B7", key: "0", fingering: { positions: ["x", 2, 1, 2, 0, 2] } },
+  { name: "A7", key: "-", fingering: { positions: ["x", 0, 2, 0, 2, 0] } },
+  { name: "D7", key: "=", fingering: { positions: ["x", "x", 0, 2, 1, 2] } },
 ]
 
 const FRET_ROWS = 4
@@ -75,7 +85,7 @@ function flash(name: ChordName) {
   flashTimer = window.setTimeout(() => (flashing.value = null), 250)
 }
 
-const chordNames = new Set<string>(["C", "Am", "Dm", "G", "E", "Em", "F", "B7"])
+const chordNames = new Set<string>(chords.map((c) => c.name))
 
 function flashRemote(name: ChordName) {
   remoteFlashing.value = name
