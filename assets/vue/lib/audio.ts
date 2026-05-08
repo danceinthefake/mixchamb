@@ -688,4 +688,119 @@ function makeGuitarAcoustic(): InstrumentEngine {
 
 register("guitar", "acoustic", makeGuitarAcoustic())
 
+// ── Bass : Synth ───────────────────────────────────────────────────
+// Punchy MonoSynth bass — sawtooth through a moving lowpass filter.
+// Bass is monophonic by tradition (and by physical bass-guitar
+// constraint), so we use a single MonoSynth instead of PolySynth.
+
+function makeBassSynth(): InstrumentEngine {
+  let synth: Tone.MonoSynth | null = null
+
+  function ensure() {
+    if (synth) return
+    synth = new Tone.MonoSynth({
+      oscillator: { type: "sawtooth" },
+      envelope: { attack: 0.005, decay: 0.4, sustain: 0.3, release: 0.4 },
+      filter: { type: "lowpass", frequency: 1200, Q: 4 },
+      filterEnvelope: {
+        attack: 0.005,
+        decay: 0.3,
+        sustain: 0.2,
+        release: 0.4,
+        baseFrequency: 100,
+        octaves: 3,
+      },
+    }).toDestination()
+    synth.volume.value = -6
+  }
+
+  return {
+    play(note) {
+      ensure()
+      synth!.triggerAttackRelease(note, "8n", Tone.now())
+    },
+    stopAll() {
+      synth?.triggerRelease(Tone.now())
+    },
+  }
+}
+
+register("bass", "synth", makeBassSynth())
+
+// ── Bass : Sub ─────────────────────────────────────────────────────
+// Pure sine sub-bass. Slow attack, long sustain, deep low-frequency
+// emphasis. Sits underneath everything else in the mix.
+
+function makeBassSub(): InstrumentEngine {
+  let synth: Tone.MonoSynth | null = null
+
+  function ensure() {
+    if (synth) return
+    synth = new Tone.MonoSynth({
+      oscillator: { type: "sine" },
+      envelope: { attack: 0.04, decay: 0.3, sustain: 0.7, release: 0.8 },
+      filter: { type: "lowpass", frequency: 200, Q: 1 },
+      filterEnvelope: {
+        attack: 0.04,
+        decay: 0.3,
+        sustain: 0.5,
+        release: 0.8,
+        baseFrequency: 80,
+        octaves: 1,
+      },
+    }).toDestination()
+    synth.volume.value = -3
+  }
+
+  return {
+    play(note) {
+      ensure()
+      synth!.triggerAttackRelease(note, "4n", Tone.now())
+    },
+    stopAll() {
+      synth?.triggerRelease(Tone.now())
+    },
+  }
+}
+
+register("bass", "sub", makeBassSub())
+
+// ── Bass : Slap ────────────────────────────────────────────────────
+// Funky slap-bass character — square through a bandpass that
+// sweeps for the popped attack feel.
+
+function makeBassSlap(): InstrumentEngine {
+  let synth: Tone.MonoSynth | null = null
+
+  function ensure() {
+    if (synth) return
+    synth = new Tone.MonoSynth({
+      oscillator: { type: "square" },
+      envelope: { attack: 0.001, decay: 0.18, sustain: 0, release: 0.15 },
+      filter: { type: "bandpass", frequency: 800, Q: 8 },
+      filterEnvelope: {
+        attack: 0.001,
+        decay: 0.3,
+        sustain: 0,
+        release: 0.2,
+        baseFrequency: 200,
+        octaves: 4,
+      },
+    }).toDestination()
+    synth.volume.value = -8
+  }
+
+  return {
+    play(note) {
+      ensure()
+      synth!.triggerAttackRelease(note, "16n", Tone.now())
+    },
+    stopAll() {
+      synth?.triggerRelease(Tone.now())
+    },
+  }
+}
+
+register("bass", "slap", makeBassSlap())
+
 export { Tone }
