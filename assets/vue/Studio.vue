@@ -23,6 +23,7 @@ import DrumPad from "@/instruments/DrumPad.vue"
 import KeyboardPad from "@/instruments/KeyboardPad.vue"
 import GuitarPad from "@/instruments/GuitarPad.vue"
 import BassPad from "@/instruments/BassPad.vue"
+import SynthPad from "@/instruments/SynthPad.vue"
 import {
   ensureStarted,
   play,
@@ -32,7 +33,7 @@ import {
 } from "@/lib/audio"
 
 defineProps<{
-  current_instrument: "drums" | "keyboard" | "guitar" | "bass"
+  current_instrument: "drums" | "keyboard" | "guitar" | "bass" | "pad"
 }>()
 
 const live = useLiveVue()
@@ -42,6 +43,7 @@ type RemoteNote =
   | { instrument: "keyboard"; style: string; note: string }
   | { instrument: "guitar"; style: string; chord: ChordName }
   | { instrument: "bass"; style: string; note: string }
+  | { instrument: "pad"; style: string; chord: ChordName }
 
 // Latest remote hit, broadcast down to whichever pad is currently
 // mounted so it can flash the matching button. New object on every
@@ -113,7 +115,8 @@ live.handleEvent("replay_burst", ({ events }: { events: ReplayEvent[] }) => {
   for (const e of events) {
     const id = window.setTimeout(async () => {
       await ensureStarted()
-      const note = e.instrument === "guitar" ? e.chord : e.note
+      // guitar + pad carry chord; everything else carries note.
+      const note = e.chord ?? e.note
       if (note) play(e.instrument, e.style ?? "synth", note)
     }, e.offset_ms)
     replayTimers.push(id)
@@ -131,9 +134,10 @@ live.handleEvent("replay_burst", ({ events }: { events: ReplayEvent[] }) => {
 // sender's chosen style, no matter which pad *they* have on screen.
 live.handleEvent("play_remote_note", async (payload: RemoteNote) => {
   await ensureStarted()
-  // Drums + keyboard carry `note`; guitar carries `chord`. Normalize
-  // to a single string for the engine + the remote-flash signal.
-  const note = payload.instrument === "guitar" ? payload.chord : payload.note
+  // Drums + keyboard + bass carry `note`; guitar + pad carry `chord`.
+  // Normalize to a single string for the engine + the remote-flash
+  // signal.
+  const note = "chord" in payload ? payload.chord : payload.note
   play(payload.instrument, payload.style ?? "synth", note)
   lastRemoteHit.value = { instrument: payload.instrument, note, t: Date.now() }
 })
@@ -178,5 +182,6 @@ live.handleEvent("play_remote_note", async (payload: RemoteNote) => {
       :remote-hit="lastRemoteHit"
     />
     <BassPad v-else-if="current_instrument === 'bass'" :remote-hit="lastRemoteHit" />
+    <SynthPad v-else-if="current_instrument === 'pad'" :remote-hit="lastRemoteHit" />
   </div>
 </template>
