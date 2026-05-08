@@ -7,9 +7,15 @@
 //   1 kick drum with a double pedal — two trigger pads, both play
 //     the same kick sound
 //
-// Seven pads total. Tap them or use keys 1–7. Both kick pads
-// trigger the same `kick` drum so remote players hear one kick
-// regardless of which foot pressed it; both crashes do the same.
+// Seven pads total. Keyboard shortcuts mirror the kit's spatial
+// layout — cymbals on the home row, snare + kicks on the row below:
+//
+//   f g       h j      ← hi-hat, open, crash 1, crash 2
+//      v b n            ← kick L, snare, kick R
+//
+// Both kick pads trigger the same `kick` drum so remote players
+// hear one kick regardless of which foot pressed it; both crashes
+// do the same.
 //
 // Local audio plays immediately on tap; the note + the player's
 // chosen style are pushed to LiveView for broadcast. Remote players
@@ -56,7 +62,7 @@ const pads: Pad[] = [
     id: "hihat",
     drum: "hihat",
     label: "Hi-hat",
-    key: "1",
+    key: "f",
     pos: { left: "2%", top: "2%", width: "18%", height: "36%" },
     shape: "round",
   },
@@ -64,7 +70,7 @@ const pads: Pad[] = [
     id: "open_hat",
     drum: "open_hat",
     label: "Open",
-    key: "2",
+    key: "g",
     pos: { left: "22%", top: "5%", width: "18%", height: "36%" },
     shape: "round",
   },
@@ -72,7 +78,7 @@ const pads: Pad[] = [
     id: "crash_l",
     drum: "crash",
     label: "Crash 1",
-    key: "3",
+    key: "h",
     pos: { left: "58%", top: "2%", width: "18%", height: "36%" },
     shape: "round",
   },
@@ -80,7 +86,7 @@ const pads: Pad[] = [
     id: "crash_r",
     drum: "crash",
     label: "Crash 2",
-    key: "4",
+    key: "j",
     pos: { left: "78%", top: "5%", width: "18%", height: "36%" },
     shape: "round",
   },
@@ -89,7 +95,7 @@ const pads: Pad[] = [
     id: "snare",
     drum: "snare",
     label: "Snare",
-    key: "5",
+    key: "b",
     pos: { left: "36%", top: "38%", width: "28%", height: "30%" },
     shape: "round",
   },
@@ -98,7 +104,7 @@ const pads: Pad[] = [
     id: "kick_l",
     drum: "kick",
     label: "Kick L",
-    key: "6",
+    key: "v",
     pos: { left: "20%", top: "70%", width: "28%", height: "28%" },
     shape: "square",
   },
@@ -106,7 +112,7 @@ const pads: Pad[] = [
     id: "kick_r",
     drum: "kick",
     label: "Kick R",
-    key: "7",
+    key: "n",
     pos: { left: "52%", top: "70%", width: "28%", height: "28%" },
     shape: "square",
   },

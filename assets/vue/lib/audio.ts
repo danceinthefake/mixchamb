@@ -126,7 +126,7 @@ function makeDrumSynth(): InstrumentEngine {
       resonance: 4000,
       octaves: 1.5,
     }).toDestination()
-    hihat.volume.value = -16
+    hihat.volume.value = -10
 
     openHat = new Tone.MetalSynth({
       envelope: { attack: 0.001, decay: 0.5, release: 0.4 },
@@ -135,7 +135,7 @@ function makeDrumSynth(): InstrumentEngine {
       resonance: 4000,
       octaves: 1.5,
     }).toDestination()
-    openHat.volume.value = -16
+    openHat.volume.value = -10
 
     crash = new Tone.MetalSynth({
       envelope: { attack: 0.001, decay: 1.5, release: 1.5 },
@@ -144,7 +144,7 @@ function makeDrumSynth(): InstrumentEngine {
       resonance: 8000,
       octaves: 0.5,
     }).toDestination()
-    crash.volume.value = -22
+    crash.volume.value = -16
   }
 
   function schedule(name: DrumName): number {
@@ -232,7 +232,7 @@ function makeDrum808(): InstrumentEngine {
       resonance: 8000,
       octaves: 1.0,
     }).toDestination()
-    hihat.volume.value = -18
+    hihat.volume.value = -12
 
     openHat = new Tone.MetalSynth({
       envelope: { attack: 0.001, decay: 0.4, release: 0.3 },
@@ -241,7 +241,7 @@ function makeDrum808(): InstrumentEngine {
       resonance: 8000,
       octaves: 1.0,
     }).toDestination()
-    openHat.volume.value = -18
+    openHat.volume.value = -12
 
     crash = new Tone.MetalSynth({
       envelope: { attack: 0.001, decay: 2.5, release: 2.5 },
@@ -250,7 +250,7 @@ function makeDrum808(): InstrumentEngine {
       resonance: 4000,
       octaves: 0.8,
     }).toDestination()
-    crash.volume.value = -24
+    crash.volume.value = -18
   }
 
   function schedule(name: DrumName): number {
@@ -341,7 +341,7 @@ function makeDrumAcoustic(): InstrumentEngine {
       resonance: 5000,
       octaves: 1.5,
     }).toDestination()
-    hihat.volume.value = -18
+    hihat.volume.value = -12
 
     openHat = new Tone.MetalSynth({
       envelope: { attack: 0.001, decay: 0.6, release: 0.5 },
@@ -350,7 +350,7 @@ function makeDrumAcoustic(): InstrumentEngine {
       resonance: 5000,
       octaves: 1.5,
     }).toDestination()
-    openHat.volume.value = -18
+    openHat.volume.value = -12
 
     crash = new Tone.MetalSynth({
       envelope: { attack: 0.001, decay: 1.8, release: 1.5 },
@@ -359,7 +359,7 @@ function makeDrumAcoustic(): InstrumentEngine {
       resonance: 7000,
       octaves: 0.5,
     }).toDestination()
-    crash.volume.value = -24
+    crash.volume.value = -18
   }
 
   function schedule(name: DrumName): number {
