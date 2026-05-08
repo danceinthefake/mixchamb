@@ -1,9 +1,20 @@
 <script setup lang="ts">
-// Keyboard pad — one octave of piano keys (C4 → C5). Click white or
-// black keys, or use the QWERTY row mapping:
+// Keyboard pad — three octaves of piano keys visible at once, plus
+// the high C that closes the top octave (22 white + 15 black keys).
+// Click any key, or use the full QWERTY shortcut grid:
 //
-//   a w s e d f t g y h u j k
-//   C C# D D# E F F# G G# A A# B C5
+//   Lower octave (z-row):  whites z x c v b n m, blacks s d g h j
+//                          (blacks sit on home-row letters between)
+//   Middle octave (q-row): whites q w e r t y u, blacks 2 3 5 6 7
+//                          (canonical Bitwig/Ableton mapping)
+//   Upper octave:          whites i o p [ ] \ ', blacks 8 9 - = ;
+//                          (right side of the keyboard; less spatial
+//                          than the lower two but covers all 12)
+//   Closing high C:        /
+//
+// Shifting the octave window with +/- moves all 3 visible octaves
+// up or down together. The QWERTY mapping is fixed to the visible
+// window — what you see is what you can play.
 //
 // PolySynth lets multiple keys ring at once. JamReceiver handles
 // remote players' notes — pads only push.
@@ -29,41 +40,101 @@ const styles: StyleOption[] = [
 
 const style = ref<KeyboardStyle>("synth")
 
-// Absolute octave for the keyboard's lower C. Default 4 (so the
-// row plays C4–C5). Range chosen to avoid extreme ranges where
-// piano samples don't pitch-shift cleanly.
-const baseOctave = ref(4)
-const OCTAVE_MIN = 2
-const OCTAVE_MAX = 6
+// Lowest visible octave. Default 3 → visible C3..C6 (three full
+// octaves + the closing high C). Range capped so the visible window
+// always stays inside what the engines can render cleanly.
+const baseOctave = ref(3)
+const OCTAVE_MIN = 1
+const OCTAVE_MAX = 5
+const VISIBLE_OCTAVES = 3
 
-type WhiteKey = { note: string; key: string; label: string }
-type BlackKey = { note: string; key: string; label: string; afterIdx: number }
+type WhiteKey = { note: string; key: string; label: string; octave: number }
+type BlackKey = {
+  note: string
+  key: string
+  label: string
+  afterIdx: number
+  octave: number
+}
 
-// White keys in the octave; positioned C, D, E, F, G, A, B, C+1.
-// `note` resolves dynamically from baseOctave.
-const whiteKeys = computed<WhiteKey[]>(() => [
-  { note: `C${baseOctave.value}`, key: "a", label: "C" },
-  { note: `D${baseOctave.value}`, key: "s", label: "D" },
-  { note: `E${baseOctave.value}`, key: "d", label: "E" },
-  { note: `F${baseOctave.value}`, key: "f", label: "F" },
-  { note: `G${baseOctave.value}`, key: "g", label: "G" },
-  { note: `A${baseOctave.value}`, key: "h", label: "A" },
-  { note: `B${baseOctave.value}`, key: "j", label: "B" },
-  { note: `C${baseOctave.value + 1}`, key: "k", label: "C" },
-])
+// QWERTY shortcuts for every visible key. 22 whites + 15 blacks +
+// 1 closing C = 38 keys, mapped row-by-row across the keyboard.
+const WHITE_KEY_SHORTCUTS: ReadonlyArray<string> = [
+  // Lower octave (7) — z-row
+  "z", "x", "c", "v", "b", "n", "m",
+  // Middle octave (7) — q-row
+  "q", "w", "e", "r", "t", "y", "u",
+  // Upper octave (7) — right-side mix (i/o/p brackets backslash apostrophe)
+  "i", "o", "p", "[", "]", "\\", "'",
+  // Closing high C
+  "/",
+]
+const BLACK_KEY_SHORTCUTS: ReadonlyArray<string> = [
+  // Lower octave blacks — home-row letters between z-row whites
+  "s", "d", "g", "h", "j",
+  // Middle octave blacks — number-row between q-row whites
+  "2", "3", "5", "6", "7",
+  // Upper octave blacks — right-side number row + ;
+  "8", "9", "-", "=", ";",
+]
 
-const blackKeys = computed<BlackKey[]>(() => [
-  { note: `C#${baseOctave.value}`, key: "w", label: "C#", afterIdx: 0 },
-  { note: `D#${baseOctave.value}`, key: "e", label: "D#", afterIdx: 1 },
-  { note: `F#${baseOctave.value}`, key: "t", label: "F#", afterIdx: 3 },
-  { note: `G#${baseOctave.value}`, key: "y", label: "G#", afterIdx: 4 },
-  { note: `A#${baseOctave.value}`, key: "u", label: "A#", afterIdx: 5 },
-])
+// 22 white keys: 7 naturals × 3 octaves + the closing C of the next
+// octave. Each gets a QWERTY shortcut from WHITE_KEY_SHORTCUTS.
+const whiteKeys = computed<WhiteKey[]>(() => {
+  const naturals = ["C", "D", "E", "F", "G", "A", "B"] as const
+  const result: WhiteKey[] = []
+  for (let octIdx = 0; octIdx < VISIBLE_OCTAVES; octIdx++) {
+    const oct = baseOctave.value + octIdx
+    for (const n of naturals) {
+      result.push({ note: `${n}${oct}`, label: n, key: "", octave: oct })
+    }
+  }
+  result.push({
+    note: `C${baseOctave.value + VISIBLE_OCTAVES}`,
+    label: "C",
+    key: "",
+    octave: baseOctave.value + VISIBLE_OCTAVES,
+  })
+  for (let i = 0; i < result.length && i < WHITE_KEY_SHORTCUTS.length; i++) {
+    result[i].key = WHITE_KEY_SHORTCUTS[i]
+  }
+  return result
+})
+
+// 15 black keys: 5 sharps × 3 octaves, positioned BETWEEN white
+// keys. afterIdx is the white-key index this black sits to the
+// right of. Each gets a QWERTY shortcut from BLACK_KEY_SHORTCUTS.
+const blackKeys = computed<BlackKey[]>(() => {
+  const blacks = [
+    { label: "C#", afterInOctave: 0 },
+    { label: "D#", afterInOctave: 1 },
+    { label: "F#", afterInOctave: 3 },
+    { label: "G#", afterInOctave: 4 },
+    { label: "A#", afterInOctave: 5 },
+  ]
+  const result: BlackKey[] = []
+  for (let octIdx = 0; octIdx < VISIBLE_OCTAVES; octIdx++) {
+    const oct = baseOctave.value + octIdx
+    for (const b of blacks) {
+      result.push({
+        note: `${b.label}${oct}`,
+        label: b.label,
+        key: "",
+        afterIdx: octIdx * 7 + b.afterInOctave,
+        octave: oct,
+      })
+    }
+  }
+  for (let i = 0; i < result.length && i < BLACK_KEY_SHORTCUTS.length; i++) {
+    result[i].key = BLACK_KEY_SHORTCUTS[i]
+  }
+  return result
+})
 
 function shiftOctave(delta: number) {
   const next = baseOctave.value + delta
   if (next < OCTAVE_MIN || next > OCTAVE_MAX) return
-  // Cut held notes from the previous octave so they don't stick.
+  // Cut held notes from the previous window so they don't stick.
   stopAll("keyboard", style.value)
   baseOctave.value = next
 }
@@ -102,11 +173,8 @@ async function hit(note: string) {
 
 function selectStyle(id: KeyboardStyle) {
   if (id === style.value) return
-  // Cut held notes on the previous flavor before switching.
   stopAll("keyboard", style.value)
   style.value = id
-  // Sampled flavors (Piano) start their CDN download here so the
-  // first key press isn't silent while samples load.
   preload("keyboard", id)
 }
 
@@ -131,7 +199,6 @@ onUnmounted(() => {
   controller?.abort()
   if (flashTimer !== null) window.clearTimeout(flashTimer)
   if (remoteFlashTimer !== null) window.clearTimeout(remoteFlashTimer)
-  // Cut held notes when leaving the instrument.
   stopAll("keyboard", style.value)
 })
 </script>
@@ -167,7 +234,9 @@ onUnmounted(() => {
         >
           −
         </button>
-        <span class="text-sm tabular-nums w-6 text-center">{{ baseOctave }}</span>
+        <span class="text-sm tabular-nums w-20 text-center">
+          C{{ baseOctave }}–C{{ baseOctave + VISIBLE_OCTAVES }}
+        </span>
         <button
           @click="shiftOctave(1)"
           :disabled="baseOctave >= OCTAVE_MAX"
@@ -178,45 +247,57 @@ onUnmounted(() => {
       </div>
     </div>
 
-    <!-- Keyboard -->
-    <div class="relative h-44 select-none mx-auto" style="max-width: 560px;">
-      <!-- white keys -->
-    <div class="absolute inset-0 flex">
-      <button
-        v-for="key in whiteKeys"
-        :key="key.note"
-        @pointerdown.prevent="hit(key.note)"
-        :class="[
-          'flex-1 border rounded-b-md flex flex-col items-center justify-end pb-3 transition-all',
-          flashingNote === key.note
-            ? 'bg-primary text-primary-foreground border-primary'
-            : remoteFlashingNote === key.note
-              ? 'bg-orange-100 text-orange-900 border-orange-400'
-              : 'bg-white text-slate-700 border-border hover:bg-slate-100 active:bg-slate-200'
-        ]"
-      >
-        <span class="text-sm font-medium">{{ key.label }}</span>
-        <kbd class="mt-1 text-[10px] px-1 py-0.5 rounded bg-slate-200 text-slate-600">{{ key.key }}</kbd>
-      </button>
-    </div>
-    <!-- black keys overlay -->
-    <button
-      v-for="bk in blackKeys"
-      :key="bk.note"
-      @pointerdown.prevent.stop="hit(bk.note)"
-      :style="{ left: `calc(${(bk.afterIdx + 1) * (100 / whiteKeys.length)}% - 0.875rem)` }"
-      :class="[
-        'absolute top-0 w-7 h-28 rounded-b-md border border-black flex flex-col items-center justify-end pb-2 transition-all',
-        flashingNote === bk.note
-          ? 'bg-primary'
-          : remoteFlashingNote === bk.note
-            ? 'bg-orange-500'
-            : 'bg-slate-900 text-slate-200 hover:bg-slate-800 active:bg-slate-700'
-      ]"
-    >
-      <span class="text-[10px]">{{ bk.label }}</span>
-      <kbd class="mt-1 text-[9px] px-1 rounded bg-slate-700 text-slate-300">{{ bk.key }}</kbd>
-    </button>
+    <!-- Keyboard. Three octaves at desktop width; horizontal scroll
+         on narrow viewports so phones can pan rather than crush. -->
+    <div class="overflow-x-auto -mx-2 px-2">
+      <div class="relative h-44 select-none mx-auto" style="min-width: 720px;">
+        <!-- white keys -->
+        <div class="absolute inset-0 flex">
+          <button
+            v-for="key in whiteKeys"
+            :key="key.note"
+            @pointerdown.prevent="hit(key.note)"
+            :class="[
+              'flex-1 border rounded-b-md flex flex-col items-center justify-end pb-2 transition-all',
+              flashingNote === key.note
+                ? 'bg-primary text-primary-foreground border-primary'
+                : remoteFlashingNote === key.note
+                  ? 'bg-orange-100 text-orange-900 border-orange-400'
+                  : 'bg-white text-slate-700 hover:bg-slate-100 active:bg-slate-200'
+            ]"
+          >
+            <span class="text-[11px] text-slate-400 leading-none mb-1">
+              {{ key.label }}{{ key.octave }}
+            </span>
+            <kbd
+              v-if="key.key"
+              class="text-[10px] px-1 py-0.5 rounded bg-slate-200 text-slate-600"
+            >{{ key.key }}</kbd>
+            <span v-else class="text-[10px] h-4">&nbsp;</span>
+          </button>
+        </div>
+        <!-- black keys overlay. Width derives from total white-key
+             count so positions stay correct as the layout flexes. -->
+        <button
+          v-for="bk in blackKeys"
+          :key="bk.note"
+          @pointerdown.prevent.stop="hit(bk.note)"
+          :style="{ left: `calc(${(bk.afterIdx + 1) * (100 / whiteKeys.length)}% - 0.875rem)` }"
+          :class="[
+            'absolute top-0 w-7 h-28 rounded-b-md border border-black flex flex-col items-center justify-end pb-2 transition-all',
+            flashingNote === bk.note
+              ? 'bg-primary'
+              : remoteFlashingNote === bk.note
+                ? 'bg-orange-500'
+                : 'bg-slate-900 text-slate-200 hover:bg-slate-800 active:bg-slate-700'
+          ]"
+        >
+          <kbd
+            v-if="bk.key"
+            class="mt-1 text-[9px] px-1 rounded bg-slate-700 text-slate-300"
+          >{{ bk.key }}</kbd>
+        </button>
+      </div>
     </div>
   </div>
 </template>
