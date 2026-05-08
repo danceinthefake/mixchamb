@@ -179,10 +179,8 @@ defmodule MixwaveWeb.StudioLive do
                 <.DrumPad />
               <% :keyboard -> %>
                 <.KeyboardPad />
-              <% _ -> %>
-                <p class="text-sm text-muted-foreground text-center pt-12">
-                  {instrument_label(@current_instrument)} pad lands in the next commit.
-                </p>
+              <% :guitar -> %>
+                <.GuitarPad />
             <% end %>
           </div>
         </section>
