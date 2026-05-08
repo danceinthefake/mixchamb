@@ -16,7 +16,7 @@ defmodule MixwaveWeb.StudioLive do
   alias MixwaveWeb.Presence
   alias Mixwave.Studio
 
-  @instruments [:drums, :keyboard, :guitar]
+  @instruments [:drums, :keyboard, :guitar, :bass]
   @switch_cooldown_ms 1_000
 
   @impl true
@@ -147,6 +147,7 @@ defmodule MixwaveWeb.StudioLive do
   defp instrument_label(:drums), do: "Drums"
   defp instrument_label(:keyboard), do: "Keyboard"
   defp instrument_label(:guitar), do: "Guitar"
+  defp instrument_label(:bass), do: "Bass"
 
   @impl true
   def render(assigns) do

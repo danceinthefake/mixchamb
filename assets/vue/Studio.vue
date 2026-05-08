@@ -22,6 +22,7 @@ import { useLiveVue } from "live_vue"
 import DrumPad from "@/instruments/DrumPad.vue"
 import KeyboardPad from "@/instruments/KeyboardPad.vue"
 import GuitarPad from "@/instruments/GuitarPad.vue"
+import BassPad from "@/instruments/BassPad.vue"
 import {
   ensureStarted,
   play,
@@ -31,7 +32,7 @@ import {
 } from "@/lib/audio"
 
 defineProps<{
-  current_instrument: "drums" | "keyboard" | "guitar"
+  current_instrument: "drums" | "keyboard" | "guitar" | "bass"
 }>()
 
 const live = useLiveVue()
@@ -40,6 +41,7 @@ type RemoteNote =
   | { instrument: "drums"; style: string; note: DrumName }
   | { instrument: "keyboard"; style: string; note: string }
   | { instrument: "guitar"; style: string; chord: ChordName }
+  | { instrument: "bass"; style: string; note: string }
 
 // Latest remote hit, broadcast down to whichever pad is currently
 // mounted so it can flash the matching button. New object on every
@@ -175,5 +177,6 @@ live.handleEvent("play_remote_note", async (payload: RemoteNote) => {
       v-else-if="current_instrument === 'guitar'"
       :remote-hit="lastRemoteHit"
     />
+    <BassPad v-else-if="current_instrument === 'bass'" :remote-hit="lastRemoteHit" />
   </div>
 </template>
