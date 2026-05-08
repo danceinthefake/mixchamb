@@ -12,8 +12,9 @@ defmodule Mixwave.Application do
       Mixwave.Repo,
       {DNSCluster, query: Application.get_env(:mixwave, :dns_cluster_query) || :ignore},
       {Phoenix.PubSub, name: Mixwave.PubSub},
-      # Start a worker by calling: Mixwave.Worker.start_link(arg)
-      # {Mixwave.Worker, arg},
+      # Anon-user sweeper: hourly tick deletes users idle > 24h.
+      # First flagship OTP demo — supervised, restartable, idempotent.
+      Mixwave.Accounts.Sweeper,
       # Start to serve requests, typically the last entry
       MixwaveWeb.Endpoint
     ]
