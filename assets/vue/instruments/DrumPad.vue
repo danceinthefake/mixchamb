@@ -1,7 +1,8 @@
 <script setup lang="ts">
-// Drum pad — five pads (kick / snare / hi-hat / open hat / crash) +
-// a Style selector with three flavors. Tap the buttons or press
-// 1–5 on the keyboard.
+// Drum pad — five pieces (kick / snare / hi-hat / open hat / crash)
+// arranged like a real kit from the drummer's perspective. Cymbals
+// up top, snare in the middle, kick filling the bottom row. Tap the
+// pads or press 1–5 on the keyboard.
 //
 // Local audio plays immediately on tap; the note + the player's
 // chosen style are pushed to LiveView for broadcast. Remote players
@@ -19,7 +20,15 @@ const props = defineProps<{
 const live = useLiveVue()
 
 type DrumStyle = "synth" | "808" | "acoustic"
-type Pad = { name: DrumName; label: string; key: string }
+// `pos` is a percentage box inside the kit container, painting each
+// piece where it would sit on a real drum kit (drummer's POV).
+type Pad = {
+  name: DrumName
+  label: string
+  key: string
+  pos: { left: string; top: string; width: string; height: string }
+  shape: "round" | "square"
+}
 type StyleOption = { id: DrumStyle; label: string }
 
 const styles: StyleOption[] = [
@@ -31,11 +40,44 @@ const styles: StyleOption[] = [
 const style = ref<DrumStyle>("synth")
 
 const pads: Pad[] = [
-  { name: "kick", label: "Kick", key: "1" },
-  { name: "snare", label: "Snare", key: "2" },
-  { name: "hihat", label: "Hi-hat", key: "3" },
-  { name: "open_hat", label: "Open Hat", key: "4" },
-  { name: "crash", label: "Crash", key: "5" },
+  // Cymbals top — hi-hat upper-left, open-hat next to it, crash upper-right.
+  {
+    name: "hihat",
+    label: "Hi-hat",
+    key: "3",
+    pos: { left: "2%", top: "0%", width: "22%", height: "44%" },
+    shape: "round",
+  },
+  {
+    name: "open_hat",
+    label: "Open Hat",
+    key: "4",
+    pos: { left: "26%", top: "4%", width: "22%", height: "44%" },
+    shape: "round",
+  },
+  {
+    name: "crash",
+    label: "Crash",
+    key: "5",
+    pos: { left: "76%", top: "0%", width: "22%", height: "44%" },
+    shape: "round",
+  },
+  // Snare center, drumhead-shaped.
+  {
+    name: "snare",
+    label: "Snare",
+    key: "2",
+    pos: { left: "36%", top: "30%", width: "28%", height: "40%" },
+    shape: "round",
+  },
+  // Kick wide across the bottom, the biggest piece of the kit.
+  {
+    name: "kick",
+    label: "Kick",
+    key: "1",
+    pos: { left: "22%", top: "68%", width: "56%", height: "30%" },
+    shape: "square",
+  },
 ]
 
 const flashing = ref<DrumName | null>(null)
@@ -124,20 +166,31 @@ onUnmounted(() => {
       </button>
     </div>
 
-    <!-- Pads -->
-    <div class="grid grid-cols-2 sm:grid-cols-5 gap-3">
+    <!-- Kit canvas. Aspect-ratio keeps the layout proportional at any
+         width; on narrow screens it just gets smaller, not crushed. -->
+    <div
+      class="relative w-full mx-auto"
+      style="max-width: 640px; aspect-ratio: 5 / 3;"
+    >
       <button
         v-for="p in pads"
         :key="p.name"
         @pointerdown.prevent="hit(p.name)"
+        :style="{
+          left: p.pos.left,
+          top: p.pos.top,
+          width: p.pos.width,
+          height: p.pos.height,
+        }"
         :class="[
-          'aspect-square rounded-md border bg-card flex flex-col items-center justify-center gap-2 select-none transition-all active:scale-95 hover:bg-accent',
-          flashing === p.name && 'ring-2 ring-primary scale-95',
-          remoteFlashing === p.name && flashing !== p.name && 'ring-2 ring-orange-400'
+          'absolute border bg-card flex flex-col items-center justify-center gap-1 select-none transition-all active:scale-95 hover:bg-accent',
+          p.shape === 'round' ? 'rounded-full' : 'rounded-lg',
+          flashing === p.name && 'ring-4 ring-primary scale-95',
+          remoteFlashing === p.name && flashing !== p.name && 'ring-4 ring-orange-400'
         ]"
       >
-        <div class="text-base font-medium">{{ p.label }}</div>
-        <kbd class="text-xs px-1.5 py-0.5 rounded bg-muted text-muted-foreground">{{ p.key }}</kbd>
+        <div class="text-sm font-medium">{{ p.label }}</div>
+        <kbd class="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground">{{ p.key }}</kbd>
       </button>
     </div>
   </div>
