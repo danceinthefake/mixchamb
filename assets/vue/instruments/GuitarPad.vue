@@ -1,6 +1,7 @@
 <script setup lang="ts">
-// Guitar pad — eight common chord buttons + a Style selector with
-// three flavors. Click a chord or press 1–8.
+// Guitar pad — eight common chord buttons, each rendered as a
+// chord-fingering diagram (X/O indicators above the strings, then
+// a mini fretboard with finger dots). Click a chord or press 1–8.
 //
 //   - Synth: PolySynth(MonoSynth) with sweeping filter envelope
 //   - Pluck: hand-rolled Karplus-Strong (works in non-secure contexts)
@@ -42,18 +43,26 @@ function shiftOctave(delta: number) {
   octaveOffset.value = next
 }
 
-type Chord = { name: ChordName; key: string }
+// Chord fingerings in standard guitar tab notation: 6-element array
+// from low E (left) to high E (right). "x" = muted string, 0 = open
+// string, n = press at fret n. `barre` overlays a bar across all
+// strings at that fret (only F here, but easy to extend).
+type FretPos = number | "x"
+type Fingering = { positions: FretPos[]; barre?: number }
+type Chord = { name: ChordName; key: string; fingering: Fingering }
 
 const chords: Chord[] = [
-  { name: "C", key: "1" },
-  { name: "Am", key: "2" },
-  { name: "Dm", key: "3" },
-  { name: "G", key: "4" },
-  { name: "E", key: "5" },
-  { name: "Em", key: "6" },
-  { name: "F", key: "7" },
-  { name: "B7", key: "8" },
+  { name: "C", key: "1", fingering: { positions: ["x", 3, 2, 0, 1, 0] } },
+  { name: "Am", key: "2", fingering: { positions: ["x", 0, 2, 2, 1, 0] } },
+  { name: "Dm", key: "3", fingering: { positions: ["x", "x", 0, 2, 3, 1] } },
+  { name: "G", key: "4", fingering: { positions: [3, 2, 0, 0, 0, 3] } },
+  { name: "E", key: "5", fingering: { positions: [0, 2, 2, 1, 0, 0] } },
+  { name: "Em", key: "6", fingering: { positions: [0, 2, 2, 0, 0, 0] } },
+  { name: "F", key: "7", fingering: { positions: [1, 3, 3, 2, 1, 1], barre: 1 } },
+  { name: "B7", key: "8", fingering: { positions: ["x", 2, 1, 2, 0, 2] } },
 ]
+
+const FRET_ROWS = 4
 
 const flashing = ref<ChordName | null>(null)
 const remoteFlashing = ref<ChordName | null>(null)
@@ -174,19 +183,61 @@ onUnmounted(() => {
       </div>
     </div>
 
-    <!-- Chord buttons -->
+    <!-- Chord buttons. Each button shows the actual fingering as a
+         mini chord diagram: X / O above each string, then a 6×4
+         fretboard with dots at fret positions. -->
     <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
       <button
         v-for="c in chords"
         :key="c.name"
         @pointerdown.prevent="strum(c.name)"
         :class="[
-          'rounded-md border bg-card flex flex-col items-center justify-center gap-2 py-6 select-none transition-all active:scale-95 hover:bg-accent',
+          'rounded-md border bg-card flex flex-col items-center gap-2 py-4 px-3 select-none transition-all active:scale-95 hover:bg-accent',
           flashing === c.name && 'ring-2 ring-primary scale-95',
           remoteFlashing === c.name && flashing !== c.name && 'ring-2 ring-orange-400'
         ]"
       >
-        <div class="text-2xl font-bold">{{ c.name }}</div>
+        <div class="text-xl font-bold">{{ c.name }}</div>
+
+        <!-- Chord diagram. Width fixed so 6 strings stay legible. -->
+        <div class="w-[5.5rem]">
+          <!-- Top labels (X for muted, O for open, blank when fretted) -->
+          <div class="grid grid-cols-6 text-[10px] text-center text-muted-foreground mb-0.5">
+            <span v-for="(p, i) in c.fingering.positions" :key="i">
+              {{ p === 'x' ? 'X' : p === 0 ? 'O' : '' }}
+            </span>
+          </div>
+
+          <!-- Fretboard. Column-major flow so each string fills a
+               vertical column of 4 fret cells. -->
+          <div class="relative border border-amber-700/60 bg-amber-950/40 rounded-sm overflow-hidden">
+            <div
+              class="grid grid-cols-6 grid-rows-4 gap-px bg-amber-800/40"
+              style="grid-auto-flow: column;"
+            >
+              <template v-for="(p, sIdx) in c.fingering.positions" :key="sIdx">
+                <div
+                  v-for="fret in FRET_ROWS"
+                  :key="`${sIdx}-${fret}`"
+                  class="relative bg-amber-950/70"
+                  style="aspect-ratio: 1;"
+                >
+                  <span
+                    v-if="p === fret"
+                    class="absolute inset-1 rounded-full bg-primary/90"
+                  />
+                </div>
+              </template>
+            </div>
+            <!-- Barre overlay across all strings at the barre fret -->
+            <div
+              v-if="c.fingering.barre"
+              class="absolute left-1 right-1 h-1 bg-primary/80 rounded-full -translate-y-1/2 pointer-events-none"
+              :style="{ top: `${((c.fingering.barre - 0.5) / FRET_ROWS) * 100}%` }"
+            />
+          </div>
+        </div>
+
         <kbd class="text-xs px-1.5 py-0.5 rounded bg-muted text-muted-foreground">{{ c.key }}</kbd>
       </button>
     </div>
