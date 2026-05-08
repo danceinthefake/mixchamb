@@ -8,7 +8,7 @@
 // PolySynth lets multiple keys ring at once. JamReceiver handles
 // remote players' notes — pads only push.
 
-import { onMounted, onUnmounted, ref, watch } from "vue"
+import { computed, onMounted, onUnmounted, ref, watch } from "vue"
 import { useLiveVue } from "live_vue"
 import { ensureStarted, play, stopAll, preload } from "@/lib/audio"
 
@@ -29,30 +29,44 @@ const styles: StyleOption[] = [
 
 const style = ref<KeyboardStyle>("synth")
 
+// Absolute octave for the keyboard's lower C. Default 4 (so the
+// row plays C4–C5). Range chosen to avoid extreme ranges where
+// piano samples don't pitch-shift cleanly.
+const baseOctave = ref(4)
+const OCTAVE_MIN = 2
+const OCTAVE_MAX = 6
+
 type WhiteKey = { note: string; key: string; label: string }
 type BlackKey = { note: string; key: string; label: string; afterIdx: number }
 
-// Indexed positions for the 8 white keys (C, D, E, F, G, A, B, C5).
-const whiteKeys: WhiteKey[] = [
-  { note: "C4", key: "a", label: "C" },
-  { note: "D4", key: "s", label: "D" },
-  { note: "E4", key: "d", label: "E" },
-  { note: "F4", key: "f", label: "F" },
-  { note: "G4", key: "g", label: "G" },
-  { note: "A4", key: "h", label: "A" },
-  { note: "B4", key: "j", label: "B" },
-  { note: "C5", key: "k", label: "C" },
-]
+// White keys in the octave; positioned C, D, E, F, G, A, B, C+1.
+// `note` resolves dynamically from baseOctave.
+const whiteKeys = computed<WhiteKey[]>(() => [
+  { note: `C${baseOctave.value}`, key: "a", label: "C" },
+  { note: `D${baseOctave.value}`, key: "s", label: "D" },
+  { note: `E${baseOctave.value}`, key: "d", label: "E" },
+  { note: `F${baseOctave.value}`, key: "f", label: "F" },
+  { note: `G${baseOctave.value}`, key: "g", label: "G" },
+  { note: `A${baseOctave.value}`, key: "h", label: "A" },
+  { note: `B${baseOctave.value}`, key: "j", label: "B" },
+  { note: `C${baseOctave.value + 1}`, key: "k", label: "C" },
+])
 
-// Black keys sit *between* specific white keys. afterIdx is the
-// index of the white key the black key sits immediately after.
-const blackKeys: BlackKey[] = [
-  { note: "C#4", key: "w", label: "C#", afterIdx: 0 },
-  { note: "D#4", key: "e", label: "D#", afterIdx: 1 },
-  { note: "F#4", key: "t", label: "F#", afterIdx: 3 },
-  { note: "G#4", key: "y", label: "G#", afterIdx: 4 },
-  { note: "A#4", key: "u", label: "A#", afterIdx: 5 },
-]
+const blackKeys = computed<BlackKey[]>(() => [
+  { note: `C#${baseOctave.value}`, key: "w", label: "C#", afterIdx: 0 },
+  { note: `D#${baseOctave.value}`, key: "e", label: "D#", afterIdx: 1 },
+  { note: `F#${baseOctave.value}`, key: "t", label: "F#", afterIdx: 3 },
+  { note: `G#${baseOctave.value}`, key: "y", label: "G#", afterIdx: 4 },
+  { note: `A#${baseOctave.value}`, key: "u", label: "A#", afterIdx: 5 },
+])
+
+function shiftOctave(delta: number) {
+  const next = baseOctave.value + delta
+  if (next < OCTAVE_MIN || next > OCTAVE_MAX) return
+  // Cut held notes from the previous octave so they don't stick.
+  stopAll("keyboard", style.value)
+  baseOctave.value = next
+}
 
 const flashingNote = ref<string | null>(null)
 const remoteFlashingNote = ref<string | null>(null)
@@ -96,14 +110,10 @@ function selectStyle(id: KeyboardStyle) {
   preload("keyboard", id)
 }
 
-const allKeys = [
-  ...whiteKeys.map((k) => ({ ...k, kind: "white" as const })),
-  ...blackKeys.map((k) => ({ ...k, kind: "black" as const })),
-]
-
 function onKey(event: KeyboardEvent) {
   if (event.repeat) return
-  const k = allKeys.find((x) => x.key === event.key)
+  const all = [...whiteKeys.value, ...blackKeys.value]
+  const k = all.find((x) => x.key === event.key)
   if (k) {
     event.preventDefault()
     hit(k.note)
@@ -128,22 +138,44 @@ onUnmounted(() => {
 
 <template>
   <div class="space-y-4">
-    <!-- Style selector -->
-    <div class="flex items-center gap-1">
-      <span class="text-xs uppercase tracking-wider text-muted-foreground mr-2">Style</span>
-      <button
-        v-for="s in styles"
-        :key="s.id"
-        @click="selectStyle(s.id)"
-        :class="[
-          'px-3 py-1 text-xs rounded-md border transition-colors',
-          style === s.id
-            ? 'bg-primary text-primary-foreground border-primary'
-            : 'bg-card hover:bg-accent text-muted-foreground border-input'
-        ]"
-      >
-        {{ s.label }}
-      </button>
+    <div class="flex flex-wrap items-center gap-3">
+      <!-- Style selector -->
+      <div class="flex items-center gap-1">
+        <span class="text-xs uppercase tracking-wider text-muted-foreground mr-2">Style</span>
+        <button
+          v-for="s in styles"
+          :key="s.id"
+          @click="selectStyle(s.id)"
+          :class="[
+            'px-3 py-1 text-xs rounded-md border transition-colors',
+            style === s.id
+              ? 'bg-primary text-primary-foreground border-primary'
+              : 'bg-card hover:bg-accent text-muted-foreground border-input'
+          ]"
+        >
+          {{ s.label }}
+        </button>
+      </div>
+
+      <!-- Octave shift -->
+      <div class="flex items-center gap-1 ml-auto">
+        <span class="text-xs uppercase tracking-wider text-muted-foreground mr-2">Oct</span>
+        <button
+          @click="shiftOctave(-1)"
+          :disabled="baseOctave <= OCTAVE_MIN"
+          class="px-2 py-1 text-xs rounded-md border bg-card hover:bg-accent text-muted-foreground border-input disabled:opacity-30 disabled:cursor-not-allowed"
+        >
+          −
+        </button>
+        <span class="text-sm tabular-nums w-6 text-center">{{ baseOctave }}</span>
+        <button
+          @click="shiftOctave(1)"
+          :disabled="baseOctave >= OCTAVE_MAX"
+          class="px-2 py-1 text-xs rounded-md border bg-card hover:bg-accent text-muted-foreground border-input disabled:opacity-30 disabled:cursor-not-allowed"
+        >
+          +
+        </button>
+      </div>
     </div>
 
     <!-- Keyboard -->

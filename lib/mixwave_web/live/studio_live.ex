@@ -135,6 +135,7 @@ defmodule MixwaveWeb.StudioLive do
           style: e.payload["style"] || "synth",
           note: e.payload["note"],
           chord: e.payload["chord"],
+          octave_offset: e.payload["octave_offset"] || 0,
           offset_ms: e.at - start_at
         }
       end)

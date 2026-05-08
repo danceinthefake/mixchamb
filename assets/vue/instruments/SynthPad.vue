@@ -29,6 +29,18 @@ const styles: StyleOption[] = [
 
 const style = ref<PadStyle>("warm")
 
+// Octave offset relative to the engine's default chord voicing.
+const octaveOffset = ref(0)
+const OCTAVE_MIN = -2
+const OCTAVE_MAX = 2
+
+function shiftOctave(delta: number) {
+  const next = octaveOffset.value + delta
+  if (next < OCTAVE_MIN || next > OCTAVE_MAX) return
+  stopAll("pad", style.value)
+  octaveOffset.value = next
+}
+
 type Chord = { name: ChordName; key: string }
 
 const chords: Chord[] = [
@@ -73,9 +85,14 @@ watch(
 
 async function trigger(name: ChordName) {
   await ensureStarted()
-  play("pad", style.value, name)
+  play("pad", style.value, name, octaveOffset.value)
   flash(name)
-  live.pushEvent("note", { instrument: "pad", style: style.value, chord: name })
+  live.pushEvent("note", {
+    instrument: "pad",
+    style: style.value,
+    chord: name,
+    octave_offset: octaveOffset.value,
+  })
 }
 
 function selectStyle(id: PadStyle) {
@@ -111,22 +128,46 @@ onUnmounted(() => {
 
 <template>
   <div class="space-y-4">
-    <!-- Style selector -->
-    <div class="flex items-center gap-1">
-      <span class="text-xs uppercase tracking-wider text-muted-foreground mr-2">Style</span>
-      <button
-        v-for="s in styles"
-        :key="s.id"
-        @click="selectStyle(s.id)"
-        :class="[
-          'px-3 py-1 text-xs rounded-md border transition-colors',
-          style === s.id
-            ? 'bg-primary text-primary-foreground border-primary'
-            : 'bg-card hover:bg-accent text-muted-foreground border-input'
-        ]"
-      >
-        {{ s.label }}
-      </button>
+    <div class="flex flex-wrap items-center gap-3">
+      <!-- Style selector -->
+      <div class="flex items-center gap-1">
+        <span class="text-xs uppercase tracking-wider text-muted-foreground mr-2">Style</span>
+        <button
+          v-for="s in styles"
+          :key="s.id"
+          @click="selectStyle(s.id)"
+          :class="[
+            'px-3 py-1 text-xs rounded-md border transition-colors',
+            style === s.id
+              ? 'bg-primary text-primary-foreground border-primary'
+              : 'bg-card hover:bg-accent text-muted-foreground border-input'
+          ]"
+        >
+          {{ s.label }}
+        </button>
+      </div>
+
+      <!-- Octave offset -->
+      <div class="flex items-center gap-1 ml-auto">
+        <span class="text-xs uppercase tracking-wider text-muted-foreground mr-2">Oct</span>
+        <button
+          @click="shiftOctave(-1)"
+          :disabled="octaveOffset <= OCTAVE_MIN"
+          class="px-2 py-1 text-xs rounded-md border bg-card hover:bg-accent text-muted-foreground border-input disabled:opacity-30 disabled:cursor-not-allowed"
+        >
+          −
+        </button>
+        <span class="text-sm tabular-nums w-8 text-center">
+          {{ octaveOffset > 0 ? `+${octaveOffset}` : octaveOffset }}
+        </span>
+        <button
+          @click="shiftOctave(1)"
+          :disabled="octaveOffset >= OCTAVE_MAX"
+          class="px-2 py-1 text-xs rounded-md border bg-card hover:bg-accent text-muted-foreground border-input disabled:opacity-30 disabled:cursor-not-allowed"
+        >
+          +
+        </button>
+      </div>
     </div>
 
     <!-- Chord buttons -->
