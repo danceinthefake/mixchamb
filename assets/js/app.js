@@ -27,6 +27,8 @@ import {hooks as colocatedHooks} from "phoenix-colocated/mixwave"
 import topbar from "topbar"
 import {getHooks} from "live_vue"
 import liveVueApp from "../vue"
+import {createApp, h} from "vue"
+import Player from "../vue/Player.vue"
 
 // External uploader: PUT each file directly to the presigned URL the
 // server returned in entry.meta. Reports progress + done events back to
@@ -67,6 +69,14 @@ window.addEventListener("phx:page-loading-stop", _info => topbar.hide())
 
 // connect if there are any LiveViews on the page
 liveSocket.connect()
+
+// Mount the persistent Vue Player. Independent Vue app — not a live_vue
+// island — so it survives LiveView navigation. Reads `mixwave:play` /
+// `mixwave:stop` window CustomEvents.
+const playerMount = document.getElementById("mixwave-player")
+if (playerMount) {
+  createApp({render: () => h(Player)}).mount(playerMount)
+}
 
 // expose liveSocket on window for web console debug logs and latency simulation:
 // >> liveSocket.enableDebug()

@@ -101,9 +101,27 @@ defmodule MixwaveWeb.SongLive do
 
       <p :if={@song.description} class="text-sm">{@song.description}</p>
 
-      <audio :if={@audio_url} controls preload="metadata" src={@audio_url} class="w-full mt-4">
-        Your browser doesn't support the audio element.
-      </audio>
+      <%!--
+        The persistent Player Vue island (mounted in root.html.heex)
+        owns playback. We dispatch a window CustomEvent it listens
+        for; the Player handles the rest.
+      --%>
+      <.button
+        :if={@audio_url}
+        class="mt-4"
+        phx-click={
+          Phoenix.LiveView.JS.dispatch("mixwave:play",
+            detail: %{
+              id: @song.id,
+              title: @song.title,
+              url: @audio_url,
+              by: @song.user.display_name
+            }
+          )
+        }
+      >
+        ▶ Play
+      </.button>
 
       <p :if={!@audio_url} class="mt-4 rounded-md border border-dashed p-4 text-sm text-muted-foreground">
         Audio source unavailable (R2 not configured for this environment).
