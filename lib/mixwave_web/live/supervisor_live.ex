@@ -13,6 +13,8 @@ defmodule MixwaveWeb.SupervisorLive do
   use MixwaveWeb, :live_view
   require Logger
 
+  alias Mixwave.Chambers
+  alias Mixwave.Chambers.Server, as: ChamberServer
   alias Mixwave.RestartWatcher
 
   @impl true
@@ -23,17 +25,26 @@ defmodule MixwaveWeb.SupervisorLive do
       :timer.send_interval(1_000, :tick)
     end
 
-    {:ok, assign(socket, :rows, RestartWatcher.snapshot())}
+    {:ok,
+     socket
+     |> assign(:rows, RestartWatcher.snapshot())
+     |> assign(:chambers, chamber_rows())}
   end
 
   @impl true
   def handle_info(:restarts_changed, socket) do
-    {:noreply, assign(socket, :rows, RestartWatcher.snapshot())}
+    {:noreply,
+     socket
+     |> assign(:rows, RestartWatcher.snapshot())
+     |> assign(:chambers, chamber_rows())}
   end
 
   @impl true
   def handle_info(:tick, socket) do
-    {:noreply, assign(socket, :rows, RestartWatcher.snapshot())}
+    {:noreply,
+     socket
+     |> assign(:rows, RestartWatcher.snapshot())
+     |> assign(:chambers, chamber_rows())}
   end
 
   @impl true
@@ -54,6 +65,49 @@ defmodule MixwaveWeb.SupervisorLive do
     end
   end
 
+  def handle_event("kill_chamber", %{"slug" => slug}, socket) do
+    case Registry.lookup(Mixwave.Chambers.Registry, slug) do
+      [{pid, _}] ->
+        Logger.warning(
+          "[supervisor] kill issued from /ops/supervisor: chamber=#{slug} pid=#{inspect(pid)}"
+        )
+
+        Process.exit(pid, :kill)
+
+        {:noreply,
+         put_flash(
+           socket,
+           :info,
+           "Killed chamber #{slug} — Chambers.Supervisor will restart it."
+         )}
+
+      _ ->
+        {:noreply, put_flash(socket, :error, "Chamber #{slug} is not running.")}
+    end
+  end
+
+  ## Data loading
+
+  # Snapshot of every running chamber GenServer for the second
+  # table. We hit the Registry for the live (slug, pid) pairs and
+  # then ask each Server for its event count + uptime via :info.
+  # ETS provides the per-slug restart count.
+  defp chamber_rows do
+    Chambers.list_running()
+    |> Enum.map(fn {slug, pid} ->
+      info = ChamberServer.info(slug)
+
+      %{
+        slug: slug,
+        pid: pid,
+        event_count: (info && info.event_count) || 0,
+        uptime_ms: (info && info.uptime_ms) || 0,
+        restart_count: Chambers.restart_count(slug)
+      }
+    end)
+    |> Enum.sort_by(& &1.slug)
+  end
+
   ## Render helpers
 
   defp format_memory(nil), do: "—"
@@ -63,6 +117,11 @@ defmodule MixwaveWeb.SupervisorLive do
 
   defp format_pid(nil), do: "(down)"
   defp format_pid(pid), do: inspect(pid)
+
+  defp format_uptime(ms) when ms < 1_000, do: "<1s"
+  defp format_uptime(ms) when ms < 60_000, do: "#{div(ms, 1_000)}s"
+  defp format_uptime(ms) when ms < 3_600_000, do: "#{div(ms, 60_000)}m"
+  defp format_uptime(ms), do: "#{div(ms, 3_600_000)}h"
 
   @impl true
   def render(assigns) do
@@ -136,6 +195,81 @@ defmodule MixwaveWeb.SupervisorLive do
         Restart count is per-process, persisted across kills until the
         beam restarts. Memory + inbox figures refresh once per second.
       </p>
+
+      <div class="mt-12 mb-4 flex items-end justify-between">
+        <div>
+          <h2 class="text-lg font-semibold tracking-tight font-display">
+            Active chambers
+          </h2>
+          <p class="text-xs text-muted-foreground">
+            One GenServer per chamber, supervised by Chambers.Supervisor.
+            Killing a row drops the chamber's recent-events buffer; the
+            supervisor restarts the GenServer in milliseconds and the
+            jam in that chamber keeps playing through it.
+          </p>
+        </div>
+        <div class="text-xs text-muted-foreground tabular-nums">
+          {length(@chambers)} running
+        </div>
+      </div>
+
+      <div :if={@chambers == []} class="rounded-lg border border-dashed bg-card/50 p-8 text-center text-sm text-muted-foreground">
+        No chambers running. Open one from the landing page to see it
+        appear here in real time.
+      </div>
+
+      <div :if={@chambers != []} class="rounded-lg border bg-card overflow-hidden">
+        <table class="w-full text-sm">
+          <thead class="bg-muted/40 text-xs uppercase tracking-wider text-muted-foreground">
+            <tr class="text-left">
+              <th class="px-4 py-2">Slug</th>
+              <th class="px-4 py-2">PID</th>
+              <th class="px-4 py-2 text-right">Events</th>
+              <th class="px-4 py-2 text-right">Up</th>
+              <th class="px-4 py-2 text-right">Restarts</th>
+              <th class="px-4 py-2"></th>
+            </tr>
+          </thead>
+          <tbody class="divide-y">
+            <tr :for={c <- @chambers} class="align-top">
+              <td class="px-4 py-3">
+                <.link navigate={~p"/chamber/#{c.slug}"} class="font-mono text-xs font-medium hover:underline">
+                  {c.slug}
+                </.link>
+              </td>
+              <td class="px-4 py-3 font-mono text-xs">
+                {format_pid(c.pid)}
+              </td>
+              <td class="px-4 py-3 text-right tabular-nums">
+                {c.event_count}
+              </td>
+              <td class="px-4 py-3 text-right tabular-nums text-muted-foreground">
+                {format_uptime(c.uptime_ms)}
+              </td>
+              <td class="px-4 py-3 text-right tabular-nums">
+                <span class={[
+                  "inline-flex items-center justify-center min-w-[2rem] px-2 py-0.5 rounded font-medium",
+                  c.restart_count > 0 && "bg-destructive/10 text-destructive",
+                  c.restart_count == 0 && "text-muted-foreground"
+                ]}>
+                  {c.restart_count}
+                </span>
+              </td>
+              <td class="px-4 py-3 text-right">
+                <.button
+                  variant="outline"
+                  phx-click="kill_chamber"
+                  phx-value-slug={c.slug}
+                  data-confirm={"Kill chamber #{c.slug}? Recent-events buffer is dropped, then the supervisor restarts it."}
+                  class="text-destructive hover:bg-destructive/10 hover:text-destructive"
+                >
+                  Kill
+                </.button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
     </Layouts.app>
     """
   end
