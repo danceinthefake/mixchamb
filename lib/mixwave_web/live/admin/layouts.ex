@@ -63,10 +63,19 @@ defmodule MixwaveWeb.Admin.Layouts do
               </.link>
             </nav>
           </div>
-          <p class="px-3 mt-4 text-[11px] text-muted-foreground">
-            Auth via env-var Basic Auth.
-            <.link navigate={~p"/"} class="underline">Back to app</.link>.
-          </p>
+          <div class="mt-4 px-3 space-y-2 text-[11px] text-muted-foreground">
+            <p>
+              <.link navigate={~p"/"} class="underline">Back to app</.link>
+            </p>
+            <.link
+              href={~p"/admin/logout"}
+              method="delete"
+              class="inline-flex items-center gap-1 underline hover:text-foreground"
+            >
+              <.icon name="hero-arrow-right-on-rectangle-mini" class="size-3.5" />
+              Log out
+            </.link>
+          </div>
         </aside>
 
         <main class="min-w-0">

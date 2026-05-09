@@ -1,44 +1,47 @@
 defmodule MixwaveWeb.Plugs.AdminAuth do
   @moduledoc """
-  HTTP Basic Auth gate for the `/admin/*` scope.
+  Session-backed gate for the `/admin/*` LiveView scope.
 
-  Reads the username + password from runtime config (`:admin_user`,
-  `:admin_password` under `:mixwave`); both default to compile-time
-  test values so the dev server boots without env. In prod the
-  release config sources them from `ADMIN_USER` / `ADMIN_PASSWORD`.
+  An admin authenticates by submitting `MixwaveWeb.AdminSessionController.create/2`
+  (the `/admin/login` form). On success that controller flips
+  `:admin_authenticated` in the session; this plug just checks
+  for the flag and redirects unauthenticated requests to the
+  login page.
 
-  No password set → the plug refuses every request, so a missing
-  env in prod fails closed instead of opening the page wide.
+  No password is checked here — credential validation happens
+  exactly once in the session controller — but this plug does
+  refuse the request when no admin password is configured at all,
+  so a missing prod env fails closed instead of letting anyone
+  who somehow has the session flag through.
   """
   import Plug.Conn
+  import Phoenix.Controller, only: [redirect: 2, put_flash: 3]
 
-  @realm "mixwave-admin"
+  use MixwaveWeb, :verified_routes
 
   def init(opts), do: opts
 
   def call(conn, _opts) do
-    case credentials() do
-      nil ->
-        deny(conn, "Admin password not configured.")
+    cond do
+      not configured?() ->
+        conn
+        |> put_status(:service_unavailable)
+        |> Phoenix.Controller.text("Admin password not configured.")
+        |> halt()
 
-      {user, pass} ->
-        Plug.BasicAuth.basic_auth(conn, username: user, password: pass, realm: @realm)
+      get_session(conn, :admin_authenticated) ->
+        conn
+
+      true ->
+        conn
+        |> put_flash(:error, "Please log in to access admin.")
+        |> redirect(to: ~p"/admin/login")
+        |> halt()
     end
   end
 
-  defp credentials do
-    user = Application.get_env(:mixwave, :admin_user)
+  defp configured? do
     pass = Application.get_env(:mixwave, :admin_password)
-
-    if is_binary(user) and is_binary(pass) and pass != "" do
-      {user, pass}
-    end
-  end
-
-  defp deny(conn, reason) do
-    conn
-    |> put_resp_header("www-authenticate", "Basic realm=\"#{@realm}\"")
-    |> send_resp(401, reason)
-    |> halt()
+    is_binary(pass) and pass != ""
   end
 end
