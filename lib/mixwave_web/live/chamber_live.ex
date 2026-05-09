@@ -82,6 +82,39 @@ defmodule MixwaveWeb.ChamberLive do
   end
 
   @impl true
+  def handle_event("set_kind", %{"kind" => kind}, socket) do
+    chamber = socket.assigns.chamber
+    user = socket.assigns.current_user
+
+    cond do
+      chamber.creator_user_id != user.id ->
+        # Only the creator may change the chamber's audio kind. The
+        # picker isn't even rendered for non-creators; this guard
+        # is for hand-crafted phx-events.
+        {:noreply, socket}
+
+      chamber.kind == kind ->
+        # Already on this kind — skip the DB write + broadcast.
+        {:noreply, socket}
+
+      true ->
+        case Chambers.set_kind(chamber, kind) do
+          {:ok, updated} ->
+            Phoenix.PubSub.broadcast(
+              Mixwave.PubSub,
+              Mixwave.Studio.topic(chamber.slug),
+              {:chamber_updated, updated}
+            )
+
+            {:noreply, assign(socket, :chamber, updated)}
+
+          {:error, _changeset} ->
+            {:noreply, put_flash(socket, :error, "Couldn't change the chamber type.")}
+        end
+    end
+  end
+
+  @impl true
   def handle_event("save_title", %{"title" => title}, socket) do
     chamber = socket.assigns.chamber
     user = socket.assigns.current_user
@@ -297,6 +330,29 @@ defmodule MixwaveWeb.ChamberLive do
 
   defp creator?(chamber, current_user), do: chamber.creator_user_id == current_user.id
 
+  # Order matters — drives chip render order. From driest to wettest
+  # so the picker reads as a "spectrum" left-to-right.
+  @chamber_kinds ~w(anechoic room live hall cathedral plate spring echo)
+  defp chamber_kinds, do: @chamber_kinds
+
+  defp chamber_kind_label("anechoic"), do: "Anechoic"
+  defp chamber_kind_label("room"), do: "Room"
+  defp chamber_kind_label("live"), do: "Live"
+  defp chamber_kind_label("hall"), do: "Hall"
+  defp chamber_kind_label("cathedral"), do: "Cathedral"
+  defp chamber_kind_label("plate"), do: "Plate"
+  defp chamber_kind_label("spring"), do: "Spring"
+  defp chamber_kind_label("echo"), do: "Echo"
+
+  defp chamber_kind_blurb("anechoic"), do: "Dry, no reverb"
+  defp chamber_kind_blurb("room"), do: "Small, present"
+  defp chamber_kind_blurb("live"), do: "Warm, lush"
+  defp chamber_kind_blurb("hall"), do: "Big, sustained"
+  defp chamber_kind_blurb("cathedral"), do: "Vast, ethereal"
+  defp chamber_kind_blurb("plate"), do: "Bright, vintage"
+  defp chamber_kind_blurb("spring"), do: "Boingy, lo-fi"
+  defp chamber_kind_blurb("echo"), do: "Discrete repeats"
+
   # Display title or fallback. Used both in the page <title> and
   # the heading above the stage.
   defp display_title(%{title: nil, slug: slug}), do: "Untitled chamber · #{slug}"
@@ -349,6 +405,44 @@ defmodule MixwaveWeb.ChamberLive do
               <h1 class="text-2xl font-bold tracking-tight font-display">
                 {display_title(@chamber)}
               </h1>
+            <% end %>
+          </div>
+
+          <%!-- Chamber kind. Creator gets a chip-strip to switch
+               between presets; everyone else sees a single chip
+               showing what's active. Changes ripple via the
+               :chamber_updated broadcast so the FX bus on every
+               client retunes within ~100 ms. --%>
+          <div class="flex flex-wrap items-center gap-2">
+            <span class="text-xs uppercase tracking-wider text-muted-foreground mr-1">
+              Kind
+            </span>
+            <%= if creator?(@chamber, @current_user) do %>
+              <button
+                :for={kind <- chamber_kinds()}
+                phx-click="set_kind"
+                phx-value-kind={kind}
+                title={chamber_kind_blurb(kind)}
+                class={[
+                  "px-3 py-1 text-xs rounded-md border transition-colors cursor-pointer",
+                  @chamber.kind == kind &&
+                    "bg-primary/15 text-primary border-primary/40",
+                  @chamber.kind != kind &&
+                    "bg-card hover:bg-accent text-muted-foreground border-input"
+                ]}
+              >
+                {chamber_kind_label(kind)}
+              </button>
+            <% else %>
+              <span
+                class="inline-flex items-center gap-1 px-3 py-1 text-xs rounded-md border bg-card text-foreground"
+                title={chamber_kind_blurb(@chamber.kind)}
+              >
+                {chamber_kind_label(@chamber.kind)}
+                <span class="text-muted-foreground">
+                  · {chamber_kind_blurb(@chamber.kind)}
+                </span>
+              </span>
             <% end %>
           </div>
 
