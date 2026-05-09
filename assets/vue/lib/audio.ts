@@ -31,14 +31,27 @@ export function setMasterVolume(linearGain: number) {
 // Pads call:    play("drums", "synth", "kick")
 // Receive side: play(payload.instrument, payload.style, payload.note)
 
+export interface PlayOptions {
+  /**
+   * Strum from high string to low string instead of the default
+   * low-to-high. Only chord-based engines (guitar) honor this; the
+   * rest ignore the field. For real-guitar feel: down = thumb /
+   * downstroke, up = fingernail / upstroke.
+   */
+  reverse?: boolean
+}
+
 export interface InstrumentEngine {
   /**
    * `octaveOffset` is in octaves, relative to the engine's default
    * voicing. Drums and instruments that already encode the octave
    * in `note` (keyboard, bass) ignore it; chord-based instruments
    * (guitar, pad) use it to transpose all notes in the chord.
+   *
+   * `opts` is engine-specific behaviour like strum direction. Most
+   * engines ignore it; only chord-strumming engines read it.
    */
-  play(note: string, octaveOffset?: number): void
+  play(note: string, octaveOffset?: number, opts?: PlayOptions): void
   stopAll(): void
   /**
    * Optional. Called when a user *selects* this flavor (not every
@@ -63,8 +76,9 @@ export function play(
   style: string,
   note: string,
   octaveOffset: number = 0,
+  opts?: PlayOptions,
 ) {
-  getEngine(instrument, style)?.play(note, octaveOffset)
+  getEngine(instrument, style)?.play(note, octaveOffset, opts)
 }
 
 export function stopAll(instrument: string, style: string) {
@@ -81,6 +95,20 @@ function transposeNotes(notes: readonly string[], octaveOffset: number): string[
   if (octaveOffset === 0) return notes as string[]
   const semitones = octaveOffset * 12
   return notes.map((n) => Tone.Frequency(n).transpose(semitones).toNote())
+}
+
+// Time between successive strings in a guitar strum, in seconds.
+// 0.03s × ~6 notes per chord ≈ 180ms total strum, which reads as a
+// real strum (the listener can almost hear individual strings)
+// rather than a one-shot chord stab. Real acoustic strums sit in
+// the 50-200ms range; we're at the slow end deliberately.
+const GUITAR_STRUM_STAGGER = 0.03
+
+// Returns the chord notes ordered for the requested strum direction.
+// Down (default) = low to high (thumb/down-stroke); reverse = high
+// to low (fingernail/up-stroke).
+function strumOrder(notes: readonly string[], reverse: boolean): readonly string[] {
+  return reverse ? [...notes].reverse() : notes
 }
 
 // ── Drums : Synth ──────────────────────────────────────────────────
@@ -801,15 +829,15 @@ function makeGuitarSynth(): InstrumentEngine {
   }
 
   return {
-    play(chord, octaveOffset = 0) {
+    play(chord, octaveOffset = 0, opts) {
       const notes = CHORDS[chord as ChordName]
       if (!notes) return
       ensure()
       const now = Tone.now()
       const shifted = transposeNotes(notes, octaveOffset)
-      // Strum: stagger ~12 ms per string.
-      shifted.forEach((note, i) => {
-        poly!.triggerAttackRelease(note, "2n", now + i * 0.012)
+      const ordered = strumOrder(shifted, opts?.reverse ?? false)
+      ordered.forEach((note, i) => {
+        poly!.triggerAttackRelease(note, "2n", now + i * GUITAR_STRUM_STAGGER)
       })
     },
     stopAll() {
@@ -922,14 +950,15 @@ function makeGuitarElectric(): InstrumentEngine {
   }
 
   return {
-    play(chord, octaveOffset = 0) {
+    play(chord, octaveOffset = 0, opts) {
       const notes = CHORDS[chord as ChordName]
       if (!notes) return
       ensure()
       const now = Tone.now()
       const shifted = transposeNotes(notes, octaveOffset)
-      shifted.forEach((note, i) => {
-        poly!.triggerAttackRelease(note, "2n", now + i * 0.012)
+      const ordered = strumOrder(shifted, opts?.reverse ?? false)
+      ordered.forEach((note, i) => {
+        poly!.triggerAttackRelease(note, "2n", now + i * GUITAR_STRUM_STAGGER)
       })
     },
     stopAll() {
@@ -971,14 +1000,15 @@ function makeGuitarRock(): InstrumentEngine {
   }
 
   return {
-    play(chord, octaveOffset = 0) {
+    play(chord, octaveOffset = 0, opts) {
       const notes = CHORDS[chord as ChordName]
       if (!notes) return
       ensure()
       const now = Tone.now()
       const shifted = transposeNotes(notes, octaveOffset)
-      shifted.forEach((note, i) => {
-        poly!.triggerAttackRelease(note, "2n", now + i * 0.012)
+      const ordered = strumOrder(shifted, opts?.reverse ?? false)
+      ordered.forEach((note, i) => {
+        poly!.triggerAttackRelease(note, "2n", now + i * GUITAR_STRUM_STAGGER)
       })
     },
     stopAll() {
@@ -1014,14 +1044,15 @@ function makeGuitarNylon(): InstrumentEngine {
   }
 
   return {
-    play(chord, octaveOffset = 0) {
+    play(chord, octaveOffset = 0, opts) {
       const notes = CHORDS[chord as ChordName]
       if (!notes) return
       ensure()
       const now = Tone.now()
       const shifted = transposeNotes(notes, octaveOffset)
-      shifted.forEach((note, i) => {
-        sampler!.triggerAttackRelease(note, "2n", now + i * 0.012)
+      const ordered = strumOrder(shifted, opts?.reverse ?? false)
+      ordered.forEach((note, i) => {
+        sampler!.triggerAttackRelease(note, "2n", now + i * GUITAR_STRUM_STAGGER)
       })
     },
     stopAll() {
@@ -1059,14 +1090,15 @@ function makeGuitarAcoustic(): InstrumentEngine {
   }
 
   return {
-    play(chord, octaveOffset = 0) {
+    play(chord, octaveOffset = 0, opts) {
       const notes = CHORDS[chord as ChordName]
       if (!notes) return
       ensure()
       const now = Tone.now()
       const shifted = transposeNotes(notes, octaveOffset)
-      shifted.forEach((note, i) => {
-        sampler!.triggerAttackRelease(note, "2n", now + i * 0.012)
+      const ordered = strumOrder(shifted, opts?.reverse ?? false)
+      ordered.forEach((note, i) => {
+        sampler!.triggerAttackRelease(note, "2n", now + i * GUITAR_STRUM_STAGGER)
       })
     },
     stopAll() {

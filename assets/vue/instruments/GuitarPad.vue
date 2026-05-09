@@ -1,18 +1,22 @@
 <script setup lang="ts">
-// Guitar pad — eight common chord buttons, each rendered as a
+// Guitar pad — twelve common chord buttons, each rendered as a
 // chord-fingering diagram (X/O indicators above the strings, then
-// a mini fretboard with finger dots). Click a chord or press 1–8.
+// a mini fretboard with finger dots). Click a chord or press
+// 1–9 / 0 / - / =.
 //
 // Five flavors: Synth, Electric (clean amp + chorus), Rock (over-
 // driven), Nylon (classical sampler), Acoustic (steel-string
 // sampler). The previous Pluck (Karplus-Strong) flavor was
 // retired — it was always slightly fatiguing on headphones.
 //
-//   - Synth: PolySynth(MonoSynth) with sweeping filter envelope
-//   - Pluck: hand-rolled Karplus-Strong (works in non-secure contexts)
-//   - Acoustic: real guitar samples streamed from a CDN
+// Strum: each chord plays with a 30 ms per-string stagger. The
+// direction toggle (Down ↓ / Up ↑) controls whether the strum
+// starts from the low E string (downstroke) or the high E
+// (upstroke). Both directions broadcast in the payload so remote
+// players hear the same direction the sender played.
 //
-// Local play + push; remote audio goes through JamReceiver.
+// Local play + push; remote audio goes through Studio.vue's
+// receiver.
 
 import { onMounted, onUnmounted, ref, watch } from "vue"
 import { useLiveVue } from "live_vue"
@@ -48,6 +52,18 @@ function shiftOctave(delta: number) {
   if (next < OCTAVE_MIN || next > OCTAVE_MAX) return
   stopAll("guitar", style.value)
   octaveOffset.value = next
+}
+
+// Strum direction: down (default, low-to-high) or up (reverse,
+// high-to-low). Persists for the rest of the session unless
+// toggled. Real strumming alternates these on each beat for
+// rhythm patterns; we let the user pick once per session and
+// supply both options so they can swap mid-jam.
+type StrumDirection = "down" | "up"
+const strumDirection = ref<StrumDirection>("down")
+
+function toggleStrumDirection() {
+  strumDirection.value = strumDirection.value === "down" ? "up" : "down"
 }
 
 // Chord fingerings in standard guitar tab notation: 6-element array
@@ -111,13 +127,15 @@ watch(
 
 async function strum(name: ChordName) {
   await ensureStarted()
-  play("guitar", style.value, name, octaveOffset.value)
+  const reverse = strumDirection.value === "up"
+  play("guitar", style.value, name, octaveOffset.value, { reverse })
   flash(name)
   live.pushEvent("note", {
     instrument: "guitar",
     style: style.value,
     chord: name,
     octave_offset: octaveOffset.value,
+    strum_direction: strumDirection.value,
   })
 }
 
@@ -177,8 +195,23 @@ onUnmounted(() => {
         </button>
       </div>
 
-      <!-- Octave offset -->
+      <!-- Strum direction toggle -->
       <div class="flex items-center gap-1 ml-auto">
+        <span class="text-xs uppercase tracking-wider text-muted-foreground mr-2">Strum</span>
+        <button
+          @click="toggleStrumDirection"
+          :class="[
+            'px-2.5 py-1 text-xs rounded-md border transition-colors min-w-[3.5rem]',
+            'bg-card hover:bg-accent text-muted-foreground border-input',
+          ]"
+          :title="strumDirection === 'down' ? 'Down (low → high) — click to flip' : 'Up (high → low) — click to flip'"
+        >
+          {{ strumDirection === "down" ? "↓ Down" : "↑ Up" }}
+        </button>
+      </div>
+
+      <!-- Octave offset -->
+      <div class="flex items-center gap-1">
         <span class="text-xs uppercase tracking-wider text-muted-foreground mr-2">Oct</span>
         <button
           @click="shiftOctave(-1)"
