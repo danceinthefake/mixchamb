@@ -331,7 +331,7 @@ onUnmounted(() => {
           p.drum
             ? 'bg-card hover:bg-accent active:scale-95 cursor-pointer'
             : 'bg-muted/40 text-muted-foreground/60 cursor-default',
-          flashing === p.id && 'ring-4 ring-accent-drums scale-95',
+          flashing === p.id && 'ring-4 ring-accent-drums scale-95 glow-drums',
           remoteFlashing === p.drum &&
             flashing !== p.id &&
             'ring-4 ring-orange-400',

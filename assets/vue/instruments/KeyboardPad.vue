@@ -260,7 +260,7 @@ onUnmounted(() => {
             :class="[
               'flex-1 border rounded-b-md flex flex-col items-center justify-end pb-2 transition-all',
               flashingNote === key.note
-                ? 'bg-accent-keyboard text-background border-accent-keyboard'
+                ? 'bg-accent-keyboard text-background border-accent-keyboard glow-keyboard'
                 : remoteFlashingNote === key.note
                   ? 'bg-orange-100 text-orange-900 border-orange-400'
                   : 'bg-white text-slate-700 hover:bg-slate-100 active:bg-slate-200'
@@ -286,7 +286,7 @@ onUnmounted(() => {
           :class="[
             'absolute top-0 w-7 h-28 rounded-b-md border border-black flex flex-col items-center justify-end pb-2 transition-all',
             flashingNote === bk.note
-              ? 'bg-accent-keyboard'
+              ? 'bg-accent-keyboard glow-keyboard'
               : remoteFlashingNote === bk.note
                 ? 'bg-orange-500'
                 : 'bg-slate-900 text-slate-200 hover:bg-slate-800 active:bg-slate-700'

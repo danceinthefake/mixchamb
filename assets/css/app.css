@@ -176,4 +176,37 @@
       radial-gradient(ellipse 80% 40% at 50% 100%, oklch(0.18 0.06 320 / 0.25), transparent 60%);
     background-attachment: fixed;
   }
+  /* Faint horizontal scanline texture across the whole page in dark
+     mode. 1.5% white at 1px intervals — barely perceptible on its
+     own, but it gives surfaces the soft CRT/monitor grain that
+     music software has, especially next to the neon accents. The
+     overlay is `pointer-events-none` and z-100 so it doesn't
+     interfere with anything below it. */
+  .dark body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 100;
+    background-image: repeating-linear-gradient(
+      0deg,
+      oklch(1 0 0 / 0.015),
+      oklch(1 0 0 / 0.015) 1px,
+      transparent 1px,
+      transparent 3px
+    );
+  }
+}
+
+@layer utilities {
+  /* Per-instrument glow utilities. Used on the pressed-pad state so
+     each hit blooms briefly in its instrument's colour. The
+     `oklch(from ... l c h / alpha)` syntax derives the glow from
+     the same neon CSS variable, so there's only one source of
+     truth for the colour. */
+  .glow-drums    { box-shadow: 0 0 28px -2px oklch(from var(--accent-drums) l c h / 0.55); }
+  .glow-keyboard { box-shadow: 0 0 28px -2px oklch(from var(--accent-keyboard) l c h / 0.55); }
+  .glow-guitar   { box-shadow: 0 0 28px -2px oklch(from var(--accent-guitar) l c h / 0.55); }
+  .glow-bass     { box-shadow: 0 0 28px -2px oklch(from var(--accent-bass) l c h / 0.55); }
+  .glow-pad      { box-shadow: 0 0 28px -2px oklch(from var(--accent-pad) l c h / 0.55); }
 }
