@@ -25,6 +25,7 @@ import KeyboardPad from "@/instruments/KeyboardPad.vue"
 import GuitarPad from "@/instruments/GuitarPad.vue"
 import BassPad from "@/instruments/BassPad.vue"
 import SynthPad from "@/instruments/SynthPad.vue"
+import SulingPad from "@/instruments/SulingPad.vue"
 import {
   ensureStarted,
   play,
@@ -36,7 +37,7 @@ import {
 } from "@/lib/audio"
 
 const props = defineProps<{
-  current_instrument: "drums" | "keyboard" | "guitar" | "bass" | "pad"
+  current_instrument: "drums" | "keyboard" | "guitar" | "bass" | "pad" | "suling"
   chamber_kind: ChamberKind
 }>()
 
@@ -68,6 +69,7 @@ type RemoteNote =
     }
   | { instrument: "bass"; style: string; note: string }
   | { instrument: "pad"; style: string; chord: ChordName; octave_offset?: number }
+  | { instrument: "suling"; style: string; note: string }
 
 // Latest remote hit, broadcast down to whichever pad is currently
 // mounted so it can flash the matching button. New object on every
@@ -288,5 +290,6 @@ live.handleEvent("play_remote_note", async (payload: RemoteNote) => {
     />
     <BassPad v-else-if="current_instrument === 'bass'" :remote-hit="lastRemoteHit" />
     <SynthPad v-else-if="current_instrument === 'pad'" :remote-hit="lastRemoteHit" />
+    <SulingPad v-else-if="current_instrument === 'suling'" :remote-hit="lastRemoteHit" />
   </div>
 </template>
