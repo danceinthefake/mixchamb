@@ -70,6 +70,7 @@ defmodule MixwaveWeb.ChamberLive do
      socket
      |> assign(:chamber, chamber)
      |> assign(:chamber_slug, slug)
+     |> assign(:page_title, page_title_for(chamber))
      |> assign(:instruments, @instruments)
      |> assign(:current_instrument, :drums)
      # Initialize so the first switch is never blocked. BEAM's
@@ -78,6 +79,38 @@ defmodule MixwaveWeb.ChamberLive do
      # produce a negative result and reject every switch.
      |> assign(:last_switch_at, System.monotonic_time(:millisecond) - @switch_cooldown_ms)
      |> assign(:presences, presences)}
+  end
+
+  @impl true
+  def handle_event("save_title", %{"title" => title}, socket) do
+    chamber = socket.assigns.chamber
+    user = socket.assigns.current_user
+
+    # Only the creator may rename. Anyone else is silently ignored —
+    # the input isn't even rendered for them, so the only path here
+    # is a hand-crafted phx-event push.
+    if chamber.creator_user_id != user.id do
+      {:noreply, socket}
+    else
+      case Chambers.set_title(chamber, title) do
+        {:ok, updated} ->
+          # Broadcast so anyone else in the chamber sees the new
+          # title without reloading.
+          Phoenix.PubSub.broadcast(
+            Mixwave.PubSub,
+            Mixwave.Studio.topic(chamber.slug),
+            {:chamber_updated, updated}
+          )
+
+          {:noreply,
+           socket
+           |> assign(:chamber, updated)
+           |> assign(:page_title, page_title_for(updated))}
+
+        {:error, _changeset} ->
+          {:noreply, put_flash(socket, :error, "Couldn't save the title.")}
+      end
+    end
   end
 
   @impl true
@@ -144,6 +177,15 @@ defmodule MixwaveWeb.ChamberLive do
      socket
      |> put_flash(:info, "Chamber closed — nobody else joined within 5 minutes.")
      |> push_navigate(to: ~p"/")}
+  end
+
+  # Broadcast by the LV that wrote the title change. Everyone else
+  # in the chamber updates their assigns + page title.
+  def handle_info({:chamber_updated, updated}, socket) do
+    {:noreply,
+     socket
+     |> assign(:chamber, updated)
+     |> assign(:page_title, page_title_for(updated))}
   end
 
   @impl true
@@ -253,6 +295,15 @@ defmodule MixwaveWeb.ChamberLive do
     chamber.activated_at == nil and chamber.creator_user_id == current_user.id
   end
 
+  defp creator?(chamber, current_user), do: chamber.creator_user_id == current_user.id
+
+  # Display title or fallback. Used both in the page <title> and
+  # the heading above the stage.
+  defp display_title(%{title: nil, slug: slug}), do: "Untitled chamber · #{slug}"
+  defp display_title(%{title: title}), do: title
+
+  defp page_title_for(chamber), do: "#{display_title(chamber)} · mixwave"
+
   @impl true
   def render(assigns) do
     ~H"""
@@ -272,6 +323,33 @@ defmodule MixwaveWeb.ChamberLive do
             >
               <.icon name="hero-arrow-left-mini" class="size-3.5" /> Leave chamber
             </.link>
+          </div>
+
+          <%!-- Title heading. The creator gets an inline form that
+               renames the chamber on submit (Enter / blur); other
+               users see a static heading. The fallback when no
+               title is set shows the slug so the placeholder still
+               feels chamber-specific. --%>
+          <div>
+            <%= if creator?(@chamber, @current_user) do %>
+              <form phx-submit="save_title" class="flex items-baseline gap-2">
+                <input
+                  type="text"
+                  name="title"
+                  value={@chamber.title || ""}
+                  maxlength="80"
+                  placeholder={"Untitled chamber · " <> @chamber.slug}
+                  class="flex-1 bg-transparent border-none outline-none text-2xl font-bold tracking-tight font-display text-foreground placeholder:text-muted-foreground/50"
+                />
+                <span class="text-[10px] uppercase tracking-wider text-muted-foreground/60">
+                  Press enter to save
+                </span>
+              </form>
+            <% else %>
+              <h1 class="text-2xl font-bold tracking-tight font-display">
+                {display_title(@chamber)}
+              </h1>
+            <% end %>
           </div>
 
           <%!-- Creator-only invite banner. Shows the chamber's
