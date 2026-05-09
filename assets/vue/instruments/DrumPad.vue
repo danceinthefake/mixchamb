@@ -341,7 +341,7 @@ onUnmounted(() => {
         <div class="text-xs font-medium">{{ p.label }}</div>
         <kbd
           v-if="p.key"
-          class="text-[10px] px-1 py-0.5 rounded bg-muted text-muted-foreground font-mono"
+          class="hidden sm:inline-block text-[10px] px-1 py-0.5 rounded bg-muted text-muted-foreground font-mono"
           >{{ p.key }}</kbd
         >
       </button>

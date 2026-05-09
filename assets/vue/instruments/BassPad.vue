@@ -241,8 +241,12 @@ onUnmounted(() => {
 
     <!-- Fretboard. Wood-toned background and inlay dot at fret 3,
          the way real basses mark position. Open notes (column 0)
-         get a darker treatment to read like the nut. -->
-    <div class="overflow-x-auto -mx-2 px-2">
+         get a darker treatment to read like the nut. Edge fades
+         hint at horizontal scroll on small screens. -->
+    <div class="relative -mx-2">
+      <div class="pointer-events-none absolute inset-y-0 left-0 w-6 z-10 bg-gradient-to-r from-background to-transparent sm:hidden"></div>
+      <div class="pointer-events-none absolute inset-y-0 right-0 w-6 z-10 bg-gradient-to-l from-background to-transparent sm:hidden"></div>
+      <div class="overflow-x-auto px-2">
       <div class="mx-auto" style="min-width: 560px; max-width: 760px;">
         <!-- Fret-number header -->
         <div class="grid grid-cols-[2.5rem_repeat(5,1fr)] gap-1 mb-1">
@@ -278,7 +282,7 @@ onUnmounted(() => {
               <span class="text-sm font-medium text-amber-50">{{ f.label }}</span>
               <kbd
                 v-if="f.key"
-                class="text-[9px] mt-0.5 px-1 rounded bg-amber-950 text-amber-200/80 font-mono"
+                class="hidden sm:inline-block text-[9px] mt-0.5 px-1 rounded bg-amber-950 text-amber-200/80 font-mono"
               >{{ f.key }}</kbd>
             </button>
           </div>
@@ -294,6 +298,7 @@ onUnmounted(() => {
           </div>
           <div></div>
         </div>
+      </div>
       </div>
     </div>
   </div>

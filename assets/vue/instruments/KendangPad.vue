@@ -160,7 +160,7 @@ onUnmounted(() => {
         ]"
       >
         <div class="text-lg font-bold font-display">{{ p.label }}</div>
-        <kbd class="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground font-mono">
+        <kbd class="hidden sm:inline-block text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground font-mono">
           {{ p.key }}
         </kbd>
       </button>

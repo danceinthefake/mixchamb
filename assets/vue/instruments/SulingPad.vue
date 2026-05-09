@@ -142,24 +142,34 @@ onUnmounted(() => {
     </div>
 
     <!-- Notes row. Black keys (C# / D# / F# / G# / A#) styled darker to
-         visually distinguish from naturals, like a flute fingering chart. -->
-    <div class="grid grid-cols-12 gap-1.5 sm:gap-2">
-      <button
-        v-for="n in notes"
-        :key="n.note"
-        @pointerdown.prevent="hit(n.note)"
-        :class="[
-          'rounded-md border bg-card flex flex-col items-center justify-center gap-1 py-6 select-none transition-all active:scale-95 hover:bg-accent',
-          n.label.includes('#') && 'bg-muted',
-          flashing === n.note && 'ring-2 ring-accent-suling scale-95 glow-suling',
-          remoteFlashing === n.note && flashing !== n.note && 'ring-2 ring-orange-400'
-        ]"
-      >
-        <div class="text-sm font-semibold">{{ n.label }}</div>
-        <kbd class="text-[10px] px-1 py-0.5 rounded bg-muted text-muted-foreground font-mono">
-          {{ n.key }}
-        </kbd>
-      </button>
+         visually distinguish from naturals, like a flute fingering chart.
+         Wrapped in a horizontal scroller with min-width so each note
+         button stays large enough to thumb on mobile (≥50 px). -->
+    <div class="relative -mx-2">
+      <!-- Scroll edge fades on small screens, like KeyboardPad. -->
+      <div class="pointer-events-none absolute inset-y-0 left-0 w-6 z-10 bg-gradient-to-r from-background to-transparent sm:hidden"></div>
+      <div class="pointer-events-none absolute inset-y-0 right-0 w-6 z-10 bg-gradient-to-l from-background to-transparent sm:hidden"></div>
+
+      <div class="overflow-x-auto px-2">
+        <div class="grid grid-cols-12 gap-1.5 sm:gap-2" style="min-width: 720px;">
+          <button
+            v-for="n in notes"
+            :key="n.note"
+            @pointerdown.prevent="hit(n.note)"
+            :class="[
+              'rounded-md border bg-card flex flex-col items-center justify-center gap-1 py-6 select-none transition-all active:scale-95 hover:bg-accent touch-manipulation',
+              n.label.includes('#') && 'bg-muted',
+              flashing === n.note && 'ring-2 ring-accent-suling scale-95 glow-suling',
+              remoteFlashing === n.note && flashing !== n.note && 'ring-2 ring-orange-400'
+            ]"
+          >
+            <div class="text-sm font-semibold">{{ n.label }}</div>
+            <kbd class="hidden sm:inline-block text-[10px] px-1 py-0.5 rounded bg-muted text-muted-foreground font-mono">
+              {{ n.key }}
+            </kbd>
+          </button>
+        </div>
+      </div>
     </div>
   </div>
 </template>
