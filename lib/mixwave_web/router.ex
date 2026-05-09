@@ -19,7 +19,8 @@ defmodule MixwaveWeb.Router do
     pipe_through :browser
 
     live_session :default, on_mount: {MixwaveWeb.UserAuth, :current_user} do
-      live "/", StudioLive
+      live "/", LandingLive
+      live "/chamber/:slug", ChamberLive
       live "/ops/supervisor", SupervisorLive
     end
   end

@@ -1,13 +1,15 @@
-defmodule MixwaveWeb.StudioLive do
+defmodule MixwaveWeb.ChamberLive do
   @moduledoc """
-  The studio for a single chamber. Until commit 3 wires up the
-  `/chamber/:slug` route the chamber slug is hard-coded to
-  `"lobby"` so the existing `/` route keeps working through this
-  refactor; commit 3 reads the slug from the URL.
+  The studio for a single chamber. Mounted at `/chamber/:slug`.
+
+  On mount, looks up the chamber by slug. A missing or invalid
+  slug pushes the user back to the landing page with a flash.
+  Otherwise, ensures the chamber's GenServer is running and
+  subscribes to its PubSub + presence topics.
 
   Wires:
     - `Mixwave.Studio.subscribe/1` for note-event broadcasts on
-      this chamber's PubSub topic
+      this chamber's topic
     - `MixwaveWeb.Presence` for "who's in this chamber, on what
       instrument"
     - 1-second server-side cooldown on instrument switch
@@ -19,25 +21,33 @@ defmodule MixwaveWeb.StudioLive do
   use MixwaveWeb, :live_view
 
   alias MixwaveWeb.Presence
-  alias Mixwave.Studio
+  alias Mixwave.{Chambers, Studio}
 
   @instruments [:drums, :keyboard, :guitar, :bass, :pad]
   @switch_cooldown_ms 1_000
 
-  # Hardcoded slug for the route at "/" until commit 3 wires up
-  # /chamber/:slug. The chamber GenServer is identified by slug,
-  # so this is also the key it registers under.
-  @default_slug "lobby"
-
   @impl true
-  def mount(_params, _session, socket) do
+  def mount(%{"slug" => slug}, _session, socket) do
+    case Chambers.find_by_slug(slug) do
+      nil ->
+        {:ok,
+         socket
+         |> put_flash(:error, "Chamber not found or already closed.")
+         |> push_navigate(to: ~p"/")}
+
+      chamber ->
+        mount_chamber(chamber, socket)
+    end
+  end
+
+  defp mount_chamber(chamber, socket) do
     user = socket.assigns.current_user
-    slug = @default_slug
+    slug = chamber.slug
 
     # Make sure a Chamber GenServer exists for this slug so calls
     # into Mixwave.Studio.* don't fail with :no_such_process. Safe
     # to call on every mount — idempotent if one is already up.
-    {:ok, _pid} = Mixwave.Studio.Chamber.ensure_started(slug)
+    {:ok, _pid} = Mixwave.Studio.Chamber.ensure_started(slug, chamber.id)
 
     if connected?(socket) do
       Studio.subscribe(slug)
@@ -58,6 +68,7 @@ defmodule MixwaveWeb.StudioLive do
 
     {:ok,
      socket
+     |> assign(:chamber, chamber)
      |> assign(:chamber_slug, slug)
      |> assign(:instruments, @instruments)
      |> assign(:current_instrument, :drums)
