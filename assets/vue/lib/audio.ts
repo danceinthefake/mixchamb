@@ -57,6 +57,7 @@ function getChamberBus(): Tone.Gain {
 }
 
 export type ChamberKind =
+  | "vacuum"
   | "anechoic"
   | "room"
   | "live"
@@ -80,6 +81,17 @@ type ChamberPreset = {
 // sits relative to the dry signal. `delayWet` only goes above 0
 // for kinds that need an audible discrete echo (`echo`, `spring`).
 const CHAMBER_PRESETS: Record<ChamberKind, ChamberPreset> = {
+  // Physically impossible — vacuums don't transmit sound — but
+  // useful as a "raw signal, no coloration anywhere" mode for
+  // hearing instrument voices in their bare form. Sets every
+  // chamber-level wet to 0 *and* triggers the instrument-FX
+  // bypass below.
+  vacuum: { decay: 0.5, wet: 0, delayWet: 0 },
+  // Real anechoic chamber: room reflections gone, but the
+  // instrument's own signal chain (amp reverb, chorus pedal,
+  // cymbal bloom) stays untouched. That matches what an actual
+  // anechoic chamber does — it doesn't reach into the
+  // instrument's circuit.
   anechoic: { decay: 0.5, wet: 0, delayWet: 0 },
   room: { decay: 0.7, wet: 0.22, delayWet: 0 },
   live: { decay: 1.5, wet: 0.32, delayWet: 0 },
@@ -122,7 +134,7 @@ const internalFxNodes: InternalFx[] = []
 function registerInternalFx(wetParam: Tone.Param<"normalRange">): void {
   const originalValue = wetParam.value
   internalFxNodes.push({ wet: wetParam, originalValue })
-  if (currentChamberKind === "anechoic") {
+  if (currentChamberKind === "vacuum") {
     wetParam.value = 0
   }
 }
@@ -164,12 +176,15 @@ export function setChamberKind(kind: ChamberKind) {
     chamberDelay.wet.rampTo(preset.delayWet, 0.1)
   }
 
-  // Bypass instrument-internal FX when anechoic so the signal
-  // path is genuinely dry, not "dry chamber + still-wet
-  // instrument character".
-  const anechoic = kind === "anechoic"
+  // Bypass instrument-internal FX in vacuum mode for a truly
+  // raw signal. Anechoic *doesn't* trigger this — a real
+  // anechoic chamber removes room reflections but leaves the
+  // instrument's signal chain (chorus pedal, amp reverb, etc.)
+  // alone. Vacuum is the synthetic "no coloration anywhere"
+  // mode users can pick for hearing the bare instrument voice.
+  const vacuum = kind === "vacuum"
   for (const { wet, originalValue } of internalFxNodes) {
-    wet.rampTo(anechoic ? 0 : originalValue, 0.1)
+    wet.rampTo(vacuum ? 0 : originalValue, 0.1)
   }
 }
 
