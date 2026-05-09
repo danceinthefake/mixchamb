@@ -3,6 +3,11 @@
 // chord-fingering diagram (X/O indicators above the strings, then
 // a mini fretboard with finger dots). Click a chord or press 1–8.
 //
+// Five flavors: Synth, Electric (clean amp + chorus), Rock (over-
+// driven), Nylon (classical sampler), Acoustic (steel-string
+// sampler). The previous Pluck (Karplus-Strong) flavor was
+// retired — it was always slightly fatiguing on headphones.
+//
 //   - Synth: PolySynth(MonoSynth) with sweeping filter envelope
 //   - Pluck: hand-rolled Karplus-Strong (works in non-secure contexts)
 //   - Acoustic: real guitar samples streamed from a CDN
@@ -19,12 +24,14 @@ const props = defineProps<{
 
 const live = useLiveVue()
 
-type GuitarStyle = "synth" | "pluck" | "acoustic"
+type GuitarStyle = "synth" | "electric" | "rock" | "nylon" | "acoustic"
 type StyleOption = { id: GuitarStyle; label: string }
 
 const styles: StyleOption[] = [
   { id: "synth", label: "Synth" },
-  { id: "pluck", label: "Pluck" },
+  { id: "electric", label: "Electric" },
+  { id: "rock", label: "Rock" },
+  { id: "nylon", label: "Nylon" },
   { id: "acoustic", label: "Acoustic" },
 ]
 

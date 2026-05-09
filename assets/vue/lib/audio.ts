@@ -820,36 +820,22 @@ function makeGuitarSynth(): InstrumentEngine {
 
 register("guitar", "synth", makeGuitarSynth())
 
-// ── Guitar : Pluck (hand-rolled Karplus-Strong) ────────────────────
-// What Tone.PluckSynth does, but without the AudioWorklet — so it
-// works in non-secure contexts (LAN dev). The Karplus-Strong
-// algorithm models a vibrating string as a delay line + lowpass
-// filter + feedback loop. The "pluck" is a short white-noise burst
-// fed into the delay; the loop sustains and gradually decays as the
-// filter and feedback gain remove energy each round-trip.
-//
-//   noise burst ─→ delay (delayTime = 1/freq) ─→ filter (lowpass)
-//                       ↑                              │
-//                       └──── feedback gain (0.995) ───┘
-//                                              │
-//                                              ↓
-//                                          output
-//
-// One graph per plucked note, disposed after natural decay.
-
+// ── Guitar : Pluck (DISABLED) ──────────────────────────────────────
+// Hand-rolled Karplus-Strong (delay + filter + feedback loop driven
+// by a noise burst). It worked algorithmically but the resulting
+// tone was always slightly fatiguing on headphones — the natural
+// resonance peaks of the algorithm sit right at the ear and even
+// after taming gain / cutoff / feedback, the character stayed
+// uncomfortable at length. Replaced by Electric / Rock / Nylon
+// below; the function is preserved (commented out) in case we
+// want to revisit the algorithm later.
+/*
 function makeGuitarPluck(): InstrumentEngine {
   let output: Tone.Gain | null = null
   let activeStrings: { dispose: () => void }[] = []
 
   function ensure() {
     if (output) return
-    // Karplus-Strong is intrinsically much louder than the other
-    // guitar flavors because the noise burst hits the delay line
-    // at full amplitude *and* the high-feedback resonance keeps
-    // the signal energy circulating for seconds. 0.02 (-34 dB
-    // gain) compensates for both, so Pluck sits well below the
-    // other flavors and the user's master-volume slider can stay
-    // where it is across style switches.
     output = new Tone.Gain(0.02).toDestination()
   }
 
@@ -857,56 +843,29 @@ function makeGuitarPluck(): InstrumentEngine {
     ensure()
     const freq = Tone.Frequency(note).toFrequency()
     const delayTime = 1 / freq
-
     const delay = new Tone.Delay(delayTime, 0.05)
-    // Lowpass at 1800 Hz is darker than a real acoustic pluck but
-    // necessary to keep the Karplus-Strong ring comfortable on
-    // headphones — the algorithm naturally generates high-frequency
-    // resonances that sit right at the ear and read as fatiguing
-    // even at low volume. 0.97 feedback decays the ring in ~1.5s.
     const filter = new Tone.Filter(1800, "lowpass")
     const feedback = new Tone.Gain(0.97)
-
     delay.connect(filter)
     filter.connect(feedback)
     feedback.connect(delay)
     filter.connect(output!)
-
-    // Pluck = a short noise burst into the delay line. Pink noise
-    // is gentler than white on headphones (high frequencies fall
-    // off at -3 dB/oct), and a 4 ms attack on the envelope softens
-    // the transient just enough that the strike doesn't read as a
-    // hard click against the eardrum.
     const noise = new Tone.Noise("pink")
     const env = new Tone.AmplitudeEnvelope({
-      attack: 0.004,
-      decay: 0.005,
-      sustain: 0,
-      release: 0.001,
+      attack: 0.004, decay: 0.005, sustain: 0, release: 0.001,
     })
     noise.connect(env)
     env.connect(delay)
     noise.start(when)
     env.triggerAttackRelease(0.005, when)
     noise.stop(when + 0.05)
-
     const nodes = [noise, env, delay, filter, feedback]
     const string = {
       dispose() {
-        for (const n of nodes) {
-          try {
-            n.dispose()
-          } catch {
-            // already disposed; ignore
-          }
-        }
+        for (const n of nodes) { try { n.dispose() } catch {} }
       },
     }
     activeStrings.push(string)
-
-    // Auto-dispose after the string has decayed naturally (~1.5s
-    // at 0.97 feedback). Otherwise we'd accumulate audio nodes per
-    // strum forever.
     setTimeout(() => {
       string.dispose()
       activeStrings = activeStrings.filter((s) => s !== string)
@@ -925,15 +884,156 @@ function makeGuitarPluck(): InstrumentEngine {
       })
     },
     stopAll() {
-      // Cut every currently-ringing string.
       const strings = activeStrings.slice()
       activeStrings = []
       for (const s of strings) s.dispose()
     },
   }
 }
-
 register("guitar", "pluck", makeGuitarPluck())
+*/
+
+// ── Guitar : Electric (clean) ──────────────────────────────────────
+// Bright, sustained clean electric guitar — triangle PolySynth fed
+// through a modest chorus + a touch of room reverb so the tone has
+// the airy width of a clean amp without the harshness Karplus-Strong
+// produced. Sits comfortably on headphones at length.
+
+function makeGuitarElectric(): InstrumentEngine {
+  let poly: Tone.PolySynth | null = null
+  let chorus: Tone.Chorus | null = null
+  let reverb: Tone.Reverb | null = null
+
+  function ensure() {
+    if (poly) return
+    chorus = new Tone.Chorus({
+      frequency: 1.4,
+      delayTime: 3,
+      depth: 0.6,
+      wet: 0.45,
+    }).start()
+    reverb = new Tone.Reverb({ decay: 1.2, wet: 0.18 })
+    poly = new Tone.PolySynth(Tone.Synth, {
+      oscillator: { type: "triangle" },
+      envelope: { attack: 0.004, decay: 0.5, sustain: 0.4, release: 1.4 },
+    })
+    poly.chain(chorus, reverb, Tone.getDestination())
+    poly.volume.value = -10
+  }
+
+  return {
+    play(chord, octaveOffset = 0) {
+      const notes = CHORDS[chord as ChordName]
+      if (!notes) return
+      ensure()
+      const now = Tone.now()
+      const shifted = transposeNotes(notes, octaveOffset)
+      shifted.forEach((note, i) => {
+        poly!.triggerAttackRelease(note, "2n", now + i * 0.012)
+      })
+    },
+    stopAll() {
+      poly?.releaseAll()
+    },
+  }
+}
+
+register("guitar", "electric", makeGuitarElectric())
+
+// ── Guitar : Rock (overdriven) ─────────────────────────────────────
+// Sawtooth PolySynth with two slightly-detuned voices through a
+// soft Tone.Distortion. Reads as a crunchy electric for rock chord
+// strumming. Distortion adds gain, so output sits ~6 dB lower than
+// Electric to keep flavors level-matched.
+
+function makeGuitarRock(): InstrumentEngine {
+  let poly: Tone.PolySynth | null = null
+  let distortion: Tone.Distortion | null = null
+
+  function ensure() {
+    if (poly) return
+    distortion = new Tone.Distortion({ distortion: 0.35, wet: 0.7 }).toDestination()
+    poly = new Tone.PolySynth(Tone.MonoSynth, {
+      oscillator: { type: "fatsawtooth" as const, count: 2, spread: 18 },
+      envelope: { attack: 0.005, decay: 0.4, sustain: 0.5, release: 1.0 },
+      filter: { type: "lowpass", frequency: 2400, Q: 1.5 },
+      filterEnvelope: {
+        attack: 0.001,
+        decay: 0.4,
+        sustain: 0.4,
+        release: 1.0,
+        baseFrequency: 200,
+        octaves: 2,
+      },
+    })
+    poly.connect(distortion)
+    poly.volume.value = -16
+  }
+
+  return {
+    play(chord, octaveOffset = 0) {
+      const notes = CHORDS[chord as ChordName]
+      if (!notes) return
+      ensure()
+      const now = Tone.now()
+      const shifted = transposeNotes(notes, octaveOffset)
+      shifted.forEach((note, i) => {
+        poly!.triggerAttackRelease(note, "2n", now + i * 0.012)
+      })
+    },
+    stopAll() {
+      poly?.releaseAll()
+    },
+  }
+}
+
+register("guitar", "rock", makeGuitarRock())
+
+// ── Guitar : Nylon (sampled, classical) ────────────────────────────
+// Tone.Sampler with classical / nylon-string guitar samples. Same
+// CDN pipeline as the Acoustic flavor; the nylon sample bank reads
+// softer and warmer (gut-string body, no metallic snap) which makes
+// it the calmest of the five flavors.
+
+function makeGuitarNylon(): InstrumentEngine {
+  let sampler: Tone.Sampler | null = null
+
+  function ensure() {
+    if (sampler) return
+    sampler = new Tone.Sampler({
+      urls: {
+        A2: "A2.mp3",
+        A3: "A3.mp3",
+        A4: "A4.mp3",
+      },
+      release: 0.8,
+      baseUrl:
+        "https://nbrosowsky.github.io/tonejs-instruments/samples/guitar-nylon/",
+    }).toDestination()
+    sampler.volume.value = -4
+  }
+
+  return {
+    play(chord, octaveOffset = 0) {
+      const notes = CHORDS[chord as ChordName]
+      if (!notes) return
+      ensure()
+      const now = Tone.now()
+      const shifted = transposeNotes(notes, octaveOffset)
+      shifted.forEach((note, i) => {
+        sampler!.triggerAttackRelease(note, "2n", now + i * 0.012)
+      })
+    },
+    stopAll() {
+      sampler?.releaseAll()
+    },
+    preload() {
+      ensure()
+    },
+  }
+}
+
+register("guitar", "nylon", makeGuitarNylon())
 
 // ── Guitar : Acoustic (sampled) ────────────────────────────────────
 // Real acoustic-guitar samples streamed from the tonejs-instruments
