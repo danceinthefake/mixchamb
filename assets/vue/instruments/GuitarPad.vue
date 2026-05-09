@@ -203,7 +203,7 @@ onUnmounted(() => {
         @pointerdown.prevent="strum(c.name)"
         :class="[
           'rounded-md border bg-card flex flex-col items-center gap-2 py-4 px-3 select-none transition-all active:scale-95 hover:bg-accent',
-          flashing === c.name && 'ring-2 ring-accent-guitar scale-95',
+          flashing === c.name && 'ring-2 ring-accent-guitar scale-95 glow-guitar',
           remoteFlashing === c.name && flashing !== c.name && 'ring-2 ring-orange-400'
         ]"
       >
