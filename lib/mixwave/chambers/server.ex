@@ -113,7 +113,18 @@ defmodule Mixwave.Chambers.Server do
     # Bump the per-slug restart counter. Default `-1` so the very
     # first start lands at 0; subsequent restarts (after a chaos
     # kill) tick up from there. The supervisor LV reads this.
-    :ets.update_counter(:chamber_restart_counts, state.slug, 1, {state.slug, -1})
+    count = :ets.update_counter(:chamber_restart_counts, state.slug, 1, {state.slug, -1})
+
+    # Wake the supervisor LV immediately on a restart so its row
+    # flashes red without waiting for the next 1 s polling tick.
+    # First-time starts (count == 0) skip this — no flash to show.
+    if count > 0 do
+      Phoenix.PubSub.broadcast(
+        Mixwave.PubSub,
+        Mixwave.RestartWatcher.topic(),
+        :restarts_changed
+      )
+    end
 
     started_at = System.monotonic_time(:millisecond)
 
