@@ -846,11 +846,11 @@ function makeGuitarPluck(): InstrumentEngine {
     // Karplus-Strong is intrinsically much louder than the other
     // guitar flavors because the noise burst hits the delay line
     // at full amplitude *and* the high-feedback resonance keeps
-    // the signal energy circulating for seconds. 0.12 (-18 dB
-    // gain) brings it roughly in line with Synth + Acoustic at
-    // matched master-volume settings; even quiet, the pluck still
-    // cuts through the mix because of its sharp transient attack.
-    output = new Tone.Gain(0.12).toDestination()
+    // the signal energy circulating for seconds. 0.05 (-26 dB
+    // gain) compensates for both, so Pluck no longer pins the
+    // listener's ears at master-volume settings that are
+    // comfortable for Synth and Acoustic.
+    output = new Tone.Gain(0.05).toDestination()
   }
 
   function pluckNote(note: string, when: number) {
@@ -859,8 +859,12 @@ function makeGuitarPluck(): InstrumentEngine {
     const delayTime = 1 / freq
 
     const delay = new Tone.Delay(delayTime, 0.05)
-    const filter = new Tone.Filter(4000, "lowpass")
-    const feedback = new Tone.Gain(0.995)
+    // Lowpass at 2500 Hz darkens the ring — the harsh top-end
+    // partials that Karplus-Strong generates were the main cause
+    // of the "this hurts my ears" perception. Drop the feedback
+    // gain too so the string rings for ~1.5s instead of 6s.
+    const filter = new Tone.Filter(2500, "lowpass")
+    const feedback = new Tone.Gain(0.97)
 
     delay.connect(filter)
     filter.connect(feedback)
@@ -895,13 +899,13 @@ function makeGuitarPluck(): InstrumentEngine {
     }
     activeStrings.push(string)
 
-    // Auto-dispose after the string has decayed naturally (~6s with
-    // the 0.995 feedback). Otherwise we'd accumulate audio nodes per
+    // Auto-dispose after the string has decayed naturally (~1.5s
+    // at 0.97 feedback). Otherwise we'd accumulate audio nodes per
     // strum forever.
     setTimeout(() => {
       string.dispose()
       activeStrings = activeStrings.filter((s) => s !== string)
-    }, 6000)
+    }, 2500)
   }
 
   return {
