@@ -23,6 +23,111 @@ export function setMasterVolume(linearGain: number) {
   Tone.getDestination().volume.value = clamped === 0 ? -Infinity : Tone.gainToDb(clamped)
 }
 
+// ── Chamber FX bus ─────────────────────────────────────────────────
+// Every instrument routes through this single shared bus before
+// hitting the speakers, so chamber-wide effects (reverb / delay /
+// the type-of-room character) can be applied uniformly. The chain:
+//
+//   each instrument → chamberBus → chamberReverb → chamberDelay → destination
+//
+// Reverb and Delay are both always in the chain; their `wet` values
+// switch the actual character on or off per chamber kind (anechoic
+// = both wet 0, hall = high reverb wet, echo = high delay wet,
+// etc.). This avoids re-routing the graph every time the kind
+// changes.
+
+let chamberBus: Tone.Gain | null = null
+let chamberReverb: Tone.Reverb | null = null
+let chamberDelay: Tone.FeedbackDelay | null = null
+
+function getChamberBus(): Tone.Gain {
+  if (chamberBus) return chamberBus
+  chamberBus = new Tone.Gain()
+  chamberReverb = new Tone.Reverb({ decay: 1, wet: 0 })
+  chamberDelay = new Tone.FeedbackDelay({
+    delayTime: "8n",
+    feedback: 0.4,
+    wet: 0,
+  })
+  chamberBus.chain(chamberReverb, chamberDelay, Tone.getDestination())
+  // Pre-generate the convolution so the first reverb hit isn't a
+  // synchronous block at trigger time.
+  chamberReverb.generate()
+  return chamberBus
+}
+
+export type ChamberKind =
+  | "anechoic"
+  | "room"
+  | "live"
+  | "hall"
+  | "cathedral"
+  | "plate"
+  | "spring"
+  | "echo"
+
+type ChamberPreset = {
+  decay: number
+  wet: number
+  preDelay?: number
+  delayWet: number
+  delayTime?: string
+  feedback?: number
+}
+
+// Tuned to evoke each room's archetypal sound. `decay` is the
+// reverb's RT60-ish length; `wet` is how loud the reverberant tail
+// sits relative to the dry signal. `delayWet` only goes above 0
+// for kinds that need an audible discrete echo (`echo`, `spring`).
+const CHAMBER_PRESETS: Record<ChamberKind, ChamberPreset> = {
+  anechoic: { decay: 0.5, wet: 0, delayWet: 0 },
+  room: { decay: 0.7, wet: 0.22, delayWet: 0 },
+  live: { decay: 1.5, wet: 0.32, delayWet: 0 },
+  hall: { decay: 3.0, wet: 0.42, delayWet: 0 },
+  cathedral: { decay: 6.0, wet: 0.52, delayWet: 0 },
+  plate: { decay: 1.2, wet: 0.4, preDelay: 0.005, delayWet: 0 },
+  spring: {
+    decay: 0.8,
+    wet: 0.32,
+    preDelay: 0.015,
+    delayWet: 0.12,
+    delayTime: "16n",
+    feedback: 0.5,
+  },
+  echo: { decay: 0.3, wet: 0.05, delayWet: 0.4, delayTime: "8n", feedback: 0.5 },
+}
+
+/**
+ * Switches the master chamber FX to the chosen kind. Setting
+ * `decay` or `preDelay` regenerates the convolution impulse —
+ * happens in-place and is fast enough to be unnoticeable on
+ * deliberate switches.
+ */
+export function setChamberKind(kind: ChamberKind) {
+  getChamberBus()
+  const preset = CHAMBER_PRESETS[kind]
+
+  if (chamberReverb) {
+    if (chamberReverb.decay !== preset.decay) {
+      chamberReverb.decay = preset.decay
+    }
+    if (preset.preDelay !== undefined && chamberReverb.preDelay !== preset.preDelay) {
+      chamberReverb.preDelay = preset.preDelay
+    }
+    chamberReverb.wet.rampTo(preset.wet, 0.1)
+  }
+
+  if (chamberDelay) {
+    if (preset.delayTime !== undefined) {
+      chamberDelay.delayTime.value = preset.delayTime
+    }
+    if (preset.feedback !== undefined) {
+      chamberDelay.feedback.value = preset.feedback
+    }
+    chamberDelay.wet.rampTo(preset.delayWet, 0.1)
+  }
+}
+
 // ── Engine registry ────────────────────────────────────────────────
 // Each (instrument, style) pair gets its own engine. Engines own
 // their Tone synths internally — lazy-init on first play so we
@@ -265,7 +370,7 @@ function getCymbalReverb(): Tone.Freeverb {
   cymbalReverb = new Tone.Freeverb({
     roomSize: 0.85,
     dampening: 3000,
-  }).toDestination()
+  }).connect(getChamberBus())
   cymbalReverb.wet.value = 0.5
   return cymbalReverb
 }
@@ -302,12 +407,12 @@ function makeDrumSynth(): InstrumentEngine {
       octaves: 10,
       oscillator: { type: "sine" },
       envelope: { attack: 0.001, decay: 0.4, sustain: 0.01, release: 1.4 },
-    }).toDestination()
+    }).connect(getChamberBus())
 
     snare = new Tone.NoiseSynth({
       noise: { type: "white" },
       envelope: { attack: 0.001, decay: 0.13, sustain: 0 },
-    }).toDestination()
+    }).connect(getChamberBus())
 
     hihat = new Tone.MetalSynth({
       envelope: { attack: 0.001, decay: 0.1, release: 0.01 },
@@ -315,7 +420,7 @@ function makeDrumSynth(): InstrumentEngine {
       modulationIndex: 32,
       resonance: 4000,
       octaves: 1.5,
-    }).toDestination()
+    }).connect(getChamberBus())
     hihat.volume.value = -6
 
     openHat = new Tone.MetalSynth({
@@ -324,7 +429,7 @@ function makeDrumSynth(): InstrumentEngine {
       modulationIndex: 32,
       resonance: 4000,
       octaves: 1.5,
-    }).toDestination()
+    }).connect(getChamberBus())
     openHat.volume.value = -6
 
     // Foot-chick: cymbals snapping closed against each other. Even
@@ -337,7 +442,7 @@ function makeDrumSynth(): InstrumentEngine {
       modulationIndex: 18,
       resonance: 3000,
       octaves: 1.0,
-    }).toDestination()
+    }).connect(getChamberBus())
     hihatPedal.volume.value = -14
 
     crash = new Tone.MetalSynth({
@@ -346,7 +451,7 @@ function makeDrumSynth(): InstrumentEngine {
       modulationIndex: 60,
       resonance: 8000,
       octaves: 0.5,
-    }).toDestination()
+    }).connect(getChamberBus())
     crash.volume.value = -12
     crash.connect(getCymbalReverb())
 
@@ -359,7 +464,7 @@ function makeDrumSynth(): InstrumentEngine {
       modulationIndex: 35,
       resonance: 6000,
       octaves: 0.7,
-    }).toDestination()
+    }).connect(getChamberBus())
     ride.volume.value = -10
 
     // Toms — MembraneSynth tuned high/mid/low so the three drums
@@ -369,21 +474,21 @@ function makeDrumSynth(): InstrumentEngine {
       octaves: 4,
       oscillator: { type: "sine" },
       envelope: { attack: 0.001, decay: 0.4, sustain: 0, release: 0.5 },
-    }).toDestination()
+    }).connect(getChamberBus())
 
     tomMid = new Tone.MembraneSynth({
       pitchDecay: 0.04,
       octaves: 4,
       oscillator: { type: "sine" },
       envelope: { attack: 0.001, decay: 0.5, sustain: 0, release: 0.6 },
-    }).toDestination()
+    }).connect(getChamberBus())
 
     tomFloor = new Tone.MembraneSynth({
       pitchDecay: 0.05,
       octaves: 5,
       oscillator: { type: "sine" },
       envelope: { attack: 0.001, decay: 0.7, sustain: 0, release: 0.8 },
-    }).toDestination()
+    }).connect(getChamberBus())
   }
 
   function schedule(name: DrumName): number {
@@ -475,18 +580,18 @@ function makeDrum808(): InstrumentEngine {
       octaves: 6,
       oscillator: { type: "sine" },
       envelope: { attack: 0.001, decay: 1.2, sustain: 0, release: 1.2 },
-    }).toDestination()
+    }).connect(getChamberBus())
 
     snareNoise = new Tone.NoiseSynth({
       noise: { type: "white" },
       envelope: { attack: 0.001, decay: 0.18, sustain: 0 },
-    }).toDestination()
+    }).connect(getChamberBus())
     snareNoise.volume.value = -2
 
     snareBody = new Tone.Synth({
       oscillator: { type: "triangle" },
       envelope: { attack: 0.001, decay: 0.08, sustain: 0, release: 0.05 },
-    }).toDestination()
+    }).connect(getChamberBus())
     snareBody.volume.value = -10
 
     hihat = new Tone.MetalSynth({
@@ -495,7 +600,7 @@ function makeDrum808(): InstrumentEngine {
       modulationIndex: 50,
       resonance: 8000,
       octaves: 1.0,
-    }).toDestination()
+    }).connect(getChamberBus())
     hihat.volume.value = -8
 
     openHat = new Tone.MetalSynth({
@@ -504,7 +609,7 @@ function makeDrum808(): InstrumentEngine {
       modulationIndex: 50,
       resonance: 8000,
       octaves: 1.0,
-    }).toDestination()
+    }).connect(getChamberBus())
     openHat.volume.value = -8
 
     hihatPedal = new Tone.MetalSynth({
@@ -513,7 +618,7 @@ function makeDrum808(): InstrumentEngine {
       modulationIndex: 30,
       resonance: 6000,
       octaves: 0.8,
-    }).toDestination()
+    }).connect(getChamberBus())
     hihatPedal.volume.value = -16
 
     crash = new Tone.MetalSynth({
@@ -522,7 +627,7 @@ function makeDrum808(): InstrumentEngine {
       modulationIndex: 60,
       resonance: 4000,
       octaves: 0.8,
-    }).toDestination()
+    }).connect(getChamberBus())
     crash.volume.value = -14
     crash.connect(getCymbalReverb())
 
@@ -532,7 +637,7 @@ function makeDrum808(): InstrumentEngine {
       modulationIndex: 40,
       resonance: 5000,
       octaves: 0.8,
-    }).toDestination()
+    }).connect(getChamberBus())
     ride.volume.value = -12
 
     // 808-style toms: longer pitch envelope and decay than synth,
@@ -542,21 +647,21 @@ function makeDrum808(): InstrumentEngine {
       octaves: 6,
       oscillator: { type: "sine" },
       envelope: { attack: 0.001, decay: 0.7, sustain: 0, release: 0.7 },
-    }).toDestination()
+    }).connect(getChamberBus())
 
     tomMid = new Tone.MembraneSynth({
       pitchDecay: 0.07,
       octaves: 6,
       oscillator: { type: "sine" },
       envelope: { attack: 0.001, decay: 0.9, sustain: 0, release: 0.9 },
-    }).toDestination()
+    }).connect(getChamberBus())
 
     tomFloor = new Tone.MembraneSynth({
       pitchDecay: 0.08,
       octaves: 6,
       oscillator: { type: "sine" },
       envelope: { attack: 0.001, decay: 1.2, sustain: 0, release: 1.2 },
-    }).toDestination()
+    }).connect(getChamberBus())
   }
 
   function schedule(name: DrumName): number {
@@ -649,12 +754,12 @@ function makeDrumAcoustic(): InstrumentEngine {
       octaves: 4,
       oscillator: { type: "sine" },
       envelope: { attack: 0.001, decay: 0.28, sustain: 0, release: 0.5 },
-    }).toDestination()
+    }).connect(getChamberBus())
 
     snareNoise = new Tone.NoiseSynth({
       noise: { type: "pink" },
       envelope: { attack: 0.001, decay: 0.18, sustain: 0 },
-    }).toDestination()
+    }).connect(getChamberBus())
     snareNoise.volume.value = -4
 
     snareBody = new Tone.MembraneSynth({
@@ -662,7 +767,7 @@ function makeDrumAcoustic(): InstrumentEngine {
       octaves: 2,
       oscillator: { type: "sine" },
       envelope: { attack: 0.001, decay: 0.15, sustain: 0, release: 0.2 },
-    }).toDestination()
+    }).connect(getChamberBus())
     snareBody.volume.value = -10
 
     hihat = new Tone.MetalSynth({
@@ -671,7 +776,7 @@ function makeDrumAcoustic(): InstrumentEngine {
       modulationIndex: 28,
       resonance: 5000,
       octaves: 1.5,
-    }).toDestination()
+    }).connect(getChamberBus())
     hihat.volume.value = -8
 
     openHat = new Tone.MetalSynth({
@@ -680,7 +785,7 @@ function makeDrumAcoustic(): InstrumentEngine {
       modulationIndex: 28,
       resonance: 5000,
       octaves: 1.5,
-    }).toDestination()
+    }).connect(getChamberBus())
     openHat.volume.value = -8
 
     hihatPedal = new Tone.MetalSynth({
@@ -689,7 +794,7 @@ function makeDrumAcoustic(): InstrumentEngine {
       modulationIndex: 20,
       resonance: 4000,
       octaves: 1.2,
-    }).toDestination()
+    }).connect(getChamberBus())
     hihatPedal.volume.value = -16
 
     crash = new Tone.MetalSynth({
@@ -698,7 +803,7 @@ function makeDrumAcoustic(): InstrumentEngine {
       modulationIndex: 50,
       resonance: 7000,
       octaves: 0.5,
-    }).toDestination()
+    }).connect(getChamberBus())
     crash.volume.value = -14
     crash.connect(getCymbalReverb())
 
@@ -708,7 +813,7 @@ function makeDrumAcoustic(): InstrumentEngine {
       modulationIndex: 32,
       resonance: 5500,
       octaves: 0.6,
-    }).toDestination()
+    }).connect(getChamberBus())
     ride.volume.value = -10
 
     // Acoustic toms: shorter and tighter than 808 but with enough
@@ -718,21 +823,21 @@ function makeDrumAcoustic(): InstrumentEngine {
       octaves: 3,
       oscillator: { type: "sine" },
       envelope: { attack: 0.001, decay: 0.3, sustain: 0, release: 0.4 },
-    }).toDestination()
+    }).connect(getChamberBus())
 
     tomMid = new Tone.MembraneSynth({
       pitchDecay: 0.04,
       octaves: 3,
       oscillator: { type: "sine" },
       envelope: { attack: 0.001, decay: 0.4, sustain: 0, release: 0.5 },
-    }).toDestination()
+    }).connect(getChamberBus())
 
     tomFloor = new Tone.MembraneSynth({
       pitchDecay: 0.05,
       octaves: 4,
       oscillator: { type: "sine" },
       envelope: { attack: 0.001, decay: 0.6, sustain: 0, release: 0.7 },
-    }).toDestination()
+    }).connect(getChamberBus())
   }
 
   function schedule(name: DrumName): number {
@@ -798,7 +903,7 @@ function makeKeyboardSynth(): InstrumentEngine {
     poly = new Tone.PolySynth(Tone.Synth, {
       oscillator: { type: "triangle" },
       envelope: { attack: 0.005, decay: 0.1, sustain: 0.3, release: 0.8 },
-    }).toDestination()
+    }).connect(getChamberBus())
     poly.volume.value = -10
   }
 
@@ -835,7 +940,7 @@ function makeKeyboardLead(): InstrumentEngine {
         baseFrequency: 300,
         octaves: 3,
       },
-    }).toDestination()
+    }).connect(getChamberBus())
     poly.volume.value = -12
   }
 
@@ -873,7 +978,7 @@ function makeKeyboardPiano(): InstrumentEngine {
       },
       release: 1,
       baseUrl: "https://tonejs.github.io/audio/salamander/",
-    }).toDestination()
+    }).connect(getChamberBus())
     sampler.volume.value = -6
   }
 
@@ -952,7 +1057,7 @@ function makeGuitarSynth(): InstrumentEngine {
         baseFrequency: 200,
         octaves: 3,
       },
-    }).toDestination()
+    }).connect(getChamberBus())
     poly.volume.value = -8
   }
 
@@ -999,7 +1104,7 @@ function makeGuitarPluck(): InstrumentEngine {
 
   function ensure() {
     if (output) return
-    output = new Tone.Gain(0.02).toDestination()
+    output = new Tone.Gain(0.02).connect(getChamberBus())
   }
 
   function pluckNote(note: string, when: number) {
@@ -1126,7 +1231,7 @@ function makeGuitarRock(): InstrumentEngine {
 
   function ensure() {
     if (poly) return
-    distortion = new Tone.Distortion({ distortion: 0.35, wet: 0.7 }).toDestination()
+    distortion = new Tone.Distortion({ distortion: 0.35, wet: 0.7 }).connect(getChamberBus())
     poly = new Tone.PolySynth(Tone.MonoSynth, {
       oscillator: { type: "fatsawtooth" as const, count: 2, spread: 18 },
       envelope: { attack: 0.005, decay: 0.4, sustain: 0.5, release: 1.0 },
@@ -1192,7 +1297,7 @@ function makeGuitarNylon(): InstrumentEngine {
       release: 0.8,
       baseUrl:
         "https://nbrosowsky.github.io/tonejs-instruments/samples/guitar-nylon/",
-    }).toDestination()
+    }).connect(getChamberBus())
     sampler.volume.value = -4
   }
 
@@ -1246,7 +1351,7 @@ function makeGuitarAcoustic(): InstrumentEngine {
       release: 0.5,
       baseUrl:
         "https://nbrosowsky.github.io/tonejs-instruments/samples/guitar-acoustic/",
-    }).toDestination()
+    }).connect(getChamberBus())
     sampler.volume.value = -4
   }
 
@@ -1302,7 +1407,7 @@ function makeBassSynth(): InstrumentEngine {
         baseFrequency: 100,
         octaves: 3,
       },
-    }).toDestination()
+    }).connect(getChamberBus())
     synth.volume.value = -6
   }
 
@@ -1340,7 +1445,7 @@ function makeBassSub(): InstrumentEngine {
         baseFrequency: 80,
         octaves: 1,
       },
-    }).toDestination()
+    }).connect(getChamberBus())
     synth.volume.value = -3
   }
 
@@ -1378,7 +1483,7 @@ function makeBassSlap(): InstrumentEngine {
         baseFrequency: 200,
         octaves: 4,
       },
-    }).toDestination()
+    }).connect(getChamberBus())
     // Bandpass + short envelope makes Slap quieter than the other
     // bass flavors at matched settings. -2 dB lifts it close to
     // Synth/Sub so users don't need to chase the volume slider when
@@ -1412,7 +1517,7 @@ function makePadWarm(): InstrumentEngine {
     poly = new Tone.PolySynth(Tone.Synth, {
       oscillator: { type: "fattriangle" },
       envelope: { attack: 0.8, decay: 0.5, sustain: 0.6, release: 2.5 },
-    }).toDestination()
+    }).connect(getChamberBus())
     poly.volume.value = -14
   }
 
@@ -1447,7 +1552,7 @@ function makePadBell(): InstrumentEngine {
       envelope: { attack: 1.0, decay: 0.4, sustain: 0.5, release: 3.0 },
       modulation: { type: "sine" },
       modulationEnvelope: { attack: 0.4, decay: 0, sustain: 1, release: 2.5 },
-    }).toDestination()
+    }).connect(getChamberBus())
     poly.volume.value = -14
   }
 
@@ -1488,7 +1593,7 @@ function makePadSweep(): InstrumentEngine {
         baseFrequency: 100,
         octaves: 4,
       },
-    }).toDestination()
+    }).connect(getChamberBus())
     poly.volume.value = -14
   }
 

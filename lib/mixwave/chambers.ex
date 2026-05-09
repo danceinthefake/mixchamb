@@ -69,6 +69,16 @@ defmodule Mixwave.Chambers do
   end
 
   @doc """
+  Sets the chamber's audio kind (anechoic / room / live / etc.).
+  Each kind matches a preset in the client-side FX bus.
+  """
+  def set_kind(%Chamber{} = chamber, kind) when is_binary(kind) do
+    chamber
+    |> Chamber.kind_changeset(%{kind: kind})
+    |> Repo.update()
+  end
+
+  @doc """
   Permanently deletes a chamber row. Called when the chamber's
   GenServer terminates because nobody but the creator showed up.
   """
