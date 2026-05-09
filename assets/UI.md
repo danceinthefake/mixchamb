@@ -220,7 +220,7 @@ Casual but capable. Like a friend showing you a tool they built, not a corporate
 
 | Surface             | Current text                                              | Notes                                                  |
 | ------------------- | --------------------------------------------------------- | ------------------------------------------------------ |
-| Header subtitle     | "a real-time jam room"                                    | ✓ on tone                                               |
+| Header subtitle     | "real-time jam chambers"                                  | ✓ on tone                                               |
 | Tap-to-enter title  | "Tap to start jamming"                                    | ✓ on tone                                               |
 | Tap-to-enter helper | "Browsers need a gesture before audio can play"           | ✓ informative, neutral                                  |
 | Tap-to-enter button | "Enter studio"                                            | ✓ verb-led                                              |
@@ -230,7 +230,7 @@ Casual but capable. Like a friend showing you a tool they built, not a corporate
 
 ### Empty / error states (when we add them)
 
-- **Empty room**: "Quiet here — start a chord and someone'll join." (suggest action, don't shame the count)
+- **Empty chamber**: "Quiet here — start a chord and someone'll join." (suggest action, don't shame the count)
 - **Audio failure**: "Audio dropped. Tap to try again." (specific, recoverable)
 - **Disconnect**: "Reconnecting…" (calm, ephemeral)
 

@@ -29,7 +29,7 @@ defmodule MixwaveWeb.Layouts do
           <img src={static_url(MixwaveWeb.Endpoint, ~p"/images/logo.svg")} width="32" />
           <span class="text-base font-bold tracking-tight font-display">mixwave</span>
         </a>
-        <span class="text-xs text-muted-foreground">a real-time jam room</span>
+        <span class="text-xs text-muted-foreground">real-time jam chambers</span>
         <div class="ml-auto flex items-center gap-2">
           <.theme_toggle />
         </div>
