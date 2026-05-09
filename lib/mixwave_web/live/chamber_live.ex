@@ -502,6 +502,54 @@ defmodule MixwaveWeb.ChamberLive do
         </div>
       </div>
 
+      <%!-- Always-visible jammer panel on the right edge. No toggle,
+           so usernames are present without any user interaction.
+           Hidden below lg because the chamber pads need that
+           horizontal room on tablet / mobile — the dock's presence
+           summary at the bottom is the fallback there. --%>
+      <aside class="hidden lg:block fixed right-4 top-24 w-56 z-30">
+        <div class="rounded-xl border bg-card/80 backdrop-blur-md shadow-lg">
+          <div class="flex items-center justify-between px-3 py-2 border-b">
+            <span class="text-xs font-semibold uppercase tracking-wider font-display">
+              Jamming
+            </span>
+            <span class="text-xs text-muted-foreground tabular-nums">
+              {map_size(@presences)}
+            </span>
+          </div>
+          <ul class="max-h-[60vh] overflow-y-auto py-1">
+            <li
+              :for={{user_id, %{metas: [meta | _]}} <- @presences}
+              class={[
+                "flex items-center gap-2 px-3 py-1.5 text-sm",
+                user_id == @current_user.id && "bg-primary/5"
+              ]}
+            >
+              <span
+                class="size-2 rounded-full shrink-0"
+                style={"background-color: " <> accent_var(meta.instrument)}
+              >
+              </span>
+              <div class="flex-1 min-w-0">
+                <div class={[
+                  "truncate leading-tight",
+                  user_id == @current_user.id && "font-semibold text-foreground",
+                  user_id != @current_user.id && "text-foreground"
+                ]}>
+                  {meta.display_name}
+                  <span :if={user_id == @current_user.id} class="text-muted-foreground font-normal">
+                    (you)
+                  </span>
+                </div>
+                <div class="text-[11px] text-muted-foreground leading-tight">
+                  {instrument_label(meta.instrument)}
+                </div>
+              </div>
+            </li>
+          </ul>
+        </div>
+      </aside>
+
       <%!-- Floating dock: instrument switcher + presence summary.
            Fixed at the viewport's bottom edge so it stays in reach
            regardless of page scroll. `pointer-events-none` on the
