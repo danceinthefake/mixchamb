@@ -31,36 +31,87 @@ defmodule MixwaveWeb.LandingLive do
   end
 
   @impl true
+  def handle_event("enter_chaos", _params, socket) do
+    # Lazily seed the public Chaos Chamber on first click. Subsequent
+    # clicks find the existing row.
+    case Chambers.ensure_chaos_chamber() do
+      {:ok, chamber} ->
+        {:noreply, push_navigate(socket, to: ~p"/chamber/#{chamber.slug}")}
+
+      {:error, _changeset} ->
+        {:noreply, put_flash(socket, :error, "Couldn't enter the chaos chamber.")}
+    end
+  end
+
+  @impl true
   def render(assigns) do
     ~H"""
     <Layouts.app flash={@flash}>
       <div class="-mx-4 sm:-mx-6 lg:-mx-8 -my-10 px-4 sm:px-6 lg:px-8 py-16 min-h-[calc(100dvh-3.5rem)] flex items-center justify-center">
-        <div class="w-full max-w-md text-center space-y-8">
-          <img
-            src={~p"/images/logo.svg"}
-            alt=""
-            class="size-20 mx-auto"
-          />
-          <div class="space-y-3">
-            <h1 class="text-4xl font-bold tracking-tight font-display">
-              Secret chambers
+        <div class="w-full max-w-3xl space-y-10">
+          <div class="text-center space-y-3">
+            <img src={~p"/images/logo.svg"} alt="" class="size-16 mx-auto" />
+            <h1 class="text-3xl sm:text-4xl font-bold tracking-tight font-display">
+              Pick a chamber
             </h1>
-            <p class="text-base text-muted-foreground">
-              Spin up a private chamber. Share the link with whoever
-              you want to play with — anyone who has it can join,
-              nobody else can find it.
+            <p class="text-sm text-muted-foreground">
+              Two ways to play: jump into the public room or open a private one.
             </p>
           </div>
-          <button
-            phx-click="create_chamber"
-            class="w-full rounded-lg border bg-card hover:bg-accent px-6 py-3 text-base font-medium font-display tracking-tight transition-colors cursor-pointer"
-          >
-            Create a chamber
-          </button>
-          <p class="text-xs text-muted-foreground">
-            If nobody else joins within 5 minutes, the chamber closes
-            on its own.
-          </p>
+
+          <div class="grid sm:grid-cols-2 gap-4">
+            <%!-- Chaos Chamber: public, always-on, anyone can join. --%>
+            <button
+              phx-click="enter_chaos"
+              class="text-left rounded-2xl border bg-card hover:bg-accent transition-colors p-6 cursor-pointer space-y-3 group"
+            >
+              <div class="flex items-center gap-2">
+                <span class="size-2.5 rounded-full bg-accent-drums"></span>
+                <span class="text-xs uppercase tracking-wider text-muted-foreground">
+                  Public
+                </span>
+              </div>
+              <h2 class="text-2xl font-bold tracking-tight font-display">
+                Chaos chamber
+              </h2>
+              <p class="text-sm text-muted-foreground">
+                Public always-on room. Anyone can wander in, anyone can leave. Sound is shared with everyone here right now — expect overlap, expect surprises.
+              </p>
+              <div class="pt-2 text-sm font-medium text-foreground inline-flex items-center gap-1">
+                Enter chaos
+                <.icon
+                  name="hero-arrow-right-mini"
+                  class="size-4 transition-transform group-hover:translate-x-0.5"
+                />
+              </div>
+            </button>
+
+            <%!-- Secret Chamber: private, link-only, you create it. --%>
+            <button
+              phx-click="create_chamber"
+              class="text-left rounded-2xl border bg-card hover:bg-accent transition-colors p-6 cursor-pointer space-y-3 group"
+            >
+              <div class="flex items-center gap-2">
+                <span class="size-2.5 rounded-full bg-accent-pad"></span>
+                <span class="text-xs uppercase tracking-wider text-muted-foreground">
+                  Private
+                </span>
+              </div>
+              <h2 class="text-2xl font-bold tracking-tight font-display">
+                Secret chamber
+              </h2>
+              <p class="text-sm text-muted-foreground">
+                Spin up a private chamber. Share the link with whoever you want to play with — anyone with it can join, nobody else can find it. Closes if empty for 5 minutes.
+              </p>
+              <div class="pt-2 text-sm font-medium text-foreground inline-flex items-center gap-1">
+                Create secret chamber
+                <.icon
+                  name="hero-arrow-right-mini"
+                  class="size-4 transition-transform group-hover:translate-x-0.5"
+                />
+              </div>
+            </button>
+          </div>
         </div>
       </div>
     </Layouts.app>

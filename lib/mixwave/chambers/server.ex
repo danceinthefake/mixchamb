@@ -127,6 +127,12 @@ defmodule Mixwave.Chambers.Server do
         # Already deleted from DB out-of-band. Just terminate.
         {:stop, :normal, state}
 
+      %{creator_user_id: nil} ->
+        # System chamber (e.g., the public Chaos Chamber). No
+        # creator means there's nothing to "wait for" — stays
+        # alive forever.
+        {:noreply, state}
+
       %{activated_at: nil} = chamber ->
         # Nobody but the creator showed up. Delete the row, tell
         # any subscribed LV to redirect, then shut down.
