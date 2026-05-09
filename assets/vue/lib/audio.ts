@@ -1872,8 +1872,17 @@ function makeKendang(opts: {
   tut: { pitch: string; pitchDecay: number; decay: number }
   dut: { pitch: string; decay: number }
   tung: { pitch: string; decay: number }
+  // Centre frequency (Hz) of the bandpass we run the slap noise
+  // through. Lower = more "skin", higher = more "snap".
+  takBand: number
+  pakBand: number
   takVolume: number
   pakVolume: number
+  // Wooden body resonance — peaking filter shared by the four
+  // membrane voices to give them a wooden formant rather than the
+  // pure kick-drum sine of a stock MembraneSynth.
+  bodyFreq: number
+  bodyGain: number
 }): InstrumentEngine {
   let dang: Tone.MembraneSynth | null = null
   let tut: Tone.MembraneSynth | null = null
@@ -1881,6 +1890,12 @@ function makeKendang(opts: {
   let tung: Tone.MembraneSynth | null = null
   let tak: Tone.NoiseSynth | null = null
   let pak: Tone.NoiseSynth | null = null
+  // Shared post-membrane body filter + per-slap bandpass live
+  // here so they're created once on first ensure() and torn down
+  // never (engines are long-lived).
+  let body: Tone.Filter | null = null
+  let takFilter: Tone.Filter | null = null
+  let pakFilter: Tone.Filter | null = null
 
   const lastScheduled: Record<KendangName, number> = {
     dang: 0,
@@ -1893,44 +1908,72 @@ function makeKendang(opts: {
 
   function ensure() {
     if (dang) return
+
+    // Wooden body resonance — peaking filter the four membrane
+    // voices share. Adds a mid-low formant so the tones land in
+    // "talking-drum" territory rather than "kick + tom".
+    body = new Tone.Filter({
+      type: "peaking",
+      frequency: opts.bodyFreq,
+      Q: 1.4,
+      gain: opts.bodyGain,
+    }).connect(getChamberBus())
+
+    // Octaves drop from 5/4/3/4 down to 1.5–2 — the high values
+    // were giving us a kick-drum-style pitch swoop on every hit,
+    // which is what made it sound like a kit. Smaller swoop reads
+    // as a tonal hand-drum boom instead.
     dang = new Tone.MembraneSynth({
       pitchDecay: opts.dang.pitchDecay,
-      octaves: 5,
+      octaves: 1.8,
       oscillator: { type: "sine" },
       envelope: { attack: 0.001, decay: opts.dang.decay, sustain: 0, release: 0.5 },
-    }).connect(getChamberBus())
+    }).connect(body)
 
     tut = new Tone.MembraneSynth({
       pitchDecay: opts.tut.pitchDecay,
-      octaves: 4,
+      octaves: 1.5,
       oscillator: { type: "sine" },
       envelope: { attack: 0.001, decay: opts.tut.decay, sustain: 0, release: 0.4 },
-    }).connect(getChamberBus())
+    }).connect(body)
 
     dut = new Tone.MembraneSynth({
-      pitchDecay: 0.02,
-      octaves: 3,
-      oscillator: { type: "sine" },
+      pitchDecay: 0.015,
+      octaves: 1,
+      oscillator: { type: "triangle" },
       envelope: { attack: 0.001, decay: opts.dut.decay, sustain: 0, release: 0.2 },
-    }).connect(getChamberBus())
+    }).connect(body)
 
     tung = new Tone.MembraneSynth({
-      pitchDecay: 0.04,
-      octaves: 4,
+      pitchDecay: 0.03,
+      octaves: 1.5,
       oscillator: { type: "sine" },
       envelope: { attack: 0.001, decay: opts.tung.decay, sustain: 0, release: 0.4 },
-    }).connect(getChamberBus())
+    }).connect(body)
 
+    // Bandpass the slap noise — without it pink/white noise reads
+    // as snare-snap or hi-hat. A mid-frequency band leaves only
+    // the "skin slap" energy.
+    takFilter = new Tone.Filter({
+      type: "bandpass",
+      frequency: opts.takBand,
+      Q: 1.6,
+    }).connect(getChamberBus())
     tak = new Tone.NoiseSynth({
       noise: { type: "pink" },
       envelope: { attack: 0.001, decay: 0.08, sustain: 0 },
-    }).connect(getChamberBus())
+    }).connect(takFilter)
     tak.volume.value = opts.takVolume
 
-    pak = new Tone.NoiseSynth({
-      noise: { type: "white" },
-      envelope: { attack: 0.001, decay: 0.04, sustain: 0 },
+    pakFilter = new Tone.Filter({
+      type: "bandpass",
+      frequency: opts.pakBand,
+      Q: 2,
     }).connect(getChamberBus())
+    pak = new Tone.NoiseSynth({
+      noise: { type: "pink" },
+      envelope: { attack: 0.001, decay: 0.04, sustain: 0 },
+    }).connect(pakFilter)
     pak.volume.value = opts.pakVolume
   }
 
@@ -1979,13 +2022,17 @@ register(
     tut: { pitch: "A2", pitchDecay: 0.04, decay: 0.4 },
     dut: { pitch: "E4", decay: 0.15 },
     tung: { pitch: "E2", decay: 0.35 },
+    takBand: 1100,
+    pakBand: 900,
     takVolume: 10,
     pakVolume: 8,
+    bodyFreq: 320,
+    bodyGain: 4,
   }),
 )
 
-// "Wood" preset: warmer envelopes, slightly darker hit pitches.
-// Closer in feel to a real wooden gendang than the cleaner Synth.
+// "Wood" preset: warmer body resonance + slightly lower slap band
+// so the slaps read as palm-on-skin rather than fingertip-on-rim.
 register(
   "kendang",
   "wood",
@@ -1994,8 +2041,12 @@ register(
     tut: { pitch: "G2", pitchDecay: 0.06, decay: 0.55 },
     dut: { pitch: "D4", decay: 0.2 },
     tung: { pitch: "D2", decay: 0.45 },
+    takBand: 850,
+    pakBand: 700,
     takVolume: 8,
     pakVolume: 6,
+    bodyFreq: 240,
+    bodyGain: 6,
   }),
 )
 
