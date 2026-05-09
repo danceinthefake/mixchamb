@@ -46,7 +46,7 @@ defmodule MixwaveWeb.LandingLive do
               Secret chambers
             </h1>
             <p class="text-base text-muted-foreground">
-              Spin up a private jam room. Share the link with whoever
+              Spin up a private chamber. Share the link with whoever
               you want to play with — anyone who has it can join,
               nobody else can find it.
             </p>
