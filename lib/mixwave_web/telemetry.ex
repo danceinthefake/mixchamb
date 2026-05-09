@@ -79,7 +79,25 @@ defmodule MixwaveWeb.Telemetry do
       summary("vm.memory.total", unit: {:byte, :kilobyte}),
       summary("vm.total_run_queue_lengths.total"),
       summary("vm.total_run_queue_lengths.cpu"),
-      summary("vm.total_run_queue_lengths.io")
+      summary("vm.total_run_queue_lengths.io"),
+
+      # Mixwave custom events. The same events feed
+      # `Mixwave.Telemetry.Counters` for the admin Dashboard's
+      # live cards; these declarations let LiveDashboard graph them
+      # too once the dashboard is exposed in prod.
+      counter("mixwave.chamber.note.count",
+        description: "Notes broadcast across all chambers",
+        tags: [:instrument]
+      ),
+      counter("mixwave.chamber.created.count",
+        description: "Chambers created (DB insert)"
+      ),
+      counter("mixwave.chamber.deleted.count",
+        description: "Chambers deleted (any path)"
+      ),
+      counter("mixwave.chamber.restarted.count",
+        description: "Chamber GenServer restarts after a crash or chaos kill"
+      )
     ]
   end
 

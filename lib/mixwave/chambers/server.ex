@@ -124,6 +124,12 @@ defmodule Mixwave.Chambers.Server do
         Mixwave.RestartWatcher.topic(),
         :restarts_changed
       )
+
+      :telemetry.execute(
+        [:mixwave, :chamber, :restarted],
+        %{count: 1},
+        %{slug: state.slug, restart_count: count}
+      )
     end
 
     started_at = System.monotonic_time(:millisecond)
