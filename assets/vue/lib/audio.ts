@@ -846,11 +846,11 @@ function makeGuitarPluck(): InstrumentEngine {
     // Karplus-Strong is intrinsically much louder than the other
     // guitar flavors because the noise burst hits the delay line
     // at full amplitude *and* the high-feedback resonance keeps
-    // the signal energy circulating for seconds. 0.05 (-26 dB
-    // gain) compensates for both, so Pluck no longer pins the
-    // listener's ears at master-volume settings that are
-    // comfortable for Synth and Acoustic.
-    output = new Tone.Gain(0.05).toDestination()
+    // the signal energy circulating for seconds. 0.02 (-34 dB
+    // gain) compensates for both, so Pluck sits well below the
+    // other flavors and the user's master-volume slider can stay
+    // where it is across style switches.
+    output = new Tone.Gain(0.02).toDestination()
   }
 
   function pluckNote(note: string, when: number) {
