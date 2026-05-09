@@ -13,8 +13,8 @@ defmodule Mixwave.Accounts do
   alias Mixwave.Repo
 
   @doc """
-  Creates a new anonymous user with a generated Javanese-style display
-  name and `last_active_at` set to now.
+  Creates a new anonymous user with a generated funny-Javanese-style
+  display name (see `NameGenerator`) and `last_active_at` set to now.
   """
   def create_anonymous_user(now \\ DateTime.utc_now()) do
     now = DateTime.truncate(now, :second)
