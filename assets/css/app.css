@@ -229,4 +229,23 @@
   .glow-pad      { box-shadow: 0 0 28px -2px oklch(from var(--accent-pad) l c h / 0.55); }
   .glow-suling   { box-shadow: 0 0 28px -2px oklch(from var(--accent-suling) l c h / 0.55); }
   .glow-kendang  { box-shadow: 0 0 28px -2px oklch(from var(--accent-kendang) l c h / 0.55); }
+
+  /* Supervisor LV: when a chamber's GenServer restarts, the row gets
+     this class for ~1.5s as visual proof of the chaos kill. Driven
+     by the chamber's uptime + restart count — no client-side state.
+     Bg flashes red and fades to transparent; a thin left bar pulses
+     to make the affected row obvious in a long table. */
+  @keyframes kill-flash-bg {
+    0%   { background-color: oklch(from var(--destructive) l c h / 0.32); }
+    100% { background-color: transparent; }
+  }
+  @keyframes kill-flash-bar {
+    0%   { box-shadow: inset 4px 0 0 0 var(--destructive); }
+    100% { box-shadow: inset 4px 0 0 0 transparent; }
+  }
+  .kill-flash {
+    animation:
+      kill-flash-bg 1.5s ease-out forwards,
+      kill-flash-bar 1.5s ease-out forwards;
+  }
 }

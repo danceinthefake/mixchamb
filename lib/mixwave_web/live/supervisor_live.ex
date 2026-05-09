@@ -17,6 +17,12 @@ defmodule MixwaveWeb.SupervisorLive do
   alias Mixwave.Chambers.Server, as: ChamberServer
   alias Mixwave.RestartWatcher
 
+  # How long after a chamber Server (re)starts to flash its row red.
+  # Matches the keyframe duration in app.css. Picked by uptime_ms
+  # rather than tracking flash state in the LV — keeps the rendering
+  # purely a function of what's currently in the supervisor.
+  @flash_duration_ms 1_500
+
   @impl true
   def mount(_params, _session, socket) do
     if connected?(socket) do
@@ -96,13 +102,18 @@ defmodule MixwaveWeb.SupervisorLive do
     Chambers.list_running()
     |> Enum.map(fn {slug, pid} ->
       info = ChamberServer.info(slug)
+      uptime_ms = (info && info.uptime_ms) || 0
+      restart_count = Chambers.restart_count(slug)
 
       %{
         slug: slug,
         pid: pid,
         event_count: (info && info.event_count) || 0,
-        uptime_ms: (info && info.uptime_ms) || 0,
-        restart_count: Chambers.restart_count(slug)
+        uptime_ms: uptime_ms,
+        restart_count: restart_count,
+        # Flash if this row is a restart (count > 0) that landed
+        # within the animation window. First-time starts don't flash.
+        flashing?: restart_count > 0 and uptime_ms < @flash_duration_ms
       }
     end)
     |> Enum.sort_by(& &1.slug)
@@ -231,7 +242,7 @@ defmodule MixwaveWeb.SupervisorLive do
             </tr>
           </thead>
           <tbody class="divide-y">
-            <tr :for={c <- @chambers} class="align-top">
+            <tr :for={c <- @chambers} class={["align-top", c.flashing? && "kill-flash"]}>
               <td class="px-4 py-3">
                 <.link navigate={~p"/chamber/#{c.slug}"} class="font-mono text-xs font-medium hover:underline">
                   {c.slug}
