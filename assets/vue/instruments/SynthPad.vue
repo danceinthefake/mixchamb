@@ -187,7 +187,7 @@ onUnmounted(() => {
         ]"
       >
         <div class="text-2xl font-bold">{{ c.name }}</div>
-        <kbd class="text-xs px-1.5 py-0.5 rounded bg-muted text-muted-foreground font-mono">{{ c.key }}</kbd>
+        <kbd class="hidden sm:inline-block text-xs px-1.5 py-0.5 rounded bg-muted text-muted-foreground font-mono">{{ c.key }}</kbd>
       </button>
     </div>
   </div>
