@@ -65,6 +65,21 @@ defmodule Mixwave.Chambers.Chamber do
     |> validate_inclusion(:kind, @kinds)
   end
 
+  @doc """
+  Changeset for creating a system chamber — one that has no
+  human creator (`creator_user_id` stays NULL). Used for
+  singletons like the public Chaos Chamber. Bypasses the
+  `creator_user_id` requirement that user-created chambers go
+  through.
+  """
+  def system_changeset(chamber, attrs) do
+    chamber
+    |> cast(attrs, [:slug, :title, :kind])
+    |> validate_required([:slug])
+    |> validate_inclusion(:kind, @kinds)
+    |> unique_constraint(:slug)
+  end
+
   # Treat empty / whitespace-only strings as "no title set" so the
   # UI's nil-fallback path covers users clearing the field.
   defp normalize_title(nil), do: nil

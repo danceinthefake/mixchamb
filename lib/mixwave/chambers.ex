@@ -53,6 +53,39 @@ defmodule Mixwave.Chambers do
   def find_by_id(id) when is_binary(id), do: Repo.get(Chamber, id)
 
   @doc """
+  Slug of the public Chaos Chamber — a singleton, always-on
+  chamber anyone can join without a link.
+  """
+  @chaos_slug "chaos"
+  def chaos_slug, do: @chaos_slug
+
+  @doc """
+  Returns the Chaos Chamber, creating it on first call. The row
+  has `creator_user_id` NULL, which marks it as a system chamber:
+  the per-chamber GenServer skips its grace-period check, the
+  idle sweeper skips it, and the chamber UI shows nobody as the
+  creator (so title + kind aren't editable).
+  """
+  def ensure_chaos_chamber do
+    case find_by_slug(@chaos_slug) do
+      nil ->
+        %Chamber{}
+        |> Chamber.system_changeset(%{
+          slug: @chaos_slug,
+          title: "Chaos chamber",
+          # "echo" picked deliberately — repeats stack up and the
+          # public room turns into a wash of overlapping sounds,
+          # which suits the "chaos" name.
+          kind: "echo"
+        })
+        |> Repo.insert()
+
+      chamber ->
+        {:ok, chamber}
+    end
+  end
+
+  @doc """
   Marks a chamber active — called the first time a non-creator
   joins. No-op if already active.
   """
@@ -115,7 +148,10 @@ defmodule Mixwave.Chambers do
   def delete_idle_since(%DateTime{} = cutoff) do
     {count, _} =
       from(c in Chamber,
-        where: not is_nil(c.activated_at) and c.last_activity_at < ^cutoff
+        where:
+          not is_nil(c.activated_at) and
+            not is_nil(c.creator_user_id) and
+            c.last_activity_at < ^cutoff
       )
       |> Repo.delete_all()
 
