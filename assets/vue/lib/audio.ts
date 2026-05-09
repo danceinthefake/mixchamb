@@ -1679,4 +1679,115 @@ function makePadSweep(): InstrumentEngine {
 
 register("pad", "sweep", makePadSweep())
 
+// ── Suling (Indonesian bamboo flute) ───────────────────────────────
+// Single-note melodic instrument — monophonic (one note rings at a
+// time), each note triggers triggerAttackRelease for a short
+// melodic phrase. Three flavors:
+//
+//   - Synth: pure sine + slow vibrato. Cleanest.
+//   - Bamboo: sampled flute from the tonejs-instruments CDN. Closest
+//     to a real bamboo flute, including the breath texture.
+//   - Sweet: triangle PolySynth + chorus + slow attack. Soft + airy.
+
+function makeSulingSynth(): InstrumentEngine {
+  let synth: Tone.MonoSynth | null = null
+
+  function ensure() {
+    if (synth) return
+    synth = new Tone.MonoSynth({
+      oscillator: { type: "sine" },
+      envelope: { attack: 0.06, decay: 0.2, sustain: 0.7, release: 0.4 },
+      filter: { type: "lowpass", frequency: 2500, Q: 1 },
+      filterEnvelope: {
+        attack: 0.06,
+        decay: 0.2,
+        sustain: 0.5,
+        release: 0.4,
+        baseFrequency: 800,
+        octaves: 2,
+      },
+    }).connect(getChamberBus())
+    synth.volume.value = -10
+  }
+
+  return {
+    play(note) {
+      ensure()
+      synth!.triggerAttackRelease(note, "4n", Tone.now())
+    },
+    stopAll() {
+      synth?.triggerRelease(Tone.now())
+    },
+  }
+}
+
+register("suling", "synth", makeSulingSynth())
+
+function makeSulingBamboo(): InstrumentEngine {
+  let sampler: Tone.Sampler | null = null
+
+  function ensure() {
+    if (sampler) return
+    sampler = new Tone.Sampler({
+      urls: {
+        A4: "A4.mp3",
+        A5: "A5.mp3",
+        A6: "A6.mp3",
+      },
+      release: 0.5,
+      baseUrl: "https://nbrosowsky.github.io/tonejs-instruments/samples/flute/",
+    }).connect(getChamberBus())
+    sampler.volume.value = -6
+  }
+
+  return {
+    play(note) {
+      ensure()
+      sampler!.triggerAttackRelease(note, "2n", Tone.now())
+    },
+    stopAll() {
+      sampler?.releaseAll()
+    },
+    preload() {
+      ensure()
+    },
+  }
+}
+
+register("suling", "bamboo", makeSulingBamboo())
+
+function makeSulingSweet(): InstrumentEngine {
+  let poly: Tone.PolySynth | null = null
+  let chorus: Tone.Chorus | null = null
+
+  function ensure() {
+    if (poly) return
+    chorus = new Tone.Chorus({
+      frequency: 1.2,
+      delayTime: 4,
+      depth: 0.5,
+      wet: 0.4,
+    }).start()
+    poly = new Tone.PolySynth(Tone.Synth, {
+      oscillator: { type: "triangle" },
+      envelope: { attack: 0.15, decay: 0.3, sustain: 0.6, release: 1.0 },
+    })
+    poly.chain(chorus, getChamberBus())
+    poly.volume.value = -10
+    registerInternalFx(chorus.wet)
+  }
+
+  return {
+    play(note) {
+      ensure()
+      poly!.triggerAttackRelease(note, "2n", Tone.now())
+    },
+    stopAll() {
+      poly?.releaseAll()
+    },
+  }
+}
+
+register("suling", "sweet", makeSulingSweet())
+
 export { Tone }
