@@ -29,13 +29,28 @@ import {
   ensureStarted,
   play,
   setMasterVolume,
+  setChamberKind,
+  type ChamberKind,
   type DrumName,
   type ChordName,
 } from "@/lib/audio"
 
-defineProps<{
+const props = defineProps<{
   current_instrument: "drums" | "keyboard" | "guitar" | "bass" | "pad"
+  chamber_kind: ChamberKind
 }>()
+
+// Apply the chamber's audio character on mount + whenever the
+// LiveView updates the prop (creator changing the kind, or a
+// remote :chamber_updated broadcast). The setter is idempotent;
+// calling it with the same value is a cheap no-op.
+watch(
+  () => props.chamber_kind,
+  (kind) => {
+    if (kind) setChamberKind(kind)
+  },
+  { immediate: true },
+)
 
 const live = useLiveVue()
 

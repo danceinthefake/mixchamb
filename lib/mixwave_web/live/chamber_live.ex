@@ -393,7 +393,10 @@ defmodule MixwaveWeb.ChamberLive do
           <%!-- One live_vue island for the whole studio. Vue handles
                the v-if swap between pads internally — see Studio.vue
                for why we don't use three separate islands. --%>
-          <.Studio current_instrument={Atom.to_string(@current_instrument)} />
+          <.Studio
+            current_instrument={Atom.to_string(@current_instrument)}
+            chamber_kind={@chamber.kind}
+          />
         </div>
       </div>
 

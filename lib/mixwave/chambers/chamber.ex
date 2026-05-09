@@ -16,11 +16,19 @@ defmodule Mixwave.Chambers.Chamber do
   @primary_key {:id, :binary_id, autogenerate: true}
   @foreign_key_type :binary_id
 
+  # Chamber kinds map 1:1 to presets in the Tone.js master FX bus
+  # on the client (see `assets/vue/lib/audio.ts`). Add a new kind
+  # here AND add a matching preset there, otherwise the client
+  # falls back to whatever its last applied preset was.
+  @kinds ~w(anechoic room live hall cathedral plate spring echo)
+  def kinds, do: @kinds
+
   schema "chambers" do
     field :slug, :string
     field :activated_at, :utc_datetime
     field :title, :string
     field :last_activity_at, :utc_datetime
+    field :kind, :string, default: "room"
 
     belongs_to :creator, Mixwave.Accounts.AnonymousUser, foreign_key: :creator_user_id
 
@@ -30,8 +38,9 @@ defmodule Mixwave.Chambers.Chamber do
   @doc false
   def creation_changeset(chamber, attrs) do
     chamber
-    |> cast(attrs, [:slug, :creator_user_id])
+    |> cast(attrs, [:slug, :creator_user_id, :kind])
     |> validate_required([:slug, :creator_user_id])
+    |> validate_inclusion(:kind, @kinds)
     |> unique_constraint(:slug)
   end
 
@@ -47,6 +56,13 @@ defmodule Mixwave.Chambers.Chamber do
     |> cast(attrs, [:title])
     |> update_change(:title, &normalize_title/1)
     |> validate_length(:title, max: 80)
+  end
+
+  @doc false
+  def kind_changeset(chamber, attrs) do
+    chamber
+    |> cast(attrs, [:kind])
+    |> validate_inclusion(:kind, @kinds)
   end
 
   # Treat empty / whitespace-only strings as "no title set" so the
