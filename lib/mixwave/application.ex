@@ -30,6 +30,10 @@ defmodule Mixwave.Application do
        name: Mixwave.Chambers.Supervisor, strategy: :one_for_one},
       # Counts how many times each supervised process has restarted.
       Mixwave.RestartWatcher,
+      # Subscribes to custom mixwave telemetry events and rolls up
+      # per-process counters for the admin Dashboard. Started early
+      # so it never misses an event from a chamber or sweeper.
+      Mixwave.Telemetry.Counters,
       # Tracks who's in the chamber + their selected instrument.
       MixwaveWeb.Presence,
       # Start to serve requests, typically the last entry

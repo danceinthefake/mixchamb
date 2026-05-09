@@ -37,6 +37,17 @@ defmodule Mixwave.Chambers do
       creator_user_id: creator_user_id
     })
     |> Repo.insert()
+    |> tap(fn
+      {:ok, chamber} ->
+        :telemetry.execute(
+          [:mixwave, :chamber, :created],
+          %{count: 1},
+          %{slug: chamber.slug, kind: chamber.kind, system: false}
+        )
+
+      _ ->
+        :ok
+    end)
   end
 
   @doc """
@@ -122,7 +133,21 @@ defmodule Mixwave.Chambers do
   Permanently deletes a chamber row. Called when the chamber's
   GenServer terminates because nobody but the creator showed up.
   """
-  def delete(%Chamber{} = chamber), do: Repo.delete(chamber)
+  def delete(%Chamber{} = chamber) do
+    chamber
+    |> Repo.delete()
+    |> tap(fn
+      {:ok, deleted} ->
+        :telemetry.execute(
+          [:mixwave, :chamber, :deleted],
+          %{count: 1},
+          %{slug: deleted.slug, kind: deleted.kind}
+        )
+
+      _ ->
+        :ok
+    end)
+  end
 
   @doc """
   Bumps `last_activity_at` to now. Called from the chamber's
@@ -194,6 +219,18 @@ defmodule Mixwave.Chambers do
       Mixwave.PubSub,
       activity_topic(),
       {:activity, slug, event}
+    )
+
+    # Telemetry event for the admin Dashboard counters. Metadata
+    # carries the instrument so the counter can break down by it.
+    :telemetry.execute(
+      [:mixwave, :chamber, :note],
+      %{count: 1},
+      %{
+        slug: slug,
+        instrument: payload["instrument"] || payload[:instrument],
+        style: payload["style"] || payload[:style]
+      }
     )
 
     :ok
