@@ -7,7 +7,7 @@ defmodule Mixwave.Chambers do
   the resulting link can join. A chamber starts in a "grace"
   state (`activated_at: nil`); the first time someone other than
   the creator joins, `mark_active/1` flips it to active. If
-  nobody else joins within 5 minutes,
+  nobody else joins within 30 minutes,
   `Mixwave.Chambers.Server` deletes the row.
 
   Persistence + runtime audio fan-out both live here:

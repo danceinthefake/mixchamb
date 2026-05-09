@@ -6,7 +6,7 @@ defmodule Mixwave.Chambers.Chamber do
   unguessable `slug` that's also the URL segment users visit. The
   `activated_at` field flips from NULL to a timestamp the first
   time someone other than the creator joins; while it's NULL the
-  chamber is in its 5-minute grace window and may be auto-deleted
+  chamber is in its 30-minute grace window and may be auto-deleted
   by `Mixwave.Chambers.Server`.
   """
 

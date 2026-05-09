@@ -7,7 +7,7 @@ defmodule Mixwave.Chambers.Sweeper do
   Mirrors `Mixwave.Accounts.Sweeper`'s shape so the supervision
   tree + ops view treat them the same.
 
-  Non-activated chambers (still in the 5-minute grace window) are
+  Non-activated chambers (still in the 30-minute grace window) are
   owned by their per-chamber GenServer and aren't touched here —
   cleanup of those is the GenServer's responsibility.
   """
