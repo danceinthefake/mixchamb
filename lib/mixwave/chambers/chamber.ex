@@ -20,7 +20,7 @@ defmodule Mixwave.Chambers.Chamber do
   # on the client (see `assets/vue/lib/audio.ts`). Add a new kind
   # here AND add a matching preset there, otherwise the client
   # falls back to whatever its last applied preset was.
-  @kinds ~w(anechoic room live hall cathedral plate spring echo)
+  @kinds ~w(vacuum anechoic room live hall cathedral plate spring echo)
   def kinds, do: @kinds
 
   schema "chambers" do

@@ -332,9 +332,10 @@ defmodule MixwaveWeb.ChamberLive do
 
   # Order matters — drives chip render order. From driest to wettest
   # so the picker reads as a "spectrum" left-to-right.
-  @chamber_kinds ~w(anechoic room live hall cathedral plate spring echo)
+  @chamber_kinds ~w(vacuum anechoic room live hall cathedral plate spring echo)
   defp chamber_kinds, do: @chamber_kinds
 
+  defp chamber_kind_label("vacuum"), do: "Vacuum"
   defp chamber_kind_label("anechoic"), do: "Anechoic"
   defp chamber_kind_label("room"), do: "Room"
   defp chamber_kind_label("live"), do: "Live"
@@ -344,7 +345,8 @@ defmodule MixwaveWeb.ChamberLive do
   defp chamber_kind_label("spring"), do: "Spring"
   defp chamber_kind_label("echo"), do: "Echo"
 
-  defp chamber_kind_blurb("anechoic"), do: "Dry, no reverb"
+  defp chamber_kind_blurb("vacuum"), do: "Raw signal, no FX"
+  defp chamber_kind_blurb("anechoic"), do: "No room, instrument FX kept"
   defp chamber_kind_blurb("room"), do: "Small, present"
   defp chamber_kind_blurb("live"), do: "Warm, lush"
   defp chamber_kind_blurb("hall"), do: "Big, sustained"
