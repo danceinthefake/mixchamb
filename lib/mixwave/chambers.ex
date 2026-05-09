@@ -38,6 +38,12 @@ defmodule Mixwave.Chambers do
   end
 
   @doc """
+  Looks up a chamber by primary key. Used by the per-chamber
+  GenServer's grace-period check.
+  """
+  def find_by_id(id) when is_binary(id), do: Repo.get(Chamber, id)
+
+  @doc """
   Marks a chamber active — called the first time a non-creator
   joins. No-op if already active.
   """
