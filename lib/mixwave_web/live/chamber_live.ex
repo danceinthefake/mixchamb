@@ -239,6 +239,20 @@ defmodule MixwaveWeb.ChamberLive do
   defp accent_var(:bass), do: "var(--accent-bass)"
   defp accent_var(:pad), do: "var(--accent-pad)"
 
+  # Full URL the creator can copy + paste anywhere. Built from the
+  # endpoint's configured host so the link works regardless of
+  # whether the user is on localhost, a staging URL, or prod.
+  defp chamber_url(chamber) do
+    MixwaveWeb.Endpoint.url() <> "/chamber/" <> chamber.slug
+  end
+
+  # Whether to show the creator-only invite-link banner. True iff
+  # the current user IS the creator AND the chamber hasn't been
+  # activated yet (i.e., still in the 5-minute grace window).
+  defp show_invite_banner?(chamber, current_user) do
+    chamber.activated_at == nil and chamber.creator_user_id == current_user.id
+  end
+
   @impl true
   def render(assigns) do
     ~H"""
@@ -247,7 +261,45 @@ defmodule MixwaveWeb.ChamberLive do
            uses the full available width as a stage; the dock floats
            at the bottom of the viewport. --%>
       <div class="-mx-4 sm:-mx-6 lg:-mx-8 -my-10 px-4 sm:px-6 lg:px-8 pt-4 pb-28">
-        <div class="mx-auto max-w-5xl">
+        <div class="mx-auto max-w-5xl space-y-4">
+          <%!-- Creator-only invite banner. Shows the chamber's
+               shareable URL with a copy button while the chamber
+               is still in its 5-minute grace window — disappears
+               the moment somebody else joins (chamber.activated_at
+               flips). Other users coming in via the link never see
+               it. --%>
+          <div
+            :if={show_invite_banner?(@chamber, @current_user)}
+            class="rounded-xl border bg-card/80 backdrop-blur-sm p-4 sm:p-5 space-y-3"
+          >
+            <div class="flex items-start gap-3">
+              <.icon name="hero-link-mini" class="size-5 mt-0.5 text-muted-foreground" />
+              <div class="space-y-1 flex-1">
+                <h3 class="text-sm font-semibold tracking-tight font-display">
+                  Share this chamber
+                </h3>
+                <p class="text-xs text-muted-foreground">
+                  Anyone with the link can join. The chamber closes on its own if nobody else shows up within 5 minutes.
+                </p>
+              </div>
+            </div>
+            <div class="flex items-center gap-2">
+              <code
+                class="flex-1 truncate rounded-md bg-muted px-3 py-2 text-xs font-mono text-foreground"
+              >
+                {chamber_url(@chamber)}
+              </code>
+              <button
+                type="button"
+                class="rounded-md border bg-card hover:bg-accent px-3 py-2 text-xs font-medium transition-colors cursor-pointer whitespace-nowrap"
+                data-url={chamber_url(@chamber)}
+                onclick="navigator.clipboard.writeText(this.dataset.url).then(() => { const o = this.textContent; this.textContent = 'Copied!'; setTimeout(() => { this.textContent = o; }, 1500); })"
+              >
+                Copy link
+              </button>
+            </div>
+          </div>
+
           <%!-- One live_vue island for the whole studio. Vue handles
                the v-if swap between pads internally — see Studio.vue
                for why we don't use three separate islands. --%>
