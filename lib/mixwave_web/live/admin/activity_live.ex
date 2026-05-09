@@ -26,7 +26,8 @@ defmodule MixwaveWeb.Admin.ActivityLive do
      |> stream_configure(:events, dom_id: &"event-#{&1.id}")
      |> stream(:events, [], at: 0, limit: @max_events)
      |> assign(:event_seq, 0)
-     |> assign(:paused, false)}
+     |> assign(:paused, false)
+     |> assign(:max_events, @max_events)}
   end
 
   @impl true
