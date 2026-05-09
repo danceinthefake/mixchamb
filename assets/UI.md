@@ -1,0 +1,172 @@
+# mixwave UI primitives
+
+A reference for the patterns that already exist in the studio. New UI work should copy from this canon instead of inventing its own — that's how a design system stays one.
+
+The CSS variables and Tailwind theme tokens that back these classes live in `assets/css/app.css`. The motion timings live in `assets/vue/lib/motion.ts`. The fonts come from Google Fonts via `lib/mixwave_web/components/layouts/root.html.heex`.
+
+---
+
+## Color tokens
+
+### Neutral surfaces (shadcn-vue zinc, with a deeper studio dark variant)
+
+```
+bg-background    near-black w/ faint hue 280 tint   (page background)
+bg-card          one step lighter than background    (cards, dock, pads)
+bg-muted         dark gray                            (kbd hint chips)
+bg-accent        slightly lit                         (hover surface)
+text-foreground  bright white                         (primary text)
+text-muted-foreground  ~65% opacity                   (subdued text)
+border           white / 8%                           (1px borders)
+```
+
+### Per-instrument neon accents
+
+| Instrument | Token            | Hue                | Used for                                         |
+| ---------- | ---------------- | ------------------ | ------------------------------------------------ |
+| Drums      | `accent-drums`    | magenta `oklch(0.72 0.27 340)` | flash ring, glow, dock tab when active            |
+| Keyboard   | `accent-keyboard` | cyan    `oklch(0.80 0.17 200)` | "                                                 |
+| Guitar     | `accent-guitar`   | lime    `oklch(0.85 0.22 130)` | " + chord-diagram dots + barre line               |
+| Bass       | `accent-bass`     | orange  `oklch(0.80 0.20 55)`  | " + fretboard pressed-fret tint                   |
+| Pad        | `accent-pad`      | violet  `oklch(0.72 0.24 290)` | "                                                 |
+
+Available as `bg-accent-{instrument}`, `ring-accent-{instrument}`, `text-accent-{instrument}`, `border-accent-{instrument}`, `glow-{instrument}`.
+
+Remote flashes use `ring-orange-400` regardless of which instrument played them — a deliberately distinct colour so "someone else played this" always reads the same.
+
+---
+
+## Typography
+
+```
+font-display    Space Grotesk        wordmark, headings, hero copy
+font-mono       JetBrains Mono       kbd hints, tabular numerics
+default         system sans          body, labels, dock chip text
+```
+
+Use `font-display` for the brand wordmark and any prominent heading the user is meant to read first. `font-mono` for keyboard-shortcut chips and any number that the user reads as data (volume %, octave shift, BPM if we ever add one).
+
+---
+
+## Motion
+
+```ts
+// from @/lib/motion
+FLASH_MS.tight  = 120   // percussive (drums)
+FLASH_MS.medium = 200   // pitched single notes + chord strums (keyboard, bass, guitar)
+FLASH_MS.long   = 450   // sustained ambient (pad)
+REMOTE_FLASH_DELTA_MS = 80
+```
+
+Each pad's `flash()` and `flashRemote()` should clear the highlight after `FLASH_MS.{tier}` and `FLASH_MS.{tier} + REMOTE_FLASH_DELTA_MS` respectively. Don't pick a new number — pick the right tier.
+
+---
+
+## Layout primitives
+
+### Stage (the big instrument area)
+
+The studio breaks out of `Layouts.app`'s `max-w-3xl` constraint with a negative-margin wrapper, then applies its own `max-w-5xl` so the kit / fretboard / chord grid has room. See `studio_live.ex` for the wrapper.
+
+### Floating dock (bottom)
+
+```
+class="fixed inset-x-0 bottom-4 px-4 z-40 pointer-events-none"
+  └─ inner: class="mx-auto max-w-3xl pointer-events-auto"
+     └─ content: class="flex items-center gap-2 rounded-2xl border bg-card/80 backdrop-blur-md px-2 py-1.5 shadow-2xl"
+```
+
+Holds the instrument switcher tabs, presence avatar stack, and "N jamming" count. The outer `pointer-events-none` means clicks fall through the empty area around the dock to whatever is behind.
+
+### Floating mini-bar (top-right control strip)
+
+Same visual language as the dock, lighter weight:
+
+```
+class="rounded-xl border bg-card/60 backdrop-blur-sm px-3 py-1.5 shadow-sm"
+```
+
+Used for the studio's Replay 30s + master volume strip.
+
+### Full-screen overlay (tap-to-enter)
+
+```
+class="fixed inset-0 z-50 backdrop-blur-md bg-background/80 cursor-pointer"
+```
+
+Wrap with `<Transition>` for a fade in / out. The whole overlay is the click target; the visible button is just an affordance.
+
+---
+
+## Controls
+
+### Style chip toggle (per-instrument flavor selector)
+
+```
+Inactive:
+  class="px-3 py-1 text-xs rounded-md border bg-card hover:bg-accent text-muted-foreground border-input"
+
+Active:
+  class="px-3 py-1 text-xs rounded-md border bg-accent-{instrument} text-background border-accent-{instrument}"
+```
+
+Substitute `{instrument}` with the pad's accent — the chip tints in the same neon as the rest of that pad's UI.
+
+### Octave +/- stepper
+
+```
+class="px-2 py-1 text-xs rounded-md border bg-card hover:bg-accent text-muted-foreground border-input disabled:opacity-30 disabled:cursor-not-allowed"
+```
+
+The numeric display between the `−` and `+` buttons:
+
+```
+class="text-sm tabular-nums font-mono w-{6|8|20} text-center"
+```
+
+Width depends on what's displayed: `w-6` for a single digit ("2"), `w-8` for a signed integer ("+2"), `w-20` for a range ("C3–C6").
+
+### Pad button (drum / chord / fret / piano key)
+
+Idle:
+
+```
+class="rounded-md border bg-card flex flex-col items-center justify-center gap-2 select-none transition-all active:scale-95 hover:bg-accent"
+```
+
+Local press flash (tap on this device):
+
+```
+'ring-2 ring-accent-{instrument} scale-95 glow-{instrument}'
+```
+
+Drums use `ring-4` (their pads are bigger). Keyboard's white keys instead use `bg-accent-keyboard text-background border-accent-keyboard glow-keyboard` because a ring inside a piano-key shape doesn't read.
+
+Remote flash (someone else played this):
+
+```
+'ring-{2|4} ring-orange-400'
+```
+
+Always orange — not the instrument's own accent — so remote vs. local is immediately distinguishable.
+
+### kbd hint chip
+
+```
+class="text-xs px-1.5 py-0.5 rounded bg-muted text-muted-foreground font-mono"
+```
+
+Smaller variants for keyboard pad's white / black keys override the bg/text but keep the rest:
+
+```
+white-key:  "text-[10px] px-1 py-0.5 rounded bg-slate-200 text-slate-600 font-mono"
+black-key:  "text-[9px]  px-1       rounded bg-slate-700 text-slate-300 font-mono"
+```
+
+---
+
+## When in doubt
+
+If you find yourself reaching for a fresh class string that's *almost* one of these but tweaked, lift it into this doc as a new primitive instead. Same for any `setTimeout(..., 250)` that doesn't match a `FLASH_MS` tier — figure out which tier it belongs to.
+
+Keeping the canon small is the whole point.
