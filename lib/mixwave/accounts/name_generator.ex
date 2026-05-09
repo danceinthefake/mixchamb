@@ -1,28 +1,35 @@
 defmodule Mixwave.Accounts.NameGenerator do
   @moduledoc """
   Generates anonymous-user display names in the form
-  `<javanese-adjective>-<javanese-noun>-<NN>`, e.g. `ayu-merak-42`,
-  `wani-macan-17`.
+  `<funny-javanese-adjective>-<funny-javanese-noun>-<NN>`, e.g.
+  `gendheng-tempe-42`, `mendhem-bakso-17`, `ngantuk-monyet-08`.
 
-  30 adjectives × 30 nouns × 100 numbers = 90 000 unique names. Two-
-  digit suffix lets the same adjective+noun pair map to many users
-  without collision in practice; if it does collide on insert, the
-  caller retries.
+  Adjectives lean playful / mildly absurd Javanese descriptors —
+  drunk, dazed, slovenly, dorky, sleepy, naughty. Nouns are
+  Javanese food, animals, and body parts that read as funny
+  whether you speak Javanese or not. Net effect: every login gets
+  a name that sounds like a comedy-skit character who showed up
+  to jam.
+
+  30 adjectives × 30 nouns × 100 numbers = 90 000 unique names.
+  Two-digit suffix lets the same adjective+noun pair map to many
+  users without collision in practice; if it does collide on
+  insert, the caller retries.
 
   """
 
   @adjectives ~w(
-    ayu bagus pinter wani alus sabar gagah prigel gemati sumringah
-    temen jujur semanak prasaja mapan mantep legawa tlaten gemi
-    nastiti sigap lega seneng tegep resik trampil anteng wasis
-    padhang guyub
+    gendheng edan kemproh cubluk cengeng culun mendhem klimis
+    kemayu kemlinthi mblenger bantet kuru lemu ndlahom ndlosor
+    ndableg kemladhean bedhes cilik gembleng alon nakal bandel
+    slengeran lelet lemes ngantuk keseseg kringeten
   )
 
   @nouns ~w(
-    macan merak garuda gajah kupu menjangan kidang kucing jaran
-    kembang mawar melati pari jati bambu gunung kali segara mega
-    lintang candra surya angin gelombang esuk wengi gamelan wayang
-    batik topeng
+    tempe tahu bakso cendol klepon getuk krupuk peyek bakwan
+    lemper sambal jagung timun terong jengkol pisang udel
+    jenggot bekicot yuyu lutung monyet celeng kebo belut kodok
+    tikus cacing kambing ayam
   )
 
   @doc """
