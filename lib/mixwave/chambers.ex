@@ -56,6 +56,17 @@ defmodule Mixwave.Chambers do
   def mark_active(%Chamber{} = chamber), do: {:ok, chamber}
 
   @doc """
+  Sets or clears the chamber's title. Whitespace-only input is
+  treated as nil (no title), so users can clear the field by
+  submitting an empty string.
+  """
+  def set_title(%Chamber{} = chamber, title) do
+    chamber
+    |> Chamber.title_changeset(%{title: title})
+    |> Repo.update()
+  end
+
+  @doc """
   Permanently deletes a chamber row. Called when the chamber's
   GenServer terminates because nobody but the creator showed up.
   """

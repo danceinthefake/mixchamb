@@ -19,6 +19,7 @@ defmodule Mixwave.Chambers.Chamber do
   schema "chambers" do
     field :slug, :string
     field :activated_at, :utc_datetime
+    field :title, :string
 
     belongs_to :creator, Mixwave.Accounts.AnonymousUser, foreign_key: :creator_user_id
 
@@ -37,5 +38,24 @@ defmodule Mixwave.Chambers.Chamber do
   def activation_changeset(chamber) do
     chamber
     |> change(activated_at: DateTime.utc_now() |> DateTime.truncate(:second))
+  end
+
+  @doc false
+  def title_changeset(chamber, attrs) do
+    chamber
+    |> cast(attrs, [:title])
+    |> update_change(:title, &normalize_title/1)
+    |> validate_length(:title, max: 80)
+  end
+
+  # Treat empty / whitespace-only strings as "no title set" so the
+  # UI's nil-fallback path covers users clearing the field.
+  defp normalize_title(nil), do: nil
+
+  defp normalize_title(title) when is_binary(title) do
+    case String.trim(title) do
+      "" -> nil
+      trimmed -> trimmed
+    end
   end
 end
