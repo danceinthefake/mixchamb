@@ -1,25 +1,31 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none" aria-hidden="true">
-  <g fill="none" stroke-width="2.2" stroke-linecap="round">
-    <!-- 5 waves converging at the centre, one per instrument flavor.
-         Each wave is a short S-curve that flows inward and ends just
-         shy of the centre, where they all meet at a white mix point. -->
+  <g fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+    <!-- An M letterform built from 4 wavy strokes (one per leg + one
+         per diagonal) plus a fifth horizontal audio-waveform under-
+         line. Each stroke is one of the instrument neon colours; the
+         centre V vertex carries a white mix-dot where all five lines
+         visually meet. -->
 
-    <!-- Top — drums (magenta) -->
-    <path d="M 16 3 C 14 6, 18 10, 16 14" stroke="#e94886" />
+    <!-- Left leg — bass (orange) -->
+    <path d="M 5 28 C 7 23, 3 17, 5 12 C 6 9, 4 6, 6 4" stroke="#f0a849" />
 
-    <!-- Upper-right — keyboard (cyan) -->
-    <path d="M 28 11 C 24 11, 22 16, 18 14.5" stroke="#56d2e6" />
+    <!-- Left diagonal of the M — drums (magenta) -->
+    <path d="M 6 4 C 8 7, 11 13, 13 15 C 14.5 16.5, 15 17.5, 16 18.5" stroke="#e94886" />
 
-    <!-- Lower-right — guitar (lime) -->
-    <path d="M 25 27 C 22 24, 22 18, 18 18" stroke="#b5e651" />
+    <!-- Right diagonal of the M — guitar (lime) -->
+    <path d="M 16 18.5 C 17 17.5, 17.5 16.5, 19 15 C 21 13, 24 7, 26 4" stroke="#b5e651" />
 
-    <!-- Lower-left — bass (orange) -->
-    <path d="M 7 27 C 10 24, 10 18, 14 18" stroke="#f0a849" />
+    <!-- Right leg — pad (violet) -->
+    <path d="M 26 4 C 28 6, 26 9, 27 12 C 29 17, 25 23, 27 28" stroke="#c485f3" />
 
-    <!-- Upper-left — pad (violet) -->
-    <path d="M 4 11 C 8 11, 10 16, 14 14.5" stroke="#c485f3" />
+    <!-- Audio-waveform underline — keyboard (cyan), the fifth wave -->
+    <path
+      d="M 4 30 C 7 28.5, 9 31.5, 12 30 C 15 28.5, 17 31.5, 20 30 C 23 28.5, 25 31.5, 28 30"
+      stroke="#56d2e6"
+      stroke-width="1.4"
+    />
 
-    <!-- Centre mix point — single bright dot where the waves meet. -->
-    <circle cx="16" cy="16" r="2" fill="#ffffff" />
+    <!-- Mix point at the M's V vertex — where the four M strokes meet. -->
+    <circle cx="16" cy="18.5" r="1.8" fill="#ffffff" />
   </g>
 </svg>
