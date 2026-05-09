@@ -7,6 +7,12 @@ defmodule Mixwave.Application do
 
   @impl true
   def start(_type, _args) do
+    # Public ETS counter for chamber-server restart counts. Each
+    # `Mixwave.Chambers.Server.init/1` bumps its slug's entry; the
+    # supervisor LV reads it for the per-chamber Restarts column.
+    # Initialised here so it exists before the first chamber starts.
+    :ets.new(:chamber_restart_counts, [:set, :public, :named_table, write_concurrency: true])
+
     children = [
       MixwaveWeb.Telemetry,
       Mixwave.Repo,

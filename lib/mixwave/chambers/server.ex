@@ -61,8 +61,23 @@ defmodule Mixwave.Chambers.Server do
     %{
       id: {__MODULE__, slug},
       start: {__MODULE__, :start_link, [args]},
-      restart: :temporary
+      # `:transient` so the dynamic supervisor brings the chamber
+      # back if it crashes (or if the supervisor LV's chaos button
+      # kills it), but a clean `{:stop, :normal, _}` from the
+      # grace-period delete still tears it down for good.
+      restart: :transient
     }
+  end
+
+  @doc """
+  Returns runtime info about a running chamber: pid, event count,
+  uptime, and how many times its server has restarted in this BEAM.
+  Used by the supervisor LV's per-chamber row.
+  """
+  def info(slug) when is_binary(slug) do
+    GenServer.call(via(slug), :info, 1_000)
+  catch
+    :exit, _ -> nil
   end
 
   @doc """
@@ -95,7 +110,15 @@ defmodule Mixwave.Chambers.Server do
       Process.send_after(self(), :bump_activity, @activity_bump_ms)
     end
 
-    {:ok, Map.merge(state, %{events: [], count: 0, dirty?: false})}
+    # Bump the per-slug restart counter. Default `-1` so the very
+    # first start lands at 0; subsequent restarts (after a chaos
+    # kill) tick up from there. The supervisor LV reads this.
+    :ets.update_counter(:chamber_restart_counts, state.slug, 1, {state.slug, -1})
+
+    started_at = System.monotonic_time(:millisecond)
+
+    {:ok,
+     Map.merge(state, %{events: [], count: 0, dirty?: false, started_at: started_at})}
   end
 
   @impl true
@@ -105,6 +128,11 @@ defmodule Mixwave.Chambers.Server do
   end
 
   @impl true
+  def handle_call(:info, _from, state) do
+    uptime_ms = System.monotonic_time(:millisecond) - state.started_at
+    {:reply, %{slug: state.slug, event_count: state.count, uptime_ms: uptime_ms}, state}
+  end
+
   def handle_call(:recent_events, _from, state) do
     {:reply, Enum.reverse(state.events), state}
   end

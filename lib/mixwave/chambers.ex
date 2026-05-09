@@ -203,6 +203,28 @@ defmodule Mixwave.Chambers do
     Server.recent_events_within(slug, seconds)
   end
 
+  @doc """
+  Lists every running chamber GenServer as `{slug, pid}` tuples.
+  Powers the supervisor LV's per-chamber chaos-button table.
+  """
+  def list_running do
+    Registry.select(
+      Mixwave.Chambers.Registry,
+      [{{:"$1", :"$2", :_}, [], [{{:"$1", :"$2"}}]}]
+    )
+  end
+
+  @doc """
+  How many times the GenServer for `slug` has been restarted by the
+  dynamic supervisor in this BEAM. First start counts as 0.
+  """
+  def restart_count(slug) when is_binary(slug) do
+    case :ets.lookup(:chamber_restart_counts, slug) do
+      [{^slug, count}] -> max(count, 0)
+      _ -> 0
+    end
+  end
+
   # Generates a ~64-bit URL-safe token. 8 random bytes encode to 11
   # url-base64 chars. Collision probability stays negligible at any
   # realistic chamber count.
