@@ -262,6 +262,18 @@ defmodule MixwaveWeb.ChamberLive do
            at the bottom of the viewport. --%>
       <div class="-mx-4 sm:-mx-6 lg:-mx-8 -my-10 px-4 sm:px-6 lg:px-8 pt-4 pb-28">
         <div class="mx-auto max-w-5xl space-y-4">
+          <%!-- Leave-chamber back link. Small + subtle so it
+               doesn't compete with the controls; navigates back
+               to the landing page. --%>
+          <div>
+            <.link
+              navigate={~p"/"}
+              class="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <.icon name="hero-arrow-left-mini" class="size-3.5" /> Leave chamber
+            </.link>
+          </div>
+
           <%!-- Creator-only invite banner. Shows the chamber's
                shareable URL with a copy button while the chamber
                is still in its 5-minute grace window — disappears
