@@ -203,12 +203,12 @@ defmodule MixwaveWeb.ChamberLive do
   end
 
   # Sent by the chamber's GenServer when it deletes itself because
-  # the 5-minute grace period elapsed without anyone but the
+  # the 30-minute grace period elapsed without anyone but the
   # creator joining.
   def handle_info({:chamber_closed, _slug}, socket) do
     {:noreply,
      socket
-     |> put_flash(:info, "Chamber closed — nobody else joined within 5 minutes.")
+     |> put_flash(:info, "Chamber closed — nobody else joined within 30 minutes.")
      |> push_navigate(to: ~p"/")}
   end
 
@@ -329,7 +329,7 @@ defmodule MixwaveWeb.ChamberLive do
 
   # Whether to show the creator-only invite-link banner. True iff
   # the current user IS the creator AND the chamber hasn't been
-  # activated yet (i.e., still in the 5-minute grace window).
+  # activated yet (i.e., still in the 30-minute grace window).
   defp show_invite_banner?(chamber, current_user) do
     chamber.activated_at == nil and chamber.creator_user_id == current_user.id
   end
@@ -456,7 +456,7 @@ defmodule MixwaveWeb.ChamberLive do
 
           <%!-- Creator-only invite banner. Shows the chamber's
                shareable URL with a copy button while the chamber
-               is still in its 5-minute grace window — disappears
+               is still in its 30-minute grace window — disappears
                the moment somebody else joins (chamber.activated_at
                flips). Other users coming in via the link never see
                it. --%>
@@ -471,7 +471,7 @@ defmodule MixwaveWeb.ChamberLive do
                   Share this chamber
                 </h3>
                 <p class="text-xs text-muted-foreground">
-                  Anyone with the link can join. The chamber closes on its own if nobody else shows up within 5 minutes.
+                  Anyone with the link can join. The chamber closes on its own if nobody else shows up within 30 minutes.
                 </p>
               </div>
             </div>

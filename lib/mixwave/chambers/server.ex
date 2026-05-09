@@ -5,7 +5,7 @@ defmodule Mixwave.Chambers.Server do
   `Mixwave.Chambers.Supervisor`.
 
   Holds the chamber's last N note events for join-time replay.
-  Also owns the chamber lifecycle — the 5-minute grace-period
+  Also owns the chamber lifecycle — the 30-minute grace-period
   self-check and the once-a-minute `last_activity_at` bump.
 
   `chamber_id` is the DB row's id — used by the lifecycle code to
@@ -21,7 +21,7 @@ defmodule Mixwave.Chambers.Server do
   # Grace window during which the chamber must see a non-creator
   # join. If `activated_at` is still NULL when this elapses, the
   # GenServer deletes the chamber row and shuts itself down.
-  @grace_period_ms 5 * 60 * 1000
+  @grace_period_ms 30 * 60 * 1000
   # How often the GenServer flushes the dirty flag to the DB by
   # bumping `last_activity_at`. Chosen for "rough enough that the
   # sweeper sees recent activity, cheap enough that it's not a

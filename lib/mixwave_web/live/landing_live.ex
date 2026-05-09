@@ -101,7 +101,7 @@ defmodule MixwaveWeb.LandingLive do
                 Secret chamber
               </h2>
               <p class="text-sm text-muted-foreground">
-                Spin up a private chamber. Share the link with whoever you want to play with — anyone with it can join, nobody else can find it. Closes if empty for 5 minutes.
+                Spin up a private chamber. Share the link with whoever you want to play with — anyone with it can join, nobody else can find it. Closes if empty for 30 minutes.
               </p>
               <div class="pt-2 text-sm font-medium text-foreground inline-flex items-center gap-1">
                 Create secret chamber
