@@ -97,14 +97,51 @@ const CHAMBER_PRESETS: Record<ChamberKind, ChamberPreset> = {
   echo: { decay: 0.3, wet: 0.05, delayWet: 0.4, delayTime: "8n", feedback: 0.5 },
 }
 
+// Tracks the chamber kind currently in effect. Engines that create
+// internal FX after the kind has been set check this so a node born
+// during anechoic mode comes up muted, not at its constructor wet.
+let currentChamberKind: ChamberKind = "room"
+
+// Registry of every "internal" FX node — instrument-baked effects
+// like the Electric guitar's chorus + reverb or the drums' cymbal
+// reverb. Anechoic chambers bypass them all (truly dry); other
+// kinds restore each node's original wet level.
+type InternalFx = {
+  wet: Tone.Param<"normalRange">
+  originalValue: number
+}
+const internalFxNodes: InternalFx[] = []
+
+/**
+ * Engines call this for every "always-on" effect they ship with —
+ * the chorus baked into Electric, the cymbal reverb under drums,
+ * etc. The current value of `node.wet` is captured as the
+ * original; when the chamber kind is non-anechoic we ramp back to
+ * that. Anechoic mode mutes all of them.
+ */
+function registerInternalFx(wetParam: Tone.Param<"normalRange">): void {
+  const originalValue = wetParam.value
+  internalFxNodes.push({ wet: wetParam, originalValue })
+  if (currentChamberKind === "anechoic") {
+    wetParam.value = 0
+  }
+}
+
 /**
  * Switches the master chamber FX to the chosen kind. Setting
  * `decay` or `preDelay` regenerates the convolution impulse —
  * happens in-place and is fast enough to be unnoticeable on
  * deliberate switches.
+ *
+ * Anechoic mode also mutes every registered instrument-internal
+ * FX node (Electric guitar's chorus + reverb, drums' cymbal
+ * reverb, etc.) so the signal path is genuinely dry. Switching
+ * back to any other kind ramps those nodes' wet levels to their
+ * originals.
  */
 export function setChamberKind(kind: ChamberKind) {
   getChamberBus()
+  currentChamberKind = kind
   const preset = CHAMBER_PRESETS[kind]
 
   if (chamberReverb) {
@@ -125,6 +162,14 @@ export function setChamberKind(kind: ChamberKind) {
       chamberDelay.feedback.value = preset.feedback
     }
     chamberDelay.wet.rampTo(preset.delayWet, 0.1)
+  }
+
+  // Bypass instrument-internal FX when anechoic so the signal
+  // path is genuinely dry, not "dry chamber + still-wet
+  // instrument character".
+  const anechoic = kind === "anechoic"
+  for (const { wet, originalValue } of internalFxNodes) {
+    wet.rampTo(anechoic ? 0 : originalValue, 0.1)
   }
 }
 
@@ -372,6 +417,8 @@ function getCymbalReverb(): Tone.Freeverb {
     dampening: 3000,
   }).connect(getChamberBus())
   cymbalReverb.wet.value = 0.5
+  // Bypassed entirely when chamber is anechoic.
+  registerInternalFx(cymbalReverb.wet)
   return cymbalReverb
 }
 
@@ -1188,6 +1235,10 @@ function makeGuitarElectric(): InstrumentEngine {
       envelope: { attack: 0.004, decay: 0.5, sustain: 0.4, release: 1.4 },
     })
     poly.chain(chorus, reverb, getChamberBus())
+    // Both bypass when chamber is anechoic so Electric falls back
+    // to a plain triangle synth in dry mode.
+    registerInternalFx(chorus.wet)
+    registerInternalFx(reverb.wet)
     poly.volume.value = -10
   }
 
