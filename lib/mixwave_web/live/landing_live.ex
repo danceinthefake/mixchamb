@@ -55,7 +55,7 @@ defmodule MixwaveWeb.LandingLive do
               Pick a chamber
             </h1>
             <p class="text-sm text-muted-foreground">
-              Two ways to play: jump into the public room or open a private one.
+              Two ways to play: jump into the public chamber or open a private one.
             </p>
           </div>
 
@@ -75,7 +75,7 @@ defmodule MixwaveWeb.LandingLive do
                 Chaos chamber
               </h2>
               <p class="text-sm text-muted-foreground">
-                Public always-on room. Anyone can wander in, anyone can leave. Sound is shared with everyone here right now — expect overlap, expect surprises.
+                Public always-on chamber. Anyone can wander in, anyone can leave. Sound is shared with everyone here right now — expect overlap, expect surprises.
               </p>
               <div class="pt-2 text-sm font-medium text-foreground inline-flex items-center gap-1">
                 Enter chaos

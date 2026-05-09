@@ -1,6 +1,6 @@
 defmodule Mixwave.Chambers.Chamber do
   @moduledoc """
-  A secret chamber — a link-only private room.
+  A secret chamber — a link-only private chamber.
 
   Created by an `Mixwave.Accounts.AnonymousUser`; identified by an
   unguessable `slug` that's also the URL segment users visit. The

@@ -1,7 +1,7 @@
 defmodule Mixwave.Chambers do
   @moduledoc """
-  The Chambers context — secret rooms identified by an unguessable
-  slug.
+  The Chambers context — secret chambers identified by an
+  unguessable slug.
 
   Each chamber gets a random URL token at creation; anyone with
   the resulting link can join. A chamber starts in a "grace"
@@ -74,7 +74,7 @@ defmodule Mixwave.Chambers do
           slug: @chaos_slug,
           title: "Chaos chamber",
           # "echo" picked deliberately — repeats stack up and the
-          # public room turns into a wash of overlapping sounds,
+          # public chamber turns into a wash of overlapping sounds,
           # which suits the "chaos" name.
           kind: "echo"
         })
