@@ -128,12 +128,22 @@ defmodule MixwaveWeb.ChamberLive do
 
   @impl true
   def handle_info(%Phoenix.Socket.Broadcast{event: "presence_diff"}, socket) do
+    presences = Presence.list(presence_topic(socket.assigns.chamber_slug))
+
     {:noreply,
-     assign(
-       socket,
-       :presences,
-       Presence.list(presence_topic(socket.assigns.chamber_slug))
-     )}
+     socket
+     |> assign(:presences, presences)
+     |> maybe_mark_active(presences)}
+  end
+
+  # Sent by the chamber's GenServer when it deletes itself because
+  # the 5-minute grace period elapsed without anyone but the
+  # creator joining.
+  def handle_info({:chamber_closed, _slug}, socket) do
+    {:noreply,
+     socket
+     |> put_flash(:info, "Chamber closed — nobody else joined within 5 minutes.")
+     |> push_navigate(to: ~p"/")}
   end
 
   @impl true
@@ -151,6 +161,33 @@ defmodule MixwaveWeb.ChamberLive do
   end
 
   defp presence_topic(slug) when is_binary(slug), do: "chamber:#{slug}:presence"
+
+  # Flips the chamber's `activated_at` from NULL to a timestamp
+  # the first time someone other than the creator is present.
+  # Idempotent: a no-op once the chamber is already active.
+  defp maybe_mark_active(socket, presences) do
+    chamber = socket.assigns.chamber
+
+    cond do
+      chamber.activated_at != nil ->
+        socket
+
+      non_creator_present?(presences, chamber) ->
+        case Chambers.mark_active(chamber) do
+          {:ok, updated} -> assign(socket, :chamber, updated)
+          {:error, _} -> socket
+        end
+
+      true ->
+        socket
+    end
+  end
+
+  defp non_creator_present?(presences, chamber) do
+    Enum.any?(presences, fn {user_id, _meta} ->
+      user_id != chamber.creator_user_id
+    end)
+  end
 
   ## Replay helpers
 

@@ -18,6 +18,10 @@ defmodule Mixwave.Studio.Chamber do
   use GenServer
 
   @max_recent 200
+  # Grace window during which the chamber must see a non-creator
+  # join. If `activated_at` is still NULL when this elapses, the
+  # GenServer deletes the chamber row and shuts itself down.
+  @grace_period_ms 5 * 60 * 1000
 
   ## Public API
 
@@ -77,6 +81,14 @@ defmodule Mixwave.Studio.Chamber do
 
   @impl true
   def init(state) do
+    # Schedule the grace-period check. If a non-creator joins
+    # before this fires, ChamberLive flips activated_at on the
+    # row; when the message arrives we re-read the row and only
+    # delete if it's still NULL.
+    if state.chamber_id do
+      Process.send_after(self(), :check_grace, @grace_period_ms)
+    end
+
     {:ok, Map.merge(state, %{events: [], count: 0})}
   end
 
@@ -100,5 +112,32 @@ defmodule Mixwave.Studio.Chamber do
       |> Enum.reverse()
 
     {:reply, events, state}
+  end
+
+  @impl true
+  def handle_info(:check_grace, %{chamber_id: chamber_id, slug: slug} = state) do
+    case Mixwave.Chambers.find_by_id(chamber_id) do
+      nil ->
+        # Already deleted from DB out-of-band. Just terminate.
+        {:stop, :normal, state}
+
+      %{activated_at: nil} = chamber ->
+        # Nobody but the creator showed up. Delete the row, tell
+        # any subscribed LV to redirect, then shut down.
+        Mixwave.Chambers.delete(chamber)
+
+        Phoenix.PubSub.broadcast(
+          Mixwave.PubSub,
+          Mixwave.Studio.topic(slug),
+          {:chamber_closed, slug}
+        )
+
+        {:stop, :normal, state}
+
+      _activated ->
+        # A non-creator joined within the grace window — chamber
+        # stays alive. Nothing more to schedule.
+        {:noreply, state}
+    end
   end
 end
