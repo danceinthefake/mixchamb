@@ -1,0 +1,114 @@
+# Dependabot config for mixwave.
+#
+# Four ecosystems live in this repo:
+#   - mix     (Elixir / Phoenix backend)
+#   - npm     (Vue / TS frontend, picked up via pnpm-lock.yaml)
+#   - github-actions (the CI workflow)
+#   - docker  (the Fly deploy image)
+#
+# Updates land as PRs once a week so we don't drown in noise.
+# Related packages are grouped (Phoenix family, Vue family,
+# Oxc tooling) so each ecosystem usually produces one PR per
+# week instead of a dozen.
+
+version: 2
+
+updates:
+  # Elixir + Phoenix
+  - package-ecosystem: "mix"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 5
+    labels:
+      - "deps"
+      - "elixir"
+    commit-message:
+      prefix: "chore(deps)"
+      include: "scope"
+    groups:
+      phoenix:
+        patterns:
+          - "phoenix*"
+          - "ecto*"
+          - "postgrex"
+          - "bandit"
+          - "plug*"
+      live-view:
+        patterns:
+          - "live_vue"
+          - "phoenix_vite"
+          - "phoenix_live_view"
+          - "phoenix_live_dashboard"
+      observability:
+        patterns:
+          - "telemetry*"
+
+  # JS / TS — pnpm-lock.yaml is the source of truth, but
+  # Dependabot reads via the npm registry shape so the
+  # ecosystem stays "npm".
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 5
+    labels:
+      - "deps"
+      - "javascript"
+    commit-message:
+      prefix: "chore(deps)"
+      include: "scope"
+    groups:
+      vue:
+        patterns:
+          - "vue"
+          - "vue-tsc"
+          - "@vue/*"
+          - "@vitejs/*"
+          - "vite"
+          - "vitest"
+          - "@vitest/*"
+          - "happy-dom"
+      oxc:
+        patterns:
+          - "oxlint"
+          - "oxfmt"
+          - "oxc-*"
+      tailwind:
+        patterns:
+          - "tailwindcss"
+          - "@tailwindcss/*"
+          - "tw-animate-css"
+      tone:
+        patterns:
+          - "tone"
+
+  # GitHub Actions versions in the workflow files.
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 3
+    labels:
+      - "deps"
+      - "ci"
+    commit-message:
+      prefix: "chore(ci)"
+      include: "scope"
+
+  # Base images in Dockerfile (hexpm/elixir + debian).
+  - package-ecosystem: "docker"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 2
+    labels:
+      - "deps"
+      - "docker"
+    commit-message:
+      prefix: "chore(deploy)"
+      include: "scope"
