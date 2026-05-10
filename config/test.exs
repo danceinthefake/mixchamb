@@ -27,6 +27,13 @@ config :logger, level: :warning
 # client; AdminAuth refuses requests when no password is set.
 config :mixwave, admin_user: "admin", admin_password: "test"
 
+# Tests render HEEX through the same root layout as dev/prod. The
+# layout's PhoenixVite.Components.assets call decides between
+# Vite dev paths and the prod manifest by inspecting :live_vue's
+# :vite_host. Setting it here keeps tests in dev-paths mode so
+# they don't try to read a non-existent manifest.
+config :live_vue, vite_host: "http://localhost:5173"
+
 # Initialize plugs at runtime for faster test compilation
 config :phoenix, :plug_init_mode, :runtime
 
