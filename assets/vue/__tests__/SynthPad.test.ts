@@ -1,14 +1,12 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
 import { mount } from "@vue/test-utils"
 
-const { playMock, stopAllMock, ensureStartedMock, pushEventMock } = vi.hoisted(
-  () => ({
-    playMock: vi.fn(),
-    stopAllMock: vi.fn(),
-    ensureStartedMock: vi.fn().mockResolvedValue(undefined),
-    pushEventMock: vi.fn(),
-  }),
-)
+const { playMock, stopAllMock, ensureStartedMock, pushEventMock } = vi.hoisted(() => ({
+  playMock: vi.fn(),
+  stopAllMock: vi.fn(),
+  ensureStartedMock: vi.fn().mockResolvedValue(undefined),
+  pushEventMock: vi.fn(),
+}))
 
 vi.mock("@/lib/audio", () => ({
   ensureStarted: ensureStartedMock,

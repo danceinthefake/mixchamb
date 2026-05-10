@@ -1,14 +1,13 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
 import { mount } from "@vue/test-utils"
 
-const { playMock, stopAllMock, ensureStartedMock, preloadMock, pushEventMock } =
-  vi.hoisted(() => ({
-    playMock: vi.fn(),
-    stopAllMock: vi.fn(),
-    ensureStartedMock: vi.fn().mockResolvedValue(undefined),
-    preloadMock: vi.fn(),
-    pushEventMock: vi.fn(),
-  }))
+const { playMock, stopAllMock, ensureStartedMock, preloadMock, pushEventMock } = vi.hoisted(() => ({
+  playMock: vi.fn(),
+  stopAllMock: vi.fn(),
+  ensureStartedMock: vi.fn().mockResolvedValue(undefined),
+  preloadMock: vi.fn(),
+  pushEventMock: vi.fn(),
+}))
 
 vi.mock("@/lib/audio", () => ({
   ensureStarted: ensureStartedMock,
@@ -66,9 +65,7 @@ describe("SulingPad", () => {
   it("style switch stops the previous engine and preloads the new one", async () => {
     const wrapper = mount(SulingPad, { props: { remoteHit: null } })
 
-    const bamboo = wrapper
-      .findAll("button")
-      .find((b) => b.text().trim() === "Bamboo")!
+    const bamboo = wrapper.findAll("button").find((b) => b.text().trim() === "Bamboo")!
 
     await bamboo.trigger("click")
 

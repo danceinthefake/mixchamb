@@ -62,21 +62,51 @@ type BlackKey = {
 // 1 closing C = 38 keys, mapped row-by-row across the keyboard.
 const WHITE_KEY_SHORTCUTS: ReadonlyArray<string> = [
   // Lower octave (7) — z-row
-  "z", "x", "c", "v", "b", "n", "m",
+  "z",
+  "x",
+  "c",
+  "v",
+  "b",
+  "n",
+  "m",
   // Middle octave (7) — q-row
-  "q", "w", "e", "r", "t", "y", "u",
+  "q",
+  "w",
+  "e",
+  "r",
+  "t",
+  "y",
+  "u",
   // Upper octave (7) — right-side mix (i/o/p brackets backslash apostrophe)
-  "i", "o", "p", "[", "]", "\\", "'",
+  "i",
+  "o",
+  "p",
+  "[",
+  "]",
+  "\\",
+  "'",
   // Closing high C
   "/",
 ]
 const BLACK_KEY_SHORTCUTS: ReadonlyArray<string> = [
   // Lower octave blacks — home-row letters between z-row whites
-  "s", "d", "g", "h", "j",
+  "s",
+  "d",
+  "g",
+  "h",
+  "j",
   // Middle octave blacks — number-row between q-row whites
-  "2", "3", "5", "6", "7",
+  "2",
+  "3",
+  "5",
+  "6",
+  "7",
   // Upper octave blacks — right-side number row + ;
-  "8", "9", "-", "=", ";",
+  "8",
+  "9",
+  "-",
+  "=",
+  ";",
 ]
 
 // 22 white keys: 7 naturals × 3 octaves + the closing C of the next
@@ -221,7 +251,7 @@ onUnmounted(() => {
             'px-3 py-1 text-xs rounded-md border transition-colors',
             style === s.id
               ? 'bg-accent-keyboard text-background border-accent-keyboard'
-              : 'bg-card hover:bg-accent text-muted-foreground border-input'
+              : 'bg-card hover:bg-accent text-muted-foreground border-input',
           ]"
         >
           {{ s.label }}
@@ -259,15 +289,19 @@ onUnmounted(() => {
       <!-- Edge fade overlays. pointer-events-none so they never
            intercept taps on the keys underneath. Hidden on lg+
            where the whole keyboard usually fits without scroll. -->
-      <div class="pointer-events-none absolute inset-y-0 left-0 w-6 z-10 bg-gradient-to-r from-background to-transparent lg:hidden"></div>
-      <div class="pointer-events-none absolute inset-y-0 right-0 w-6 z-10 bg-gradient-to-l from-background to-transparent lg:hidden"></div>
+      <div
+        class="pointer-events-none absolute inset-y-0 left-0 w-6 z-10 bg-gradient-to-r from-background to-transparent lg:hidden"
+      ></div>
+      <div
+        class="pointer-events-none absolute inset-y-0 right-0 w-6 z-10 bg-gradient-to-l from-background to-transparent lg:hidden"
+      ></div>
 
       <div class="overflow-x-auto px-2">
         <!-- min-width sized so each white key is at least ~50 px on
              mobile (1100 / 22 ≈ 50). Black keys overlay at w-9 = 36 px;
              both are much friendlier to thumbs than the previous
              720 / 28 px sizing. -->
-        <div class="relative h-44 select-none mx-auto" style="min-width: 1100px;">
+        <div class="relative h-44 select-none mx-auto" style="min-width: 1100px">
           <!-- white keys -->
           <div class="absolute inset-0 flex">
             <button
@@ -280,7 +314,7 @@ onUnmounted(() => {
                   ? 'bg-accent-keyboard text-background border-accent-keyboard glow-keyboard'
                   : remoteFlashingNote === key.note
                     ? 'bg-orange-100 text-orange-900 border-orange-400'
-                    : 'bg-white text-slate-700 hover:bg-slate-100 active:bg-slate-200'
+                    : 'bg-white text-slate-700 hover:bg-slate-100 active:bg-slate-200',
               ]"
             >
               <span class="text-[11px] text-slate-400 leading-none mb-1">
@@ -289,7 +323,8 @@ onUnmounted(() => {
               <kbd
                 v-if="key.key"
                 class="hidden sm:inline-block text-[10px] px-1 py-0.5 rounded bg-slate-200 text-slate-600 font-mono"
-              >{{ key.key }}</kbd>
+                >{{ key.key }}</kbd
+              >
               <span v-else class="hidden sm:block text-[10px] h-4">&nbsp;</span>
             </button>
           </div>
@@ -307,13 +342,14 @@ onUnmounted(() => {
                 ? 'bg-accent-keyboard glow-keyboard'
                 : remoteFlashingNote === bk.note
                   ? 'bg-orange-500'
-                  : 'bg-slate-900 text-slate-200 hover:bg-slate-800 active:bg-slate-700'
+                  : 'bg-slate-900 text-slate-200 hover:bg-slate-800 active:bg-slate-700',
             ]"
           >
             <kbd
               v-if="bk.key"
               class="hidden sm:inline-block mt-1 text-[9px] px-1 rounded bg-slate-700 text-slate-300 font-mono"
-            >{{ bk.key }}</kbd>
+              >{{ bk.key }}</kbd
+            >
           </button>
         </div>
       </div>

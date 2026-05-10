@@ -40,18 +40,18 @@
 // hear *the sender's* style — coherent kit sound for everyone in
 // the jam.
 
-import { onMounted, onUnmounted, ref, watch } from "vue";
-import { useLiveVue } from "live_vue";
-import { ensureStarted, play, stopAll, type DrumName } from "@/lib/audio";
-import { FLASH_MS, REMOTE_FLASH_DELTA_MS } from "@/lib/motion";
+import { onMounted, onUnmounted, ref, watch } from "vue"
+import { useLiveVue } from "live_vue"
+import { ensureStarted, play, stopAll, type DrumName } from "@/lib/audio"
+import { FLASH_MS, REMOTE_FLASH_DELTA_MS } from "@/lib/motion"
 
 const props = defineProps<{
-  remoteHit: { instrument: string; note: string; t: number } | null;
-}>();
+  remoteHit: { instrument: string; note: string; t: number } | null
+}>()
 
-const live = useLiveVue();
+const live = useLiveVue()
 
-type DrumStyle = "synth" | "808" | "acoustic";
+type DrumStyle = "synth" | "808" | "acoustic"
 // Each visible pad has its own `id` (so two crashes don't flash
 // each other on local taps) and a `drum` (the actual sound to
 // trigger; null for purely-decorative pieces like the throne or
@@ -59,22 +59,22 @@ type DrumStyle = "synth" | "808" | "acoustic";
 // kit container, painting each piece where it would sit on a
 // real kit.
 type Pad = {
-  id: string;
-  drum: DrumName | null;
-  label: string;
-  key: string | null;
-  pos: { left: string; top: string; width: string; height: string };
-  shape: "round" | "square" | "oval";
-};
-type StyleOption = { id: DrumStyle; label: string };
+  id: string
+  drum: DrumName | null
+  label: string
+  key: string | null
+  pos: { left: string; top: string; width: string; height: string }
+  shape: "round" | "square" | "oval"
+}
+type StyleOption = { id: DrumStyle; label: string }
 
 const styles: StyleOption[] = [
   { id: "synth", label: "Synth" },
   { id: "808", label: "808" },
   { id: "acoustic", label: "Acoustic" },
-];
+]
 
-const style = ref<DrumStyle>("synth");
+const style = ref<DrumStyle>("synth")
 
 const pads: Pad[] = [
   // Top row: outer crashes + mounted toms + ride.
@@ -186,31 +186,31 @@ const pads: Pad[] = [
     pos: { left: "42%", top: "90%", width: "16%", height: "8%" },
     shape: "oval",
   },
-];
+]
 
 // `flashing` is keyed by pad id (so tapping Crash 1 doesn't ring
 // both crashes); `remoteFlashing` is keyed by drum name (the
 // network sends only the drum, so both pads of a doubled piece
 // flash on a remote hit).
-const flashing = ref<string | null>(null);
-const remoteFlashing = ref<DrumName | null>(null);
-let flashTimer: number | null = null;
-let remoteFlashTimer: number | null = null;
+const flashing = ref<string | null>(null)
+const remoteFlashing = ref<DrumName | null>(null)
+let flashTimer: number | null = null
+let remoteFlashTimer: number | null = null
 
 function flash(padId: string) {
-  flashing.value = padId;
-  if (flashTimer !== null) window.clearTimeout(flashTimer);
-  flashTimer = window.setTimeout(() => (flashing.value = null), FLASH_MS.tight);
+  flashing.value = padId
+  if (flashTimer !== null) window.clearTimeout(flashTimer)
+  flashTimer = window.setTimeout(() => (flashing.value = null), FLASH_MS.tight)
 }
 
 function flashRemote(name: DrumName) {
-  remoteFlashing.value = name;
-  if (remoteFlashTimer !== null) window.clearTimeout(remoteFlashTimer);
+  remoteFlashing.value = name
+  if (remoteFlashTimer !== null) window.clearTimeout(remoteFlashTimer)
   // Slightly longer than local so it's visible even after a short network hop.
   remoteFlashTimer = window.setTimeout(
     () => (remoteFlashing.value = null),
     FLASH_MS.tight + REMOTE_FLASH_DELTA_MS,
-  );
+  )
 }
 
 const drumNames = new Set<DrumName>([
@@ -224,68 +224,66 @@ const drumNames = new Set<DrumName>([
   "tom_high",
   "tom_mid",
   "tom_floor",
-]);
+])
 
 watch(
   () => props.remoteHit,
   (hit) => {
-    if (!hit || hit.instrument !== "drums") return;
-    if (drumNames.has(hit.note as DrumName)) flashRemote(hit.note as DrumName);
-  }
-);
+    if (!hit || hit.instrument !== "drums") return
+    if (drumNames.has(hit.note as DrumName)) flashRemote(hit.note as DrumName)
+  },
+)
 
 async function hit(pad: Pad) {
   // Decorative pads (throne, hi-hat foot pedal) have no drum
   // attached and don't make sound when tapped.
-  if (!pad.drum) return;
-  await ensureStarted();
-  play("drums", style.value, pad.drum);
-  flash(pad.id);
+  if (!pad.drum) return
+  await ensureStarted()
+  play("drums", style.value, pad.drum)
+  flash(pad.id)
   live.pushEvent("note", {
     instrument: "drums",
     style: style.value,
     note: pad.drum,
-  });
+  })
 }
 
 function selectStyle(id: DrumStyle) {
-  if (id === style.value) return;
+  if (id === style.value) return
   // Cut any tail still ringing on the previous flavor before switching.
-  stopAll("drums", style.value);
-  style.value = id;
+  stopAll("drums", style.value)
+  style.value = id
 }
 
 function onKey(event: KeyboardEvent) {
-  if (event.repeat) return;
-  const pad = pads.find((p) => p.key === event.key);
+  if (event.repeat) return
+  const pad = pads.find((p) => p.key === event.key)
   if (pad) {
-    event.preventDefault();
-    hit(pad);
+    event.preventDefault()
+    hit(pad)
   }
 }
 
-let controller: AbortController | null = null;
+let controller: AbortController | null = null
 
 onMounted(() => {
-  controller = new AbortController();
-  window.addEventListener("keydown", onKey, { signal: controller.signal });
-});
+  controller = new AbortController()
+  window.addEventListener("keydown", onKey, { signal: controller.signal })
+})
 
 onUnmounted(() => {
-  controller?.abort();
-  if (flashTimer !== null) window.clearTimeout(flashTimer);
-  if (remoteFlashTimer !== null) window.clearTimeout(remoteFlashTimer);
-  stopAll("drums", style.value);
-});
+  controller?.abort()
+  if (flashTimer !== null) window.clearTimeout(flashTimer)
+  if (remoteFlashTimer !== null) window.clearTimeout(remoteFlashTimer)
+  stopAll("drums", style.value)
+})
 </script>
 
 <template>
   <div class="space-y-4">
     <!-- Style selector -->
     <div class="flex items-center gap-1">
-      <span class="text-xs uppercase tracking-wider text-muted-foreground mr-2"
-        >Style</span
-      >
+      <span class="text-xs uppercase tracking-wider text-muted-foreground mr-2">Style</span>
       <button
         v-for="s in styles"
         :key="s.id"
@@ -307,10 +305,7 @@ onUnmounted(() => {
          no wasted space now that there's no bass drum at the
          centre and hi-hat/snare/floor-tom/crash-2 collapse onto a
          single mid row. -->
-    <div
-      class="relative w-full mx-auto"
-      style="max-width: 540px; aspect-ratio: 5 / 3"
-    >
+    <div class="relative w-full mx-auto" style="max-width: 540px; aspect-ratio: 5 / 3">
       <button
         v-for="p in pads"
         :key="p.id"
@@ -324,18 +319,12 @@ onUnmounted(() => {
         }"
         :class="[
           'absolute border flex flex-col items-center justify-center gap-1 select-none transition-all',
-          p.shape === 'round'
-            ? 'rounded-full'
-            : p.shape === 'oval'
-            ? 'rounded-full'
-            : 'rounded-lg',
+          p.shape === 'round' ? 'rounded-full' : p.shape === 'oval' ? 'rounded-full' : 'rounded-lg',
           p.drum
             ? 'bg-card hover:bg-accent active:scale-95 cursor-pointer'
             : 'bg-muted/40 text-muted-foreground/60 cursor-default',
           flashing === p.id && 'ring-4 ring-accent-drums scale-95 glow-drums',
-          remoteFlashing === p.drum &&
-            flashing !== p.id &&
-            'ring-4 ring-orange-400',
+          remoteFlashing === p.drum && flashing !== p.id && 'ring-4 ring-orange-400',
         ]"
       >
         <div class="text-xs font-medium">{{ p.label }}</div>

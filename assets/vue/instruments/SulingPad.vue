@@ -134,7 +134,7 @@ onUnmounted(() => {
           'px-3 py-1 text-xs rounded-md border transition-colors',
           style === s.id
             ? 'bg-accent-suling text-background border-accent-suling'
-            : 'bg-card hover:bg-accent text-muted-foreground border-input'
+            : 'bg-card hover:bg-accent text-muted-foreground border-input',
         ]"
       >
         {{ s.label }}
@@ -147,11 +147,15 @@ onUnmounted(() => {
          button stays large enough to thumb on mobile (≥50 px). -->
     <div class="relative -mx-2">
       <!-- Scroll edge fades on small screens, like KeyboardPad. -->
-      <div class="pointer-events-none absolute inset-y-0 left-0 w-6 z-10 bg-gradient-to-r from-background to-transparent sm:hidden"></div>
-      <div class="pointer-events-none absolute inset-y-0 right-0 w-6 z-10 bg-gradient-to-l from-background to-transparent sm:hidden"></div>
+      <div
+        class="pointer-events-none absolute inset-y-0 left-0 w-6 z-10 bg-gradient-to-r from-background to-transparent sm:hidden"
+      ></div>
+      <div
+        class="pointer-events-none absolute inset-y-0 right-0 w-6 z-10 bg-gradient-to-l from-background to-transparent sm:hidden"
+      ></div>
 
       <div class="overflow-x-auto px-2">
-        <div class="grid grid-cols-12 gap-1.5 sm:gap-2" style="min-width: 720px;">
+        <div class="grid grid-cols-12 gap-1.5 sm:gap-2" style="min-width: 720px">
           <button
             v-for="n in notes"
             :key="n.note"
@@ -160,11 +164,13 @@ onUnmounted(() => {
               'rounded-md border bg-card flex flex-col items-center justify-center gap-1 py-6 select-none transition-all active:scale-95 hover:bg-accent touch-manipulation',
               n.label.includes('#') && 'bg-muted',
               flashing === n.note && 'ring-2 ring-accent-suling scale-95 glow-suling',
-              remoteFlashing === n.note && flashing !== n.note && 'ring-2 ring-orange-400'
+              remoteFlashing === n.note && flashing !== n.note && 'ring-2 ring-orange-400',
             ]"
           >
             <div class="text-sm font-semibold">{{ n.label }}</div>
-            <kbd class="hidden sm:inline-block text-[10px] px-1 py-0.5 rounded bg-muted text-muted-foreground font-mono">
+            <kbd
+              class="hidden sm:inline-block text-[10px] px-1 py-0.5 rounded bg-muted text-muted-foreground font-mono"
+            >
               {{ n.key }}
             </kbd>
           </button>

@@ -10,7 +10,7 @@ declare module "vue" {
 
 export default createLiveVue({
   // name will be passed as-is in v-component of the .vue HEEX component
-  resolve: name => {
+  resolve: (name) => {
     // we're importing from ../../lib to allow collocating Vue files with LiveView files
     // eager: true disables lazy loading - all these components will be part of the app.js bundle
     // more: https://vite.dev/guide/features.html#glob-import

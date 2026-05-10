@@ -211,7 +211,7 @@ onUnmounted(() => {
             'px-3 py-1 text-xs rounded-md border transition-colors',
             style === s.id
               ? 'bg-accent-bass text-background border-accent-bass'
-              : 'bg-card hover:bg-accent text-muted-foreground border-input'
+              : 'bg-card hover:bg-accent text-muted-foreground border-input',
           ]"
         >
           {{ s.label }}
@@ -244,61 +244,71 @@ onUnmounted(() => {
          get a darker treatment to read like the nut. Edge fades
          hint at horizontal scroll on small screens. -->
     <div class="relative -mx-2">
-      <div class="pointer-events-none absolute inset-y-0 left-0 w-6 z-10 bg-gradient-to-r from-background to-transparent sm:hidden"></div>
-      <div class="pointer-events-none absolute inset-y-0 right-0 w-6 z-10 bg-gradient-to-l from-background to-transparent sm:hidden"></div>
+      <div
+        class="pointer-events-none absolute inset-y-0 left-0 w-6 z-10 bg-gradient-to-r from-background to-transparent sm:hidden"
+      ></div>
+      <div
+        class="pointer-events-none absolute inset-y-0 right-0 w-6 z-10 bg-gradient-to-l from-background to-transparent sm:hidden"
+      ></div>
       <div class="overflow-x-auto px-2">
-      <div class="mx-auto" style="min-width: 560px; max-width: 760px;">
-        <!-- Fret-number header -->
-        <div class="grid grid-cols-[2.5rem_repeat(5,1fr)] gap-1 mb-1">
-          <div></div>
-          <div
-            v-for="n in FRET_COUNT"
-            :key="n"
-            class="text-center text-[10px] uppercase tracking-wider text-muted-foreground"
-          >
-            {{ n - 1 === 0 ? "Open" : n - 1 }}
-          </div>
-        </div>
-        <div class="rounded-md overflow-hidden border bg-amber-950/20">
-          <div
-            v-for="s in strings"
-            :key="s.label"
-            class="grid grid-cols-[2.5rem_repeat(5,1fr)] gap-px bg-amber-900/40"
-          >
-            <div class="flex items-center justify-center text-xs font-bold text-amber-200/90 bg-amber-950/60">
-              {{ s.label }}
-            </div>
-            <button
-              v-for="(f, fi) in s.frets"
-              :key="f.note"
-              @pointerdown.prevent="hit(f.note)"
-              :class="[
-                'relative h-12 flex flex-col items-center justify-center select-none transition-all active:scale-95',
-                fi === 0 ? 'bg-amber-950/80' : 'bg-amber-900/30 hover:bg-amber-900/50',
-                flashing === f.note && 'ring-2 ring-accent-bass ring-inset bg-accent-bass/20 glow-bass',
-                remoteFlashing === f.note && flashing !== f.note && 'ring-2 ring-orange-400 ring-inset'
-              ]"
+        <div class="mx-auto" style="min-width: 560px; max-width: 760px">
+          <!-- Fret-number header -->
+          <div class="grid grid-cols-[2.5rem_repeat(5,1fr)] gap-1 mb-1">
+            <div></div>
+            <div
+              v-for="n in FRET_COUNT"
+              :key="n"
+              class="text-center text-[10px] uppercase tracking-wider text-muted-foreground"
             >
-              <span class="text-sm font-medium text-amber-50">{{ f.label }}</span>
-              <kbd
-                v-if="f.key"
-                class="hidden sm:inline-block text-[9px] mt-0.5 px-1 rounded bg-amber-950 text-amber-200/80 font-mono"
-              >{{ f.key }}</kbd>
-            </button>
+              {{ n - 1 === 0 ? "Open" : n - 1 }}
+            </div>
+          </div>
+          <div class="rounded-md overflow-hidden border bg-amber-950/20">
+            <div
+              v-for="s in strings"
+              :key="s.label"
+              class="grid grid-cols-[2.5rem_repeat(5,1fr)] gap-px bg-amber-900/40"
+            >
+              <div
+                class="flex items-center justify-center text-xs font-bold text-amber-200/90 bg-amber-950/60"
+              >
+                {{ s.label }}
+              </div>
+              <button
+                v-for="(f, fi) in s.frets"
+                :key="f.note"
+                @pointerdown.prevent="hit(f.note)"
+                :class="[
+                  'relative h-12 flex flex-col items-center justify-center select-none transition-all active:scale-95',
+                  fi === 0 ? 'bg-amber-950/80' : 'bg-amber-900/30 hover:bg-amber-900/50',
+                  flashing === f.note &&
+                    'ring-2 ring-accent-bass ring-inset bg-accent-bass/20 glow-bass',
+                  remoteFlashing === f.note &&
+                    flashing !== f.note &&
+                    'ring-2 ring-orange-400 ring-inset',
+                ]"
+              >
+                <span class="text-sm font-medium text-amber-50">{{ f.label }}</span>
+                <kbd
+                  v-if="f.key"
+                  class="hidden sm:inline-block text-[9px] mt-0.5 px-1 rounded bg-amber-950 text-amber-200/80 font-mono"
+                  >{{ f.key }}</kbd
+                >
+              </button>
+            </div>
+          </div>
+          <!-- Position-marker dot under fret 3 (typical bass inlay) -->
+          <div class="grid grid-cols-[2.5rem_repeat(5,1fr)] gap-1 mt-1">
+            <div></div>
+            <div></div>
+            <div></div>
+            <div></div>
+            <div class="flex justify-center">
+              <span class="size-1.5 rounded-full bg-amber-200/40"></span>
+            </div>
+            <div></div>
           </div>
         </div>
-        <!-- Position-marker dot under fret 3 (typical bass inlay) -->
-        <div class="grid grid-cols-[2.5rem_repeat(5,1fr)] gap-1 mt-1">
-          <div></div>
-          <div></div>
-          <div></div>
-          <div></div>
-          <div class="flex justify-center">
-            <span class="size-1.5 rounded-full bg-amber-200/40"></span>
-          </div>
-          <div></div>
-        </div>
-      </div>
       </div>
     </div>
   </div>

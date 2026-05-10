@@ -1,13 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
 import { mount } from "@vue/test-utils"
 
-const {
-  playMock,
-  stopAllMock,
-  preloadMock,
-  ensureStartedMock,
-  pushEventMock,
-} = vi.hoisted(() => ({
+const { playMock, stopAllMock, preloadMock, ensureStartedMock, pushEventMock } = vi.hoisted(() => ({
   playMock: vi.fn(),
   stopAllMock: vi.fn(),
   preloadMock: vi.fn(),
@@ -113,13 +107,7 @@ describe("GuitarPad", () => {
       .find((b) => b.find("div").exists() && b.find("div").text().trim() === "C")!
     await c.trigger("pointerdown")
 
-    expect(playMock).toHaveBeenLastCalledWith(
-      "guitar",
-      "synth",
-      "C",
-      1,
-      expect.any(Object),
-    )
+    expect(playMock).toHaveBeenLastCalledWith("guitar", "synth", "C", 1, expect.any(Object))
   })
 
   it("switching style stops the previous engine and preloads the new one", async () => {

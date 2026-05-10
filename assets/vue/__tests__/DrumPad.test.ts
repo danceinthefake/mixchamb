@@ -1,14 +1,12 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
 import { mount } from "@vue/test-utils"
 
-const { playMock, stopAllMock, ensureStartedMock, pushEventMock } = vi.hoisted(
-  () => ({
-    playMock: vi.fn(),
-    stopAllMock: vi.fn(),
-    ensureStartedMock: vi.fn().mockResolvedValue(undefined),
-    pushEventMock: vi.fn(),
-  }),
-)
+const { playMock, stopAllMock, ensureStartedMock, pushEventMock } = vi.hoisted(() => ({
+  playMock: vi.fn(),
+  stopAllMock: vi.fn(),
+  ensureStartedMock: vi.fn().mockResolvedValue(undefined),
+  pushEventMock: vi.fn(),
+}))
 
 vi.mock("@/lib/audio", () => ({
   ensureStarted: ensureStartedMock,
@@ -42,9 +40,7 @@ describe("DrumPad", () => {
   it("hitting Snare plays drums/<style>/snare and pushes the note", async () => {
     const wrapper = mount(DrumPad, { props: { remoteHit: null } })
 
-    const snare = wrapper
-      .findAll("button")
-      .find((b) => b.text().includes("Snare"))!
+    const snare = wrapper.findAll("button").find((b) => b.text().includes("Snare"))!
 
     await snare.trigger("pointerdown")
 
@@ -59,9 +55,7 @@ describe("DrumPad", () => {
   it("the throne is decorative — clicking it doesn't trigger a play", async () => {
     const wrapper = mount(DrumPad, { props: { remoteHit: null } })
 
-    const throne = wrapper
-      .findAll("button")
-      .find((b) => b.text().includes("Throne"))!
+    const throne = wrapper.findAll("button").find((b) => b.text().includes("Throne"))!
 
     await throne.trigger("pointerdown")
 
@@ -78,18 +72,14 @@ describe("DrumPad", () => {
     await bassL.trigger("pointerdown")
     await bassR.trigger("pointerdown")
 
-    const kickHits = playMock.mock.calls.filter(
-      ([, , drum]) => drum === "kick",
-    )
+    const kickHits = playMock.mock.calls.filter(([, , drum]) => drum === "kick")
     expect(kickHits.length).toBe(2)
   })
 
   it("style switch cuts the previous flavor's tail", async () => {
     const wrapper = mount(DrumPad, { props: { remoteHit: null } })
 
-    const acoustic = wrapper
-      .findAll("button")
-      .find((b) => b.text().trim() === "Acoustic")!
+    const acoustic = wrapper.findAll("button").find((b) => b.text().trim() === "Acoustic")!
 
     await acoustic.trigger("click")
 

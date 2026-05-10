@@ -2,13 +2,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest"
 import { mount, flushPromises } from "@vue/test-utils"
 import { nextTick } from "vue"
 
-const {
-  playMock,
-  stopAllMock,
-  preloadMock,
-  ensureStartedMock,
-  pushEventMock,
-} = vi.hoisted(() => ({
+const { playMock, stopAllMock, preloadMock, ensureStartedMock, pushEventMock } = vi.hoisted(() => ({
   playMock: vi.fn(),
   stopAllMock: vi.fn(),
   preloadMock: vi.fn(),
@@ -56,9 +50,7 @@ describe("KeyboardPad", () => {
 
     // Find a white key whose label matches a known pitch+octave the
     // default window contains. C4 is in C3..C6.
-    const c4 = wrapper
-      .findAll("button")
-      .find((b) => b.text().includes("C4"))
+    const c4 = wrapper.findAll("button").find((b) => b.text().includes("C4"))
 
     expect(c4).toBeDefined()
     await c4!.trigger("pointerdown")

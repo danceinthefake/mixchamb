@@ -5,14 +5,12 @@ import { mount } from "@vue/test-utils"
 // run, so local variables aren't yet defined when the factory
 // executes. vi.hoisted lets us share spies between the factory
 // and the test body without that race.
-const { playMock, stopAllMock, ensureStartedMock, pushEventMock } = vi.hoisted(
-  () => ({
-    playMock: vi.fn(),
-    stopAllMock: vi.fn(),
-    ensureStartedMock: vi.fn().mockResolvedValue(undefined),
-    pushEventMock: vi.fn(),
-  }),
-)
+const { playMock, stopAllMock, ensureStartedMock, pushEventMock } = vi.hoisted(() => ({
+  playMock: vi.fn(),
+  stopAllMock: vi.fn(),
+  ensureStartedMock: vi.fn().mockResolvedValue(undefined),
+  pushEventMock: vi.fn(),
+}))
 
 vi.mock("@/lib/audio", () => ({
   ensureStarted: ensureStartedMock,
@@ -49,9 +47,7 @@ describe("KendangPad", () => {
 
   it("clicking a pad triggers play() with kendang/<style>/<sound>", async () => {
     const wrapper = mount(KendangPad, { props: { remoteHit: null } })
-    const dang = wrapper
-      .findAll("button")
-      .find((b) => b.text().includes("Dang"))!
+    const dang = wrapper.findAll("button").find((b) => b.text().includes("Dang"))!
 
     await dang.trigger("pointerdown")
 
@@ -61,9 +57,7 @@ describe("KendangPad", () => {
 
   it("clicking a pad pushes a 'note' LV event with the matching payload", async () => {
     const wrapper = mount(KendangPad, { props: { remoteHit: null } })
-    const tut = wrapper
-      .findAll("button")
-      .find((b) => b.text().includes("Tut"))!
+    const tut = wrapper.findAll("button").find((b) => b.text().includes("Tut"))!
 
     await tut.trigger("pointerdown")
 
@@ -77,18 +71,14 @@ describe("KendangPad", () => {
   it("switching style stops the previous engine and changes the active flavor", async () => {
     const wrapper = mount(KendangPad, { props: { remoteHit: null } })
 
-    const wood = wrapper
-      .findAll("button")
-      .find((b) => b.text().trim() === "Wood")!
+    const wood = wrapper.findAll("button").find((b) => b.text().trim() === "Wood")!
 
     await wood.trigger("click")
 
     expect(stopAllMock).toHaveBeenCalledWith("kendang", "synth")
 
     // Subsequent pad hits should use the new style.
-    const dang = wrapper
-      .findAll("button")
-      .find((b) => b.text().includes("Dang"))!
+    const dang = wrapper.findAll("button").find((b) => b.text().includes("Dang"))!
     await dang.trigger("pointerdown")
 
     expect(playMock).toHaveBeenLastCalledWith("kendang", "wood", "dang")
