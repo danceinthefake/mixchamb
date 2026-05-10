@@ -70,8 +70,16 @@ jobs:
       - name: Format check
         run: mix format --check-formatted
 
-      - name: Run tests
-        run: mix test
+      - name: Run tests + coverage
+        run: mix coveralls.json
+
+      - name: Upload Elixir coverage report
+        uses: actions/upload-artifact@v4
+        with:
+          name: elixir-coverage
+          path: cover/excoveralls.json
+          if-no-files-found: error
+          retention-days: 7
 
   vue:
     name: Vue / TS tests
@@ -102,5 +110,111 @@ jobs:
       - name: Format check (oxfmt)
         run: pnpm format:check
 
-      - name: Run vitest
-        run: pnpm test
+      - name: Run vitest + coverage
+        run: pnpm test:coverage
+
+      - name: Upload Vue coverage report
+        uses: actions/upload-artifact@v4
+        with:
+          name: vue-coverage
+          path: coverage/coverage-summary.json
+          if-no-files-found: error
+          retention-days: 7
+
+  badges:
+    name: Update coverage badges
+    needs: [elixir, vue]
+    runs-on: ubuntu-latest
+    # Only refresh badges on main pushes; PRs run coverage but
+    # don't push artefacts. Avoids forks of this repo trying to
+    # write to the badges branch.
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout main (badge script + assumptions)
+        uses: actions/checkout@v4
+        with:
+          # Full history needed for the orphan-branch dance below.
+          fetch-depth: 0
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Download Elixir coverage
+        uses: actions/download-artifact@v4
+        with:
+          name: elixir-coverage
+          path: cover/
+
+      - name: Download Vue coverage
+        uses: actions/download-artifact@v4
+        with:
+          name: vue-coverage
+          path: coverage/
+
+      - name: Generate badge SVGs
+        run: |
+          set -euo pipefail
+          mkdir -p _badges
+
+          # Elixir % comes from excoveralls.json — line coverage
+          # is the union of all source files' coverage arrays:
+          # null = non-executable, 0 = uncovered, >0 = covered.
+          ex_pct=$(node -e '
+            const j = JSON.parse(require("fs").readFileSync("cover/excoveralls.json", "utf8"));
+            const lines = j.source_files.flatMap((f) => f.coverage).filter((n) => n !== null);
+            const covered = lines.filter((n) => n > 0).length;
+            console.log(Math.round((covered / lines.length) * 100));
+          ')
+
+          # Vue % from vitest's json-summary — total.lines.pct.
+          vue_pct=$(node -e '
+            const j = JSON.parse(require("fs").readFileSync("coverage/coverage-summary.json", "utf8"));
+            console.log(Math.round(j.total.lines.pct));
+          ')
+
+          echo "Elixir coverage: ${ex_pct}%"
+          echo "Vue coverage:    ${vue_pct}%"
+
+          node scripts/badge.mjs --label "elixir coverage" --value "${ex_pct}%" \
+            > _badges/elixir-coverage.svg
+          node scripts/badge.mjs --label "vue coverage" --value "${vue_pct}%" \
+            > _badges/vue-coverage.svg
+
+      - name: Push badges to the badges branch
+        env:
+          # GITHUB_TOKEN with contents:write (granted via the
+          # permissions block above) lets us push without secrets.
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          # Stash the freshly-generated SVGs outside the work tree
+          # so we can switch branches without losing them.
+          tmp=$(mktemp -d)
+          cp _badges/*.svg "$tmp"/
+
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          # Orphan branch — no parent commit, no source code, just
+          # the badge SVGs. Recreated fresh on every run so the
+          # branch never accumulates a long history.
+          git checkout --orphan badges
+          git rm -rf --quiet . 2>/dev/null || true
+
+          mkdir -p badges
+          cp "$tmp"/*.svg badges/
+
+          git add badges/
+          git commit -m "chore(ci): refresh coverage badges" || {
+            echo "No badge change; skipping push."
+            exit 0
+          }
+
+          git push --force origin badges

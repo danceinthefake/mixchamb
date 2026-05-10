@@ -18,5 +18,13 @@ export default defineConfig({
     include: ["assets/vue/**/*.{test,spec}.{ts,js}"],
     globals: true,
     css: false,
+    coverage: {
+      provider: "v8",
+      // json-summary is the slim machine-readable file the
+      // badge script parses; text gives a CLI summary too.
+      reporter: ["text", "json-summary"],
+      include: ["assets/vue/**/*.{ts,vue}"],
+      exclude: ["assets/vue/**/__tests__/**", "assets/vue/components/ui/**"],
+    },
   },
 });
