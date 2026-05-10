@@ -1,8 +1,10 @@
 # The directory Mix will write compiled artifacts to.
 /_build/
 
-# If you run "mix test --cover", coverage assets end up here.
+# Coverage artefacts (mix coveralls.* / vitest --coverage).
 /cover/
+/coverage/
+/_badges/
 
 # The directory Mix downloads your dependencies sources to.
 /deps/

@@ -12,7 +12,10 @@ defmodule Mixwave.MixProject do
       deps: deps(),
       compilers: [:phoenix_live_view] ++ Mix.compilers(),
       listeners: [Phoenix.CodeReloader],
-      releases: releases()
+      releases: releases(),
+      # `mix coveralls.json` writes cover/excoveralls.json with
+      # the line-coverage % we feed into the badge script.
+      test_coverage: [tool: ExCoveralls]
     ]
   end
 
@@ -40,7 +43,13 @@ defmodule Mixwave.MixProject do
 
   def cli do
     [
-      preferred_envs: [precommit: :test]
+      preferred_envs: [
+        precommit: :test,
+        coveralls: :test,
+        "coveralls.detail": :test,
+        "coveralls.json": :test,
+        "coveralls.html": :test
+      ]
     ]
   end
 
@@ -77,7 +86,8 @@ defmodule Mixwave.MixProject do
       {:dns_cluster, "~> 0.2.0"},
       {:bandit, "~> 1.5"},
       {:live_vue, "~> 1.2"},
-      {:igniter, "~> 0.5", only: [:dev]}
+      {:igniter, "~> 0.5", only: [:dev]},
+      {:excoveralls, "~> 0.18", only: :test}
     ]
   end
 
