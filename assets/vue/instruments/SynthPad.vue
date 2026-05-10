@@ -144,7 +144,7 @@ onUnmounted(() => {
             'px-3 py-1 text-xs rounded-md border transition-colors',
             style === s.id
               ? 'bg-accent-pad text-background border-accent-pad'
-              : 'bg-card hover:bg-accent text-muted-foreground border-input'
+              : 'bg-card hover:bg-accent text-muted-foreground border-input',
           ]"
         >
           {{ s.label }}
@@ -183,11 +183,14 @@ onUnmounted(() => {
         :class="[
           'rounded-md border bg-card flex flex-col items-center justify-center gap-2 py-6 select-none transition-all active:scale-95 hover:bg-accent',
           flashing === c.name && 'ring-2 ring-accent-pad scale-95 glow-pad',
-          remoteFlashing === c.name && flashing !== c.name && 'ring-2 ring-orange-400'
+          remoteFlashing === c.name && flashing !== c.name && 'ring-2 ring-orange-400',
         ]"
       >
         <div class="text-2xl font-bold">{{ c.name }}</div>
-        <kbd class="hidden sm:inline-block text-xs px-1.5 py-0.5 rounded bg-muted text-muted-foreground font-mono">{{ c.key }}</kbd>
+        <kbd
+          class="hidden sm:inline-block text-xs px-1.5 py-0.5 rounded bg-muted text-muted-foreground font-mono"
+          >{{ c.key }}</kbd
+        >
       </button>
     </div>
   </div>

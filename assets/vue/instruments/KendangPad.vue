@@ -67,14 +67,7 @@ function flashRemote(name: KendangSound) {
   )
 }
 
-const kendangNames = new Set<KendangSound>([
-  "dang",
-  "tut",
-  "dut",
-  "tak",
-  "tung",
-  "pak",
-])
+const kendangNames = new Set<KendangSound>(["dang", "tut", "dut", "tak", "tung", "pak"])
 
 watch(
   () => props.remoteHit,
@@ -126,9 +119,7 @@ onUnmounted(() => {
   <div class="space-y-4">
     <!-- Style selector -->
     <div class="flex items-center gap-1">
-      <span class="text-xs uppercase tracking-wider text-muted-foreground mr-2">
-        Style
-      </span>
+      <span class="text-xs uppercase tracking-wider text-muted-foreground mr-2"> Style </span>
       <button
         v-for="s in styles"
         :key="s.id"
@@ -137,7 +128,7 @@ onUnmounted(() => {
           'px-3 py-1 text-xs rounded-md border transition-colors',
           style === s.id
             ? 'bg-accent-kendang text-background border-accent-kendang'
-            : 'bg-card hover:bg-accent text-muted-foreground border-input'
+            : 'bg-card hover:bg-accent text-muted-foreground border-input',
         ]"
       >
         {{ s.label }}
@@ -156,11 +147,13 @@ onUnmounted(() => {
           'aspect-[3/2] rounded-2xl border flex flex-col items-center justify-center gap-1 select-none transition-all active:scale-95 hover:bg-accent',
           i < 3 ? 'bg-card' : 'bg-muted',
           flashing === p.name && 'ring-4 ring-accent-kendang scale-95 glow-kendang',
-          remoteFlashing === p.name && flashing !== p.name && 'ring-4 ring-orange-400'
+          remoteFlashing === p.name && flashing !== p.name && 'ring-4 ring-orange-400',
         ]"
       >
         <div class="text-lg font-bold font-display">{{ p.label }}</div>
-        <kbd class="hidden sm:inline-block text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground font-mono">
+        <kbd
+          class="hidden sm:inline-block text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground font-mono"
+        >
           {{ p.key }}
         </kbd>
       </button>

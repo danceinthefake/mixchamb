@@ -29,13 +29,7 @@ const props = defineProps<{
 
 const live = useLiveVue()
 
-type GuitarStyle =
-  | "synth"
-  | "electric"
-  | "rock"
-  | "nylon"
-  | "acoustic"
-  | "mandolin"
+type GuitarStyle = "synth" | "electric" | "rock" | "nylon" | "acoustic" | "mandolin"
 type StyleOption = { id: GuitarStyle; label: string }
 
 const styles: StyleOption[] = [
@@ -189,7 +183,10 @@ async function strumUp(name: ChordName) {
 // instrument off (style switch, pad unmount, octave change), fire the
 // release so notes don't ring forever.
 function releaseAllHeld() {
-  for (const name of [...heldChords.value]) {
+  // Snapshot to a fresh array so strumUp's mutation of
+  // heldChords.value doesn't shift the iterator.
+  const held = Array.from(heldChords.value)
+  for (const name of held) {
     strumUp(name)
   }
 }
@@ -259,7 +256,7 @@ onUnmounted(() => {
             'px-3 py-1 text-xs rounded-md border transition-colors',
             style === s.id
               ? 'bg-accent-guitar text-background border-accent-guitar'
-              : 'bg-card hover:bg-accent text-muted-foreground border-input'
+              : 'bg-card hover:bg-accent text-muted-foreground border-input',
           ]"
         >
           {{ s.label }}
@@ -302,7 +299,7 @@ onUnmounted(() => {
         :class="[
           'rounded-md border bg-card flex flex-col items-center gap-2 py-4 px-3 select-none transition-all active:scale-95 hover:bg-accent',
           flashing === c.name && 'ring-2 ring-accent-guitar scale-95 glow-guitar',
-          remoteFlashing === c.name && flashing !== c.name && 'ring-2 ring-orange-400'
+          remoteFlashing === c.name && flashing !== c.name && 'ring-2 ring-orange-400',
         ]"
       >
         <div class="text-xl font-bold">{{ c.name }}</div>
@@ -312,23 +309,25 @@ onUnmounted(() => {
           <!-- Top labels (X for muted, O for open, blank when fretted) -->
           <div class="grid grid-cols-6 text-[10px] text-center text-muted-foreground mb-0.5">
             <span v-for="(p, i) in c.fingering.positions" :key="i">
-              {{ p === 'x' ? 'X' : p === 0 ? 'O' : '' }}
+              {{ p === "x" ? "X" : p === 0 ? "O" : "" }}
             </span>
           </div>
 
           <!-- Fretboard. Column-major flow so each string fills a
                vertical column of 4 fret cells. -->
-          <div class="relative border border-amber-700/60 bg-amber-950/40 rounded-sm overflow-hidden">
+          <div
+            class="relative border border-amber-700/60 bg-amber-950/40 rounded-sm overflow-hidden"
+          >
             <div
               class="grid grid-cols-6 grid-rows-4 gap-px bg-amber-800/40"
-              style="grid-auto-flow: column;"
+              style="grid-auto-flow: column"
             >
               <template v-for="(p, sIdx) in c.fingering.positions" :key="sIdx">
                 <div
                   v-for="fret in FRET_ROWS"
                   :key="`${sIdx}-${fret}`"
                   class="relative bg-amber-950/70"
-                  style="aspect-ratio: 1;"
+                  style="aspect-ratio: 1"
                 >
                   <span
                     v-if="p === fret"
@@ -346,7 +345,10 @@ onUnmounted(() => {
           </div>
         </div>
 
-        <kbd class="hidden sm:inline-block text-xs px-1.5 py-0.5 rounded bg-muted text-muted-foreground font-mono">{{ c.key }}</kbd>
+        <kbd
+          class="hidden sm:inline-block text-xs px-1.5 py-0.5 rounded bg-muted text-muted-foreground font-mono"
+          >{{ c.key }}</kbd
+        >
       </button>
     </div>
   </div>

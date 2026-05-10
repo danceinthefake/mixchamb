@@ -378,11 +378,7 @@ function applyStrumPhase(
       const upOrder = strumOrder(shifted, true)
       const now = Tone.now()
       upOrder.forEach((note, i) => {
-        voice.triggerAttackRelease(
-          note,
-          upStrumDuration,
-          now + i * GUITAR_STRUM_STAGGER,
-        )
+        voice.triggerAttackRelease(note, upStrumDuration, now + i * GUITAR_STRUM_STAGGER)
       })
     }
     return
@@ -392,11 +388,7 @@ function applyStrumPhase(
   const ordered = strumOrder(shifted, reverse)
   const now = Tone.now()
   ordered.forEach((note, i) => {
-    voice.triggerAttackRelease(
-      note,
-      legacyDuration,
-      now + i * GUITAR_STRUM_STAGGER,
-    )
+    voice.triggerAttackRelease(note, legacyDuration, now + i * GUITAR_STRUM_STAGGER)
   })
 }
 
@@ -1069,19 +1061,7 @@ register("keyboard", "piano", makeKeyboardPiano())
 // AudioWorkletNode which the browser only allows in secure contexts
 // (HTTPS / localhost) — broken on LAN dev.
 
-export type ChordName =
-  | "C"
-  | "D"
-  | "E"
-  | "F"
-  | "G"
-  | "A"
-  | "Am"
-  | "Dm"
-  | "Em"
-  | "B7"
-  | "A7"
-  | "D7"
+export type ChordName = "C" | "D" | "E" | "F" | "G" | "A" | "Am" | "Dm" | "Em" | "B7" | "A7" | "D7"
 
 export const CHORDS: Record<ChordName, string[]> = {
   C: ["C3", "E3", "G3", "C4", "E4"],
@@ -1361,8 +1341,7 @@ function makeGuitarNylon(): InstrumentEngine {
         A4: "A4.mp3",
       },
       release: 0.8,
-      baseUrl:
-        "https://nbrosowsky.github.io/tonejs-instruments/samples/guitar-nylon/",
+      baseUrl: "https://nbrosowsky.github.io/tonejs-instruments/samples/guitar-nylon/",
     }).connect(getChamberBus())
     sampler.volume.value = -4
   }
@@ -1415,8 +1394,7 @@ function makeGuitarAcoustic(): InstrumentEngine {
         A4: "A4.mp3",
       },
       release: 0.5,
-      baseUrl:
-        "https://nbrosowsky.github.io/tonejs-instruments/samples/guitar-acoustic/",
+      baseUrl: "https://nbrosowsky.github.io/tonejs-instruments/samples/guitar-acoustic/",
     }).connect(getChamberBus())
     sampler.volume.value = -4
   }

@@ -1,0 +1,10 @@
+{
+  "$schema": "./node_modules/oxfmt/configuration_schema.json",
+  "semi": false,
+  "ignorePatterns": [
+    "_build/**",
+    "deps/**",
+    "node_modules/**",
+    "priv/static/**"
+  ]
+}

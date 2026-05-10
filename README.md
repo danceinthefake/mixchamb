@@ -144,6 +144,17 @@ mix test             # run the test suite
 mix precommit        # compile --warnings-as-errors + format + test
 ```
 
+JS / TS:
+
+```sh
+pnpm test            # vitest one-shot
+pnpm test:watch      # vitest in watch mode
+pnpm lint            # oxlint
+pnpm format          # oxfmt — apply
+pnpm format:check    # oxfmt --check (read-only, used by CI)
+pnpm check           # lint + format-check + test (the CI dry run)
+```
+
 > **Heads up:** running `mix assets.build` writes a manifest that
 > the layout reads in production mode. In dev that breaks Vite's
 > dynamic source serving. If you accidentally do this and chambers
@@ -378,7 +389,8 @@ mixwave/
 | Backend | Elixir 1.18+, **Phoenix 1.8** + **LiveView 1.1**, Ecto + Postgres, Bandit, `dns_cluster` |
 | Realtime | **Phoenix.PubSub** for note + activity broadcasts, **Phoenix.Presence** for the jammer panel |
 | Observability | `:telemetry` custom events + `Telemetry.Metrics` + Phoenix LiveDashboard |
-| Frontend | **Vue 3.5** + TypeScript (strict), Vite 8, Tailwind v4, **shadcn-vue** (Reka UI), Lucide icons |
+| Frontend | **Vue 3.5** + TypeScript (strict), Vite 8 (Rolldown bundler), Tailwind v4, **shadcn-vue** (Reka UI), Lucide icons |
+| Tooling (JS) | **Oxlint** + **Oxfmt** — Rust-based replacements for ESLint + Prettier, ~100× faster on this size of tree |
 | LV ↔ Vue bridge | **`live_vue` 1.2** — Vue islands rendered inside LiveView |
 | Audio | **Tone.js** — PolySynth, MembraneSynth, MonoSynth, NoiseSynth, Sampler streaming from `tonejs-instruments` CDN, master FX bus |
 | Hosting (planned) | Fly.io with `dns_cluster` auto-clustering |

@@ -1,14 +1,12 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
 import { mount } from "@vue/test-utils"
 
-const { playMock, stopAllMock, ensureStartedMock, pushEventMock } = vi.hoisted(
-  () => ({
-    playMock: vi.fn(),
-    stopAllMock: vi.fn(),
-    ensureStartedMock: vi.fn().mockResolvedValue(undefined),
-    pushEventMock: vi.fn(),
-  }),
-)
+const { playMock, stopAllMock, ensureStartedMock, pushEventMock } = vi.hoisted(() => ({
+  playMock: vi.fn(),
+  stopAllMock: vi.fn(),
+  ensureStartedMock: vi.fn().mockResolvedValue(undefined),
+  pushEventMock: vi.fn(),
+}))
 
 vi.mock("@/lib/audio", () => ({
   ensureStarted: ensureStartedMock,
@@ -58,11 +56,7 @@ describe("BassPad", () => {
     await fretButton!.trigger("pointerdown")
 
     expect(ensureStartedMock).toHaveBeenCalled()
-    expect(playMock).toHaveBeenCalledWith(
-      "bass",
-      "synth",
-      expect.any(String),
-    )
+    expect(playMock).toHaveBeenCalledWith("bass", "synth", expect.any(String))
 
     expect(pushEventMock).toHaveBeenCalledWith(
       "note",
@@ -87,10 +81,6 @@ describe("BassPad", () => {
       .find((b) => /^[A-G]#?\d?$/.test(b.text().trim()) && b.text().trim().length >= 1)!
 
     await fretButton.trigger("pointerdown")
-    expect(playMock).toHaveBeenLastCalledWith(
-      "bass",
-      "slap",
-      expect.any(String),
-    )
+    expect(playMock).toHaveBeenLastCalledWith("bass", "slap", expect.any(String))
   })
 })

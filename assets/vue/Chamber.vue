@@ -38,14 +38,7 @@ import {
 } from "@/lib/audio"
 
 const props = defineProps<{
-  current_instrument:
-    | "drums"
-    | "keyboard"
-    | "guitar"
-    | "bass"
-    | "pad"
-    | "suling"
-    | "kendang"
+  current_instrument: "drums" | "keyboard" | "guitar" | "bass" | "pad" | "suling" | "kendang"
   chamber_kind: ChamberKind
 }>()
 
@@ -186,9 +179,7 @@ live.handleEvent("replay_burst", ({ events }: { events: ReplayEvent[] }) => {
       // guitar + pad carry chord; everything else carries note.
       const note = e.chord ?? e.note
       if (!note) return
-      const opts = e.phase
-        ? { phase: e.phase, upStrum: e.up_strum }
-        : undefined
+      const opts = e.phase ? { phase: e.phase, upStrum: e.up_strum } : undefined
       play(e.instrument, e.style ?? "synth", note, e.octave_offset ?? 0, opts)
     }, e.offset_ms)
     replayTimers.push(id)
@@ -211,7 +202,7 @@ live.handleEvent("play_remote_note", async (payload: RemoteNote) => {
   // signal. octave_offset applies to chord-based instruments;
   // phase ("press" / "release") applies to guitar only.
   const note = "chord" in payload ? payload.chord : payload.note
-  const octaveOffset = "octave_offset" in payload ? payload.octave_offset ?? 0 : 0
+  const octaveOffset = "octave_offset" in payload ? (payload.octave_offset ?? 0) : 0
   const phase = "phase" in payload ? payload.phase : undefined
   const upStrum = "up_strum" in payload ? payload.up_strum : undefined
   const opts = phase ? { phase, upStrum } : undefined
@@ -243,18 +234,10 @@ live.handleEvent("play_remote_note", async (payload: RemoteNote) => {
       class="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-md bg-background/80 cursor-pointer select-none"
     >
       <div class="flex flex-col items-center gap-6 text-center px-4">
-        <img
-          src="/images/logo.svg"
-          alt=""
-          class="size-20 motion-safe:animate-pulse"
-        />
+        <img src="/images/logo.svg" alt="" class="size-20 motion-safe:animate-pulse" />
         <div class="space-y-1">
-          <h2 class="text-2xl font-bold tracking-tight font-display">
-            Tap to start jamming
-          </h2>
-          <p class="text-sm text-muted-foreground">
-            Browsers need a gesture before audio can play
-          </p>
+          <h2 class="text-2xl font-bold tracking-tight font-display">Tap to start jamming</h2>
+          <p class="text-sm text-muted-foreground">Browsers need a gesture before audio can play</p>
         </div>
         <button
           class="rounded-lg border bg-card hover:bg-accent px-6 py-2.5 text-sm font-medium transition-colors"
@@ -269,14 +252,16 @@ live.handleEvent("play_remote_note", async (payload: RemoteNote) => {
     <!-- Top control strip: replay + master volume. Floating-bar
          look matches the bottom dock for visual consistency. -->
     <div class="flex justify-end">
-      <div class="flex items-center gap-3 rounded-xl border bg-card/60 backdrop-blur-sm px-3 py-1.5 shadow-sm">
+      <div
+        class="flex items-center gap-3 rounded-xl border bg-card/60 backdrop-blur-sm px-3 py-1.5 shadow-sm"
+      >
         <button
           @click="isReplaying ? stopReplay() : startReplay()"
           :class="[
             'px-2.5 py-1 text-xs rounded-md transition-colors cursor-pointer',
             isReplaying
               ? 'bg-destructive/10 text-destructive'
-              : 'text-muted-foreground hover:bg-accent hover:text-foreground'
+              : 'text-muted-foreground hover:bg-accent hover:text-foreground',
           ]"
         >
           {{ isReplaying ? "Stop replay" : "↩ Replay 30s" }}
@@ -285,13 +270,7 @@ live.handleEvent("play_remote_note", async (payload: RemoteNote) => {
         <div class="w-px h-5 bg-border"></div>
 
         <span class="text-xs uppercase tracking-wider text-muted-foreground">Vol</span>
-        <input
-          v-model.number="volume"
-          type="range"
-          min="0"
-          max="100"
-          class="w-28 accent-primary"
-        />
+        <input v-model.number="volume" type="range" min="0" max="100" class="w-28 accent-primary" />
         <span class="text-xs tabular-nums font-mono text-muted-foreground w-9 text-right">
           {{ volume }}%
         </span>
@@ -299,20 +278,11 @@ live.handleEvent("play_remote_note", async (payload: RemoteNote) => {
     </div>
 
     <DrumPad v-if="current_instrument === 'drums'" :remote-hit="lastRemoteHit" />
-    <KeyboardPad
-      v-else-if="current_instrument === 'keyboard'"
-      :remote-hit="lastRemoteHit"
-    />
-    <GuitarPad
-      v-else-if="current_instrument === 'guitar'"
-      :remote-hit="lastRemoteHit"
-    />
+    <KeyboardPad v-else-if="current_instrument === 'keyboard'" :remote-hit="lastRemoteHit" />
+    <GuitarPad v-else-if="current_instrument === 'guitar'" :remote-hit="lastRemoteHit" />
     <BassPad v-else-if="current_instrument === 'bass'" :remote-hit="lastRemoteHit" />
     <SynthPad v-else-if="current_instrument === 'pad'" :remote-hit="lastRemoteHit" />
     <SulingPad v-else-if="current_instrument === 'suling'" :remote-hit="lastRemoteHit" />
-    <KendangPad
-      v-else-if="current_instrument === 'kendang'"
-      :remote-hit="lastRemoteHit"
-    />
+    <KendangPad v-else-if="current_instrument === 'kendang'" :remote-hit="lastRemoteHit" />
   </div>
 </template>
