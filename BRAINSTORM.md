@@ -230,6 +230,10 @@ will add a `jams` table at that point, not before.
   at 20 note events/sec/chamber via an ETS fixed-window bucket;
   drops past budget emit `[:mixwave, :chamber, :note_dropped]`
   which the admin Dashboard surfaces as "Notes — dropped".
+- **CSP**: ✅ shipped — `MixwaveWeb.Plugs.SecurityHeaders` emits a
+  per-request Content-Security-Policy header. Prod is nonce-based
+  with no `'unsafe-inline'` for scripts; dev is permissive enough
+  for Vite HMR + LiveReloader.
 - **`anonymous_users` retention**: keep the 24-hour idle threshold
   unchanged for v1.
 - **Recording**: not in v1; planned for v2.

@@ -29,7 +29,11 @@
       dev_server={Application.get_env(:live_vue, :vite_host) != nil}
       to_url={fn p -> static_url(@conn, p) end}
     />
-    <script>
+    <%!-- `nonce={@csp_nonce}` opts this inline block into the strict
+         prod CSP that disallows `'unsafe-inline'` for scripts. In
+         dev `@csp_nonce` is nil → HEEx omits the attribute and the
+         dev-mode `'unsafe-inline'` source expression covers it. --%>
+    <script nonce={assigns[:csp_nonce]}>
       // shadcn-style theming: toggle the `dark` class on <html>.
       // "system" = respect prefers-color-scheme; "light"/"dark" = explicit override stored in localStorage.
       (() => {
