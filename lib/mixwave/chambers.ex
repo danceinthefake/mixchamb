@@ -23,7 +23,7 @@ defmodule Mixwave.Chambers do
 
   import Ecto.Query
 
-  alias Mixwave.Chambers.{Chamber, Server}
+  alias Mixwave.Chambers.{Chamber, ChamberEvent, Server}
   alias Mixwave.Repo
 
   @doc """
@@ -127,6 +127,65 @@ defmodule Mixwave.Chambers do
     chamber
     |> Chamber.kind_changeset(%{kind: kind})
     |> Repo.update()
+  end
+
+  @doc """
+  Flips the chamber's REC toggle. On success, casts the new value
+  to the chamber's GenServer so its in-memory persistence flag
+  matches the row without re-reading the DB on every note.
+  """
+  def set_recording(%Chamber{} = chamber, on?) when is_boolean(on?) do
+    chamber
+    |> Chamber.recording_changeset(%{is_recording: on?})
+    |> Repo.update()
+    |> tap(fn
+      {:ok, updated} -> Server.set_recording(updated.slug, updated.is_recording)
+      _ -> :ok
+    end)
+  end
+
+  @doc """
+  Bulk-inserts persisted note events. Each tuple in `events` is
+  `{payload, inserted_at}` — the timestamp is captured by the
+  chamber's GenServer at the moment the note was broadcast, so
+  rapid bursts keep their relative timing when later replayed.
+  """
+  def record_events(_chamber_id, []), do: {:ok, 0}
+
+  def record_events(chamber_id, events) when is_list(events) do
+    rows =
+      Enum.map(events, fn {payload, inserted_at} ->
+        %{
+          id: Ecto.UUID.generate(),
+          chamber_id: chamber_id,
+          payload: payload,
+          inserted_at: inserted_at
+        }
+      end)
+
+    {count, _} = Repo.insert_all(ChamberEvent, rows)
+    {:ok, count}
+  end
+
+  @doc """
+  Returns every persisted event for `chamber_id`, oldest first.
+  Used to materialize a "play recording" replay.
+  """
+  def recorded_events(chamber_id) when is_binary(chamber_id) do
+    ChamberEvent
+    |> where([e], e.chamber_id == ^chamber_id)
+    |> order_by([e], asc: e.inserted_at)
+    |> Repo.all()
+  end
+
+  @doc """
+  Total number of persisted events for `chamber_id`. Drives the
+  "Play recording" button's disabled/enabled state.
+  """
+  def recorded_event_count(chamber_id) when is_binary(chamber_id) do
+    ChamberEvent
+    |> where([e], e.chamber_id == ^chamber_id)
+    |> Repo.aggregate(:count, :id)
   end
 
   @doc """

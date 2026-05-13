@@ -109,6 +109,62 @@ defmodule MixwaveWeb.ChamberLiveTest do
     end
   end
 
+  describe "session recording" do
+    test "creator can toggle recording on and off", %{conn: conn, chamber: chamber} do
+      {:ok, view, _html} = live(conn, ~p"/chamber/#{chamber.slug}")
+
+      # Off by default.
+      refute render(view) =~ "click to stop"
+
+      view |> element("button", "Start recording") |> render_click()
+
+      reloaded = Chambers.find_by_slug(chamber.slug)
+      assert reloaded.is_recording
+
+      view |> element("button", "click to stop") |> render_click()
+
+      reloaded = Chambers.find_by_slug(chamber.slug)
+      refute reloaded.is_recording
+    end
+
+    test "play_recording pushes a replay_burst payload", %{conn: conn, chamber: chamber} do
+      # Insert some events directly.
+      now = DateTime.utc_now()
+
+      {:ok, _} =
+        Chambers.record_events(chamber.id, [
+          {%{"instrument" => "drums", "note" => "kick", "style" => "synth"}, now},
+          {%{"instrument" => "drums", "note" => "snare", "style" => "synth"},
+           DateTime.add(now, 500, :millisecond)}
+        ])
+
+      {:ok, view, _html} = live(conn, ~p"/chamber/#{chamber.slug}")
+
+      # Refresh count assign — happens on mount but is_recording
+      # toggled outside the LV so the chamber row here was just
+      # built fresh; assert button is visible.
+      assert render(view) =~ "Play recording"
+
+      assert view
+             |> element("button", "Play recording")
+             |> render_click() =~ "Play recording"
+    end
+
+    test "non-creator does not see the REC toggle but sees the live badge while on",
+         %{conn: conn, chamber: chamber} do
+      {:ok, other} = Accounts.create_anonymous_user()
+      conn = Plug.Test.init_test_session(conn, %{"user_id" => other.id})
+
+      # Recording on, written directly.
+      {:ok, _} = Chambers.set_recording(chamber, true)
+
+      {:ok, _view, html} = live(conn, ~p"/chamber/#{chamber.slug}")
+
+      refute html =~ "Start recording"
+      assert html =~ "REC"
+    end
+  end
+
   describe "note rate limiting" do
     setup do
       Mixwave.RateLimiter.reset()

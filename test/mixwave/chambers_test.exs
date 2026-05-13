@@ -82,6 +82,74 @@ defmodule Mixwave.ChambersTest do
     end
   end
 
+  describe "set_recording/2 + record_events/2 + recorded_events/1" do
+    test "set_recording flips the flag", %{user: user} do
+      {:ok, chamber} = Chambers.create_chamber(user.id)
+      refute chamber.is_recording
+
+      assert {:ok, on} = Chambers.set_recording(chamber, true)
+      assert on.is_recording
+
+      assert {:ok, off} = Chambers.set_recording(on, false)
+      refute off.is_recording
+    end
+
+    test "record_events bulk-inserts rows with the given timestamps", %{user: user} do
+      {:ok, chamber} = Chambers.create_chamber(user.id)
+
+      t0 = ~U[2026-05-13 12:00:00.000000Z]
+      t1 = ~U[2026-05-13 12:00:00.500000Z]
+      t2 = ~U[2026-05-13 12:00:01.000000Z]
+
+      assert {:ok, 3} =
+               Chambers.record_events(chamber.id, [
+                 {%{"instrument" => "drums", "note" => "kick"}, t0},
+                 {%{"instrument" => "drums", "note" => "snare"}, t1},
+                 {%{"instrument" => "drums", "note" => "hat"}, t2}
+               ])
+
+      [a, b, c] = Chambers.recorded_events(chamber.id)
+      assert a.payload["note"] == "kick"
+      assert b.payload["note"] == "snare"
+      assert c.payload["note"] == "hat"
+      assert a.inserted_at == t0
+      assert b.inserted_at == t1
+      assert c.inserted_at == t2
+    end
+
+    test "recorded_event_count counts only this chamber's events", %{user: user} do
+      {:ok, chamber} = Chambers.create_chamber(user.id)
+      {:ok, other} = Chambers.create_chamber(user.id)
+
+      {:ok, _} =
+        Chambers.record_events(chamber.id, [
+          {%{"instrument" => "drums"}, DateTime.utc_now()}
+        ])
+
+      {:ok, _} =
+        Chambers.record_events(other.id, [
+          {%{"instrument" => "drums"}, DateTime.utc_now()},
+          {%{"instrument" => "drums"}, DateTime.utc_now()}
+        ])
+
+      assert Chambers.recorded_event_count(chamber.id) == 1
+      assert Chambers.recorded_event_count(other.id) == 2
+    end
+
+    test "deleting a chamber cascades its recorded events", %{user: user} do
+      {:ok, chamber} = Chambers.create_chamber(user.id)
+
+      {:ok, _} =
+        Chambers.record_events(chamber.id, [
+          {%{"instrument" => "drums"}, DateTime.utc_now()}
+        ])
+
+      assert Chambers.recorded_event_count(chamber.id) == 1
+      {:ok, _} = Chambers.delete(chamber)
+      assert Chambers.recorded_event_count(chamber.id) == 0
+    end
+  end
+
   describe "delete/1 + delete_idle_since/1" do
     test "delete/1 removes the row and emits telemetry", %{user: user} do
       {:ok, chamber} = Chambers.create_chamber(user.id)

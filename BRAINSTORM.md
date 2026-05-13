@@ -176,8 +176,13 @@ will add a `jams` table at that point, not before.
 
 ### v2 — chaos button + recording + polish
 
-12. Save last 30s of the jam (recent-events buffer extended →
-    `Tone.Recorder` export → playback widget).
+12. ✅ Session recording — creator-opt-in REC toggle persists
+    every note event to `chamber_events` (Postgres). "Play
+    recording" button materialises a full-session replay via the
+    same `replay_burst` Vue handler used for the live 30s
+    request_replay. Server-side batched flush (2s / 50 events /
+    on terminate). Audio-file export (Tone.Recorder → WAV) still
+    pending if needed.
 13. Supervisor LiveView with the chaos button: kill Studio.Room,
     watch it restart, count restarts.
 14. Animation when others play — instrument panel highlights
