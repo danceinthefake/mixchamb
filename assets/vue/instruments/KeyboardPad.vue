@@ -311,7 +311,7 @@ onUnmounted(() => {
               :key="key.note"
               @pointerdown.prevent="hit(key.note)"
               :class="[
-                'flex-1 border rounded-b-md flex flex-col items-center justify-end pb-2 transition-all touch-none',
+                'pad-touch flex-1 border rounded-b-md flex flex-col items-center justify-end pb-2 transition-all touch-none',
                 flashingNote === key.note
                   ? 'bg-accent-keyboard text-background border-accent-keyboard glow-keyboard'
                   : remoteFlashingNote === key.note
@@ -339,7 +339,7 @@ onUnmounted(() => {
             @pointerdown.prevent.stop="hit(bk.note)"
             :style="{ left: `calc(${(bk.afterIdx + 1) * (100 / whiteKeys.length)}% - 1.125rem)` }"
             :class="[
-              'absolute top-0 w-9 h-28 rounded-b-md border border-black flex flex-col items-center justify-end pb-2 transition-all touch-none',
+              'pad-touch absolute top-0 w-9 h-28 rounded-b-md border border-black flex flex-col items-center justify-end pb-2 transition-all touch-none',
               flashingNote === bk.note
                 ? 'bg-accent-keyboard glow-keyboard'
                 : remoteFlashingNote === bk.note

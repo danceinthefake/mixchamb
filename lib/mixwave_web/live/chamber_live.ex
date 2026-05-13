@@ -494,7 +494,10 @@ defmodule MixwaveWeb.ChamberLive do
       <%!-- Break out of Layouts.app's max-w-3xl + py-10. The chamber
            uses the full available width as a stage; the dock floats
            at the bottom of the viewport. --%>
-      <div class="-mx-4 sm:-mx-6 lg:-mx-8 -my-10 px-4 sm:px-6 lg:px-8 pt-4 pb-28">
+      <%!-- Bottom padding clears the floating dock + the iOS
+           home-indicator gesture area. `env(safe-area-inset-bottom)`
+           is 0 on devices without a notch / home bar. --%>
+      <div class="-mx-4 sm:-mx-6 lg:-mx-8 -my-10 px-4 sm:px-6 lg:px-8 pt-4 pb-[calc(7rem+env(safe-area-inset-bottom))]">
         <div class="mx-auto max-w-5xl space-y-4">
           <%!-- Leave-chamber back link. Small + subtle so it
                doesn't compete with the controls; navigates back
@@ -524,7 +527,9 @@ defmodule MixwaveWeb.ChamberLive do
                   placeholder={"Untitled chamber · " <> @chamber.slug}
                   class="flex-1 bg-transparent border-none outline-none text-2xl font-bold tracking-tight font-display text-foreground placeholder:text-muted-foreground/50"
                 />
-                <span class="text-[10px] uppercase tracking-wider text-muted-foreground/60">
+                <%!-- The hint is just clutter on mobile, where on-screen
+                     keyboards already show their own submit affordance. --%>
+                <span class="hidden sm:inline text-[10px] uppercase tracking-wider text-muted-foreground/60">
                   Press enter to save
                 </span>
               </form>
@@ -769,7 +774,10 @@ defmodule MixwaveWeb.ChamberLive do
            regardless of page scroll. `pointer-events-none` on the
            outer wrapper lets clicks pass through the empty area
            around the dock to whatever is behind it. --%>
-      <div class="fixed inset-x-0 bottom-4 px-4 z-40 pointer-events-none">
+      <%!-- Dock floats just above the bottom edge — `max(...)` keeps
+           it 1rem off the bottom on a flat-bottomed device and
+           lifts it above the iOS home-indicator on a notched one. --%>
+      <div class="fixed inset-x-0 bottom-[max(1rem,env(safe-area-inset-bottom))] px-4 z-40 pointer-events-none">
         <div class="mx-auto max-w-3xl pointer-events-auto">
           <div class="flex items-center gap-2 rounded-2xl border bg-card/80 backdrop-blur-md px-2 py-1.5 shadow-2xl">
             <%!-- Instrument switcher tabs --%>
@@ -779,18 +787,24 @@ defmodule MixwaveWeb.ChamberLive do
                 phx-click="switch_instrument"
                 phx-value-to={inst}
                 class={[
-                  "px-3 py-1.5 text-sm rounded-lg transition-all flex items-center gap-1.5 whitespace-nowrap cursor-pointer",
+                  "pad-touch touch-manipulation px-3 py-1.5 text-sm rounded-lg transition-all flex items-center gap-1.5 whitespace-nowrap cursor-pointer",
                   @current_instrument == inst && active_tab_class(inst),
                   @current_instrument != inst &&
                     "text-muted-foreground hover:bg-accent hover:text-foreground"
                 ]}
+                title={instrument_label(inst)}
               >
                 <span
                   class="size-2 rounded-full opacity-80"
                   style={"background-color: " <> accent_var(inst)}
                 >
                 </span>
-                {instrument_label(inst)}
+                <%!-- On mobile, only the active tab keeps its
+                     label; the rest collapse to a dot so all 7
+                     fit without horizontal scroll. --%>
+                <span class={[@current_instrument != inst && "hidden sm:inline"]}>
+                  {instrument_label(inst)}
+                </span>
               </button>
             </div>
 
@@ -812,8 +826,10 @@ defmodule MixwaveWeb.ChamberLive do
                   {primary_name(meta) |> String.first() |> String.upcase()}
                 </span>
               </div>
+              <%!-- Just the count on mobile, full "N jamming" on
+                   sm+ where the dock has room for both. --%>
               <span class="text-xs text-muted-foreground tabular-nums whitespace-nowrap">
-                {map_size(@presences)} jamming
+                {map_size(@presences)}<span class="hidden sm:inline">{" jamming"}</span>
               </span>
             </div>
           </div>

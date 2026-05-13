@@ -146,7 +146,7 @@ onUnmounted(() => {
         :key="p.name"
         @pointerdown.prevent="hit(p.name)"
         :class="[
-          'aspect-[3/2] rounded-2xl border flex flex-col items-center justify-center gap-1 select-none transition-all active:scale-95 hover:bg-accent',
+          'pad-touch touch-manipulation aspect-[3/2] rounded-2xl border flex flex-col items-center justify-center gap-1 transition-all active:scale-95 hover:bg-accent',
           i < 3 ? 'bg-card' : 'bg-muted',
           flashing === p.name && 'ring-4 ring-accent-kendang scale-95 glow-kendang',
           remoteFlashing === p.name && flashing !== p.name && 'ring-4 ring-orange-400',

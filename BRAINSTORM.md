@@ -201,6 +201,12 @@ will add a `jams` table at that point, not before.
   per-request Content-Security-Policy header. Prod is nonce-based
   with no `'unsafe-inline'` for scripts; dev is permissive enough
   for Vite HMR + LiveReloader.
+- **Touch ergonomics**: ✅ shipped — `.pad-touch` utility kills
+  iOS long-press callout, blue tap-highlight overlay, and stray
+  text selection on every pad button; the floating dock and stage
+  padding use `env(safe-area-inset-bottom)` so the home indicator
+  doesn't cover controls; the dock collapses instrument tabs to
+  their colored dot below `sm:` so all 7 fit a 360 px viewport.
 - **User alias**: ✅ shipped — additive nickname on top of the
   auto-generated `display_name`. Inline editor at the bottom of
   the Jamming panel; alias renders above the anon name, never

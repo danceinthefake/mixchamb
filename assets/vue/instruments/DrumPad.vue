@@ -320,7 +320,7 @@ onUnmounted(() => {
           height: p.pos.height,
         }"
         :class="[
-          'absolute border flex flex-col items-center justify-center gap-1 select-none transition-all',
+          'pad-touch touch-manipulation absolute border flex flex-col items-center justify-center gap-1 transition-all',
           p.shape === 'round' ? 'rounded-full' : p.shape === 'oval' ? 'rounded-full' : 'rounded-lg',
           p.drum
             ? 'bg-card hover:bg-accent active:scale-95 cursor-pointer'
