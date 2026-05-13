@@ -248,4 +248,18 @@
       kill-flash-bg 1.5s ease-out forwards,
       kill-flash-bar 1.5s ease-out forwards;
   }
+
+  /* Applied to every pad's hit button (drum, keyboard, guitar,
+     bass, synth, suling, kendang). Disables iOS gesture cruft:
+     long-press callout, blue tap-highlight overlay, accidental
+     text selection on a fast tap. Each pad still picks its own
+     `touch-action` utility — KeyboardPad wants `touch-none` to
+     keep finger-drag from scrolling between keys, the rest are
+     happy with Tailwind's `touch-manipulation`. */
+  .pad-touch {
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-touch-callout: none;
+    -webkit-tap-highlight-color: transparent;
+  }
 }

@@ -281,7 +281,7 @@ onUnmounted(() => {
                 :key="f.note"
                 @pointerdown.prevent="hit(f.note)"
                 :class="[
-                  'relative h-12 flex flex-col items-center justify-center select-none transition-all active:scale-95',
+                  'pad-touch touch-manipulation relative h-12 flex flex-col items-center justify-center transition-all active:scale-95',
                   fi === 0 ? 'bg-amber-950/80' : 'bg-amber-900/30 hover:bg-amber-900/50',
                   flashing === f.note &&
                     'ring-2 ring-accent-bass ring-inset bg-accent-bass/20 glow-bass',

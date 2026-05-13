@@ -163,7 +163,7 @@ onUnmounted(() => {
             :key="n.note"
             @pointerdown.prevent="hit(n.note)"
             :class="[
-              'rounded-md border bg-card flex flex-col items-center justify-center gap-1 py-6 select-none transition-all active:scale-95 hover:bg-accent touch-manipulation',
+              'pad-touch touch-manipulation rounded-md border bg-card flex flex-col items-center justify-center gap-1 py-6 transition-all active:scale-95 hover:bg-accent',
               n.label.includes('#') && 'bg-muted',
               flashing === n.note && 'ring-2 ring-accent-suling scale-95 glow-suling',
               remoteFlashing === n.note && flashing !== n.note && 'ring-2 ring-orange-400',
