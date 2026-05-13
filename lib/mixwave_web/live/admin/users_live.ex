@@ -26,6 +26,7 @@ defmodule MixwaveWeb.Admin.UsersLive do
     case Accounts.delete_anonymous_user(id) do
       {:ok, user} ->
         Logger.warning("[admin/users] force-expire: id=#{id} name=#{user.display_name}")
+        Mixwave.Audit.log("force_expire_user", "user:#{id}", %{display_name: user.display_name})
 
         {:noreply,
          socket
@@ -57,7 +58,7 @@ defmodule MixwaveWeb.Admin.UsersLive do
   @impl true
   def render(assigns) do
     ~H"""
-    <AdminLayouts.admin_shell current_view={__MODULE__} flash={@flash}>
+    <AdminLayouts.admin_shell current_view={__MODULE__} flash={@flash} banner={assigns[:banner]}>
       <.header>
         Users
         <:subtitle>

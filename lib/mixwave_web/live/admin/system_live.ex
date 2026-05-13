@@ -58,6 +58,7 @@ defmodule MixwaveWeb.Admin.SystemLive do
 
       pid ->
         Logger.warning("[admin/system] kill issued: #{inspect(mod)} (pid #{inspect(pid)})")
+        Mixwave.Audit.log("kill_process", "module:#{inspect(mod)}", %{pid: inspect(pid)})
 
         Process.exit(pid, :kill)
         {:noreply, put_flash(socket, :info, "Killed #{inspect(mod)} — supervisor will restart.")}
@@ -68,6 +69,7 @@ defmodule MixwaveWeb.Admin.SystemLive do
     case Registry.lookup(Mixwave.Chambers.Registry, slug) do
       [{pid, _}] ->
         Logger.warning("[admin/system] kill issued: chamber=#{slug} pid=#{inspect(pid)}")
+        Mixwave.Audit.log("kill_chamber", "chamber:#{slug}", %{pid: inspect(pid)})
 
         Process.exit(pid, :kill)
 
@@ -118,7 +120,7 @@ defmodule MixwaveWeb.Admin.SystemLive do
   @impl true
   def render(assigns) do
     ~H"""
-    <AdminLayouts.admin_shell current_view={__MODULE__} flash={@flash}>
+    <AdminLayouts.admin_shell current_view={__MODULE__} flash={@flash} banner={assigns[:banner]}>
       <.header>
         System
         <:subtitle>

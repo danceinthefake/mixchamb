@@ -45,6 +45,7 @@ defmodule MixwaveWeb.Admin.ChambersLive do
 
       %{slug: slug} = chamber ->
         Logger.warning("[admin/chambers] force-delete: slug=#{slug} id=#{id}")
+        Mixwave.Audit.log("delete_chamber", "chamber:#{slug}", %{id: id})
         Chambers.delete(chamber)
 
         Phoenix.PubSub.broadcast(
@@ -121,7 +122,7 @@ defmodule MixwaveWeb.Admin.ChambersLive do
   @impl true
   def render(assigns) do
     ~H"""
-    <AdminLayouts.admin_shell current_view={__MODULE__} flash={@flash}>
+    <AdminLayouts.admin_shell current_view={__MODULE__} flash={@flash} banner={assigns[:banner]}>
       <.header>
         Chambers
         <:subtitle>

@@ -214,6 +214,12 @@ will add a `jams` table at that point, not before.
   auto-generated `display_name`. Inline editor at the bottom of
   the Jamming panel; alias renders above the anon name, never
   replaces it. 32-char cap; blank input clears.
+- **Admin Ops tab**: ✅ shipped — `/admin/ops` combines an audit
+  log (every kill / drain / force-expire / sweep / broadcast
+  writes a row to `admin_actions`) with a Broadcast banner form
+  (5/15/30/60 min). The banner stores in `banners`, broadcasts on
+  `system:banner` PubSub, and a `BannerHook` on_mount plants it on
+  every browser LV so the message live-updates without polling.
 - **`anonymous_users` retention**: keep the 24-hour idle threshold
   unchanged for v1.
 - **Recording**: not in v1; planned for v2.

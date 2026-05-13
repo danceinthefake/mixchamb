@@ -48,6 +48,11 @@ defmodule MixwaveWeb.Admin.SweepersLive do
         Logger.warning("[admin/sweepers] manual sweep_now: #{sweeper.label}")
         {:ok, deleted} = sweeper.module.sweep_now()
 
+        Mixwave.Audit.log("run_sweeper", "sweeper:#{key}", %{
+          label: sweeper.label,
+          deleted: deleted
+        })
+
         {:noreply,
          socket
          |> put_flash(:info, "#{sweeper.label}: deleted #{deleted}.")
@@ -88,7 +93,7 @@ defmodule MixwaveWeb.Admin.SweepersLive do
   @impl true
   def render(assigns) do
     ~H"""
-    <AdminLayouts.admin_shell current_view={__MODULE__} flash={@flash}>
+    <AdminLayouts.admin_shell current_view={__MODULE__} flash={@flash} banner={assigns[:banner]}>
       <.header>
         Sweepers
         <:subtitle>

@@ -35,7 +35,11 @@ defmodule MixwaveWeb.Router do
   scope "/", MixwaveWeb do
     pipe_through :browser
 
-    live_session :default, on_mount: {MixwaveWeb.UserAuth, :current_user} do
+    live_session :default,
+      on_mount: [
+        {MixwaveWeb.UserAuth, :current_user},
+        {MixwaveWeb.Live.BannerHook, :default}
+      ] do
       live "/", LandingLive
       live "/chamber/:slug", ChamberLive
     end
@@ -50,7 +54,11 @@ defmodule MixwaveWeb.Router do
   scope "/admin", MixwaveWeb.Admin, as: :admin do
     pipe_through :admin
 
-    live_session :admin, on_mount: {MixwaveWeb.UserAuth, :current_user} do
+    live_session :admin,
+      on_mount: [
+        {MixwaveWeb.UserAuth, :current_user},
+        {MixwaveWeb.Live.BannerHook, :default}
+      ] do
       live "/", DashboardLive, :index
       live "/system", SystemLive, :index
       live "/chambers", ChambersLive, :index
@@ -58,6 +66,7 @@ defmodule MixwaveWeb.Router do
       live "/activity", ActivityLive, :index
       live "/sweepers", SweepersLive, :index
       live "/cluster", ClusterLive, :index
+      live "/ops", OpsLive, :index
     end
   end
 
