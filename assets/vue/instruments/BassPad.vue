@@ -24,6 +24,7 @@ import { computed, onMounted, onUnmounted, ref, watch } from "vue"
 import { useLiveVue } from "live_vue"
 import { ensureStarted, play, stopAll } from "@/lib/audio"
 import { FLASH_MS, REMOTE_FLASH_DELTA_MS } from "@/lib/motion"
+import { isTypingInForm } from "@/lib/utils"
 
 const props = defineProps<{
   remoteHit: { instrument: string; note: string; t: number } | null
@@ -172,6 +173,7 @@ function selectStyle(id: BassStyle) {
 
 function onKey(event: KeyboardEvent) {
   if (event.repeat) return
+  if (isTypingInForm(event)) return
   for (const s of strings.value) {
     const f = s.frets.find((x) => x.key === event.key)
     if (f) {
