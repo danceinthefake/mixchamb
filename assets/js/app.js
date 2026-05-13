@@ -28,11 +28,31 @@ import topbar from "topbar"
 import {getHooks} from "live_vue"
 import liveVueApp from "../vue"
 
+// Copies the value of `data-copy-url` to the clipboard and briefly
+// swaps the button label to "Copied!". Lives in a Phoenix Hook
+// instead of an inline `onclick=` so the strict prod CSP can drop
+// `'unsafe-inline'` from `script-src`.
+const CopyToClipboard = {
+  mounted() {
+    this.el.addEventListener("click", () => {
+      const url = this.el.dataset.copyUrl
+      if (!url) return
+      navigator.clipboard.writeText(url).then(() => {
+        const original = this.el.textContent
+        this.el.textContent = "Copied!"
+        setTimeout(() => {
+          this.el.textContent = original
+        }, 1500)
+      })
+    })
+  },
+}
+
 const csrfToken = document.querySelector("meta[name='csrf-token']").getAttribute("content")
 const liveSocket = new LiveSocket("/live", Socket, {
   longPollFallbackMs: 2500,
   params: {_csrf_token: csrfToken},
-  hooks: {...colocatedHooks, ...getHooks(liveVueApp)},
+  hooks: {...colocatedHooks, ...getHooks(liveVueApp), CopyToClipboard},
 })
 
 // Show progress bar on live navigation and form submits

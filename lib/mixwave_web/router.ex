@@ -8,6 +8,7 @@ defmodule MixwaveWeb.Router do
     plug :put_root_layout, html: {MixwaveWeb.Layouts, :root}
     plug :protect_from_forgery
     plug :put_secure_browser_headers
+    plug MixwaveWeb.Plugs.SecurityHeaders
     plug MixwaveWeb.Plugs.EnsureAnonUser
   end
 
@@ -26,6 +27,7 @@ defmodule MixwaveWeb.Router do
     plug :put_root_layout, html: {MixwaveWeb.Layouts, :root}
     plug :protect_from_forgery
     plug :put_secure_browser_headers
+    plug MixwaveWeb.Plugs.SecurityHeaders
     plug MixwaveWeb.Plugs.EnsureAnonUser
     plug MixwaveWeb.Plugs.AdminAuth
   end

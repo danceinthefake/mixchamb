@@ -506,9 +506,11 @@ defmodule MixwaveWeb.ChamberLive do
               </code>
               <button
                 type="button"
+                id="chamber-copy-link"
+                phx-hook="CopyToClipboard"
+                phx-update="ignore"
+                data-copy-url={chamber_url(@chamber)}
                 class="rounded-md border bg-card hover:bg-accent px-3 py-2 text-xs font-medium transition-colors cursor-pointer whitespace-nowrap"
-                data-url={chamber_url(@chamber)}
-                onclick="navigator.clipboard.writeText(this.dataset.url).then(() => { const o = this.textContent; this.textContent = 'Copied!'; setTimeout(() => { this.textContent = o; }, 1500); })"
               >
                 Copy link
               </button>
