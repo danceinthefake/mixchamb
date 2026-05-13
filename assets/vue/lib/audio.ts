@@ -23,6 +23,48 @@ export function setMasterVolume(linearGain: number) {
   Tone.getDestination().volume.value = clamped === 0 ? -Infinity : Tone.gainToDb(clamped)
 }
 
+// ── Audio recording ────────────────────────────────────────────────
+// Tone.Recorder wraps MediaRecorder, so the output MIME type is
+// browser-dependent: audio/webm on Chrome/Firefox, audio/mp4 on
+// Safari. We don't re-encode — the caller gets whatever the
+// browser produced and we pick the filename extension from the
+// Blob's `type`.
+
+let recorder: Tone.Recorder | null = null
+
+export async function startRecording(): Promise<void> {
+  if (recorder) return
+  if (!Tone.Recorder.supported) {
+    console.warn("[mixwave] Tone.Recorder not supported in this browser")
+    return
+  }
+  recorder = new Tone.Recorder()
+  // The destination is what the speakers hear, so connecting the
+  // recorder there captures every instrument routed through the
+  // chamber FX bus without us tapping individual synths.
+  Tone.getDestination().connect(recorder)
+  await recorder.start()
+  console.info("[mixwave] recorder started, state:", recorder.state, "mime:", recorder.mimeType)
+}
+
+export async function stopRecording(): Promise<Blob | null> {
+  if (!recorder) {
+    console.warn("[mixwave] stopRecording called with no active recorder")
+    return null
+  }
+  console.info("[mixwave] stopping recorder, state before stop:", recorder.state)
+  const blob = await recorder.stop()
+  console.info(
+    "[mixwave] recorder stopped, blob:",
+    blob?.size,
+    "bytes, type:",
+    blob?.type,
+  )
+  recorder.dispose()
+  recorder = null
+  return blob
+}
+
 // ── Chamber FX bus ─────────────────────────────────────────────────
 // Every instrument routes through this single shared bus before
 // hitting the speakers, so chamber-wide effects (reverb / delay /
