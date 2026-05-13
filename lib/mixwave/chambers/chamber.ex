@@ -29,6 +29,9 @@ defmodule Mixwave.Chambers.Chamber do
     field :title, :string
     field :last_activity_at, :utc_datetime
     field :kind, :string, default: "room"
+    # Creator-controlled REC toggle. When true, every broadcast
+    # note is persisted to `chamber_events` for later replay.
+    field :is_recording, :boolean, default: false
 
     belongs_to :creator, Mixwave.Accounts.AnonymousUser, foreign_key: :creator_user_id
 
@@ -63,6 +66,13 @@ defmodule Mixwave.Chambers.Chamber do
     chamber
     |> cast(attrs, [:kind])
     |> validate_inclusion(:kind, @kinds)
+  end
+
+  @doc false
+  def recording_changeset(chamber, attrs) do
+    chamber
+    |> cast(attrs, [:is_recording])
+    |> validate_required([:is_recording])
   end
 
   @doc """

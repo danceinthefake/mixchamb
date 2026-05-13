@@ -27,6 +27,10 @@ defmodule Mixwave.Chambers.Server do
   # sweeper sees recent activity, cheap enough that it's not a
   # write per note even in busy chambers".
   @activity_bump_ms 60 * 1000
+  # When recording is on, persisted events are buffered in memory
+  # and flushed in batches. Whichever comes first wins.
+  @recording_flush_interval_ms 2_000
+  @recording_flush_batch_size 50
 
   ## Public API
 
@@ -81,9 +85,20 @@ defmodule Mixwave.Chambers.Server do
   end
 
   @doc """
-  Records a note event in this chamber's buffer.
+  Records a note event in this chamber's buffer. When the chamber
+  is recording, also enqueues the event's payload for the next
+  bulk flush to `chamber_events`.
   """
   def record(slug, event), do: GenServer.cast(via(slug), {:record, event})
+
+  @doc """
+  Updates the in-memory recording flag. Called by
+  `Mixwave.Chambers.set_recording/2` after the DB row is updated
+  so subsequent `record/2` calls know whether to enqueue.
+  """
+  def set_recording(slug, on?) when is_boolean(on?) do
+    GenServer.cast(via(slug), {:set_recording, on?})
+  end
 
   @doc """
   Returns the buffered events oldest-first.
@@ -134,13 +149,76 @@ defmodule Mixwave.Chambers.Server do
 
     started_at = System.monotonic_time(:millisecond)
 
-    {:ok, Map.merge(state, %{events: [], count: 0, dirty?: false, started_at: started_at})}
+    # Seed the recording flag from the DB so a chamber whose
+    # creator turned REC on, then refreshed, keeps recording when
+    # the GenServer is restarted.
+    is_recording =
+      case state.chamber_id && Mixwave.Chambers.find_by_id(state.chamber_id) do
+        %{is_recording: on?} -> on?
+        _ -> false
+      end
+
+    if is_recording do
+      Process.send_after(self(), :flush_recording, @recording_flush_interval_ms)
+    end
+
+    state =
+      Map.merge(state, %{
+        events: [],
+        count: 0,
+        dirty?: false,
+        started_at: started_at,
+        is_recording: is_recording,
+        to_persist: []
+      })
+
+    {:ok, state}
   end
 
   @impl true
   def handle_cast({:record, event}, state) do
     events = [event | state.events] |> Enum.take(@max_recent)
-    {:noreply, %{state | events: events, count: state.count + 1, dirty?: true}}
+
+    to_persist =
+      if state.is_recording do
+        [{event.payload, DateTime.utc_now()} | state.to_persist]
+      else
+        state.to_persist
+      end
+
+    new_state = %{
+      state
+      | events: events,
+        count: state.count + 1,
+        dirty?: true,
+        to_persist: to_persist
+    }
+
+    # Threshold-flush right away so a busy chamber doesn't keep
+    # an unbounded in-memory queue between timer ticks.
+    new_state =
+      if length(to_persist) >= @recording_flush_batch_size,
+        do: flush_recording(new_state),
+        else: new_state
+
+    {:noreply, new_state}
+  end
+
+  def handle_cast({:set_recording, on?}, state) do
+    cond do
+      on? == state.is_recording ->
+        {:noreply, state}
+
+      on? == true ->
+        Process.send_after(self(), :flush_recording, @recording_flush_interval_ms)
+        {:noreply, %{state | is_recording: true}}
+
+      true ->
+        # Turning recording off — flush whatever's pending so we
+        # don't lose the tail of the session.
+        state = flush_recording(state)
+        {:noreply, %{state | is_recording: false}}
+    end
   end
 
   @impl true
@@ -197,6 +275,16 @@ defmodule Mixwave.Chambers.Server do
     end
   end
 
+  def handle_info(:flush_recording, state) do
+    state = flush_recording(state)
+
+    if state.is_recording do
+      Process.send_after(self(), :flush_recording, @recording_flush_interval_ms)
+    end
+
+    {:noreply, state}
+  end
+
   def handle_info(:bump_activity, %{chamber_id: chamber_id, dirty?: dirty?} = state) do
     # If notes came in this minute, flush a single DB write to
     # update last_activity_at. If nothing happened, skip the write
@@ -218,5 +306,29 @@ defmodule Mixwave.Chambers.Server do
       Process.send_after(self(), :bump_activity, @activity_bump_ms)
       {:noreply, state}
     end
+  end
+
+  @impl true
+  def terminate(_reason, state) do
+    # Flush any pending recording rows so a graceful shutdown
+    # doesn't lose the tail of an active session.
+    _ = flush_recording(state)
+    :ok
+  end
+
+  # Drains `state.to_persist` to the DB in chronological order.
+  # The queue is built head-first for O(1) prepend in handle_cast,
+  # so we reverse before insert.
+  defp flush_recording(%{to_persist: []} = state), do: state
+
+  defp flush_recording(%{chamber_id: nil} = state) do
+    # No chamber row to attach events to (system chamber created
+    # before a chamber_id was wired in). Drop the queue.
+    %{state | to_persist: []}
+  end
+
+  defp flush_recording(%{chamber_id: chamber_id, to_persist: queue} = state) do
+    Mixwave.Chambers.record_events(chamber_id, Enum.reverse(queue))
+    %{state | to_persist: []}
   end
 end

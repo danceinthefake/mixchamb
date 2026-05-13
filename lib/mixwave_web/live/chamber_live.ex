@@ -82,6 +82,7 @@ defmodule MixwaveWeb.ChamberLive do
      |> assign(:page_title, page_title_for(chamber))
      |> assign(:instruments, @instruments)
      |> assign(:current_instrument, :drums)
+     |> assign(:recorded_count, Chambers.recorded_event_count(chamber.id))
      # Initialize so the first switch is never blocked. BEAM's
      # monotonic time can be a large negative integer at startup, so
      # `0` here would make the cooldown check (`now - last_switch_at`)
@@ -159,6 +160,42 @@ defmodule MixwaveWeb.ChamberLive do
   def handle_event("request_replay", _params, socket) do
     events = Mixwave.Chambers.recent_events_within(socket.assigns.chamber_slug, 30)
     {:noreply, push_event(socket, "replay_burst", events_to_replay_payload(events))}
+  end
+
+  @impl true
+  def handle_event("toggle_recording", _params, socket) do
+    chamber = socket.assigns.chamber
+    user = socket.assigns.current_user
+
+    # Only the creator may toggle. Picker isn't rendered for
+    # others, so the only path here is a hand-crafted phx-event.
+    if chamber.creator_user_id != user.id do
+      {:noreply, socket}
+    else
+      case Chambers.set_recording(chamber, !chamber.is_recording) do
+        {:ok, updated} ->
+          # Tell every subscribed client (including this LV) that
+          # the chamber row changed — `handle_info({:chamber_updated, _})`
+          # picks it up and re-renders the badge.
+          Phoenix.PubSub.broadcast(
+            Mixwave.PubSub,
+            Mixwave.Chambers.topic(chamber.slug),
+            {:chamber_updated, updated}
+          )
+
+          {:noreply, assign(socket, :chamber, updated)}
+
+        {:error, _changeset} ->
+          {:noreply, put_flash(socket, :error, "Couldn't toggle recording.")}
+      end
+    end
+  end
+
+  @impl true
+  def handle_event("play_recording", _params, socket) do
+    chamber = socket.assigns.chamber
+    events = Chambers.recorded_events(chamber.id)
+    {:noreply, push_event(socket, "replay_burst", recorded_to_replay_payload(events))}
   end
 
   @impl true
@@ -262,10 +299,14 @@ defmodule MixwaveWeb.ChamberLive do
   # Broadcast by the LV that wrote the title change. Everyone else
   # in the chamber updates their assigns + page title.
   def handle_info({:chamber_updated, updated}, socket) do
+    # Refresh recorded_count too — a REC-off transition makes the
+    # newly-finalised session available for replay, and we need
+    # the count to enable the Play button + render its label.
     {:noreply,
      socket
      |> assign(:chamber, updated)
-     |> assign(:page_title, page_title_for(updated))}
+     |> assign(:page_title, page_title_for(updated))
+     |> assign(:recorded_count, Chambers.recorded_event_count(updated.id))}
   end
 
   @impl true
@@ -332,19 +373,41 @@ defmodule MixwaveWeb.ChamberLive do
 
     events_payload =
       Enum.map(events, fn e ->
-        %{
-          instrument: e.payload["instrument"],
-          style: e.payload["style"] || "synth",
-          note: e.payload["note"],
-          chord: e.payload["chord"],
-          octave_offset: e.payload["octave_offset"] || 0,
-          phase: e.payload["phase"],
-          up_strum: e.payload["up_strum"],
-          offset_ms: e.at - start_at
-        }
+        replay_event(e.payload, e.at - start_at)
       end)
 
     %{events: events_payload}
+  end
+
+  # Same shape as `events_to_replay_payload/1` but starts from a
+  # list of `Chambers.ChamberEvent` rows — these use absolute
+  # `inserted_at` timestamps, so offsets are computed against the
+  # first row's timestamp instead of monotonic time.
+  defp recorded_to_replay_payload([]), do: %{events: []}
+
+  defp recorded_to_replay_payload([first | _] = rows) do
+    start_at = first.inserted_at
+
+    events_payload =
+      Enum.map(rows, fn row ->
+        offset_ms = DateTime.diff(row.inserted_at, start_at, :millisecond)
+        replay_event(row.payload, offset_ms)
+      end)
+
+    %{events: events_payload}
+  end
+
+  defp replay_event(payload, offset_ms) do
+    %{
+      instrument: payload["instrument"],
+      style: payload["style"] || "synth",
+      note: payload["note"],
+      chord: payload["chord"],
+      octave_offset: payload["octave_offset"] || 0,
+      phase: payload["phase"],
+      up_strum: payload["up_strum"],
+      offset_ms: offset_ms
+    }
   end
 
   ## Render helpers
@@ -508,6 +571,67 @@ defmodule MixwaveWeb.ChamberLive do
                 </span>
               </span>
             <% end %>
+          </div>
+
+          <%!-- Recording controls. Creator gets a REC toggle.
+               Everyone sees the live REC badge while recording is
+               on, and a "Play recording" button once there's at
+               least one persisted event. --%>
+          <div class="flex flex-wrap items-center gap-2">
+            <span class="text-xs uppercase tracking-wider text-muted-foreground mr-1">
+              Recording
+            </span>
+
+            <button
+              :if={creator?(@chamber, @current_user)}
+              phx-click="toggle_recording"
+              type="button"
+              class={[
+                "inline-flex items-center gap-1.5 px-3 py-1 text-xs rounded-md border transition-colors cursor-pointer",
+                @chamber.is_recording &&
+                  "bg-red-500/15 text-red-500 border-red-500/40 hover:bg-red-500/20",
+                !@chamber.is_recording &&
+                  "bg-card hover:bg-accent text-muted-foreground border-input"
+              ]}
+              title={
+                if @chamber.is_recording,
+                  do: "Click to stop recording",
+                  else: "Click to start recording"
+              }
+            >
+              <span class={[
+                "size-2 rounded-full",
+                @chamber.is_recording && "bg-red-500 animate-pulse",
+                !@chamber.is_recording && "bg-muted-foreground/40"
+              ]}>
+              </span>
+              {if @chamber.is_recording, do: "REC · click to stop", else: "Start recording"}
+            </button>
+
+            <%!-- Non-creator live badge — visible only while
+                 recording is on. Mirrors the creator's button
+                 style minus the click affordance. --%>
+            <span
+              :if={!creator?(@chamber, @current_user) and @chamber.is_recording}
+              class="inline-flex items-center gap-1.5 px-3 py-1 text-xs rounded-md border bg-red-500/15 text-red-500 border-red-500/40"
+            >
+              <span class="size-2 rounded-full bg-red-500 animate-pulse"></span> REC
+            </span>
+
+            <%!-- Play recording — anyone. Shown only when there's
+                 something to replay and recording is currently off
+                 (so we don't double-stack a live jam with a replay
+                 of the same jam). --%>
+            <button
+              :if={@recorded_count > 0 and not @chamber.is_recording}
+              phx-click="play_recording"
+              type="button"
+              class="inline-flex items-center gap-1.5 px-3 py-1 text-xs rounded-md border bg-card hover:bg-accent text-foreground border-input cursor-pointer transition-colors"
+              title={"Replay all #{@recorded_count} recorded notes"}
+            >
+              <.icon name="hero-play-mini" class="size-3.5" /> Play recording
+              <span class="text-muted-foreground tabular-nums">· {@recorded_count}</span>
+            </button>
           </div>
 
           <%!-- Creator-only invite banner. Shows the chamber's
