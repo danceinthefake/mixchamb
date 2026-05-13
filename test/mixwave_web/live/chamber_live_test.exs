@@ -163,6 +163,25 @@ defmodule MixwaveWeb.ChamberLiveTest do
       refute html =~ "Start recording"
       assert html =~ "REC"
     end
+
+    test "reset_recording wipes events + count for the creator",
+         %{conn: conn, chamber: chamber} do
+      # Seed a couple of persisted events.
+      {:ok, _} =
+        Chambers.record_events(chamber.id, [
+          {%{"instrument" => "drums"}, DateTime.utc_now()},
+          {%{"instrument" => "drums"}, DateTime.utc_now()}
+        ])
+
+      assert Chambers.recorded_event_count(chamber.id) == 2
+
+      {:ok, view, _html} = live(conn, ~p"/chamber/#{chamber.slug}")
+      view |> element("button", "Reset recording") |> render_click()
+
+      assert Chambers.recorded_event_count(chamber.id) == 0
+      # Button hides once there's nothing left to reset.
+      refute render(view) =~ "Reset recording"
+    end
   end
 
   describe "note rate limiting" do

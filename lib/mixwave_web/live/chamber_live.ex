@@ -183,11 +183,46 @@ defmodule MixwaveWeb.ChamberLive do
             {:chamber_updated, updated}
           )
 
+          # Tell the creator's browser to start / stop tapping
+          # Tone.Recorder so the live jam can be exported as audio.
+          # push_event is per-socket, so only the creator (who
+          # just clicked the toggle) sees these — non-creators
+          # only get the chamber_updated broadcast.
+          event_name =
+            if updated.is_recording, do: "start_audio_capture", else: "stop_audio_capture"
+
+          socket = push_event(socket, event_name, %{})
+
           {:noreply, assign(socket, :chamber, updated)}
 
         {:error, _changeset} ->
           {:noreply, put_flash(socket, :error, "Couldn't toggle recording.")}
       end
+    end
+  end
+
+  @impl true
+  def handle_event("reset_recording", _params, socket) do
+    chamber = socket.assigns.chamber
+    user = socket.assigns.current_user
+
+    cond do
+      chamber.creator_user_id != user.id ->
+        {:noreply, socket}
+
+      chamber.is_recording ->
+        # Refuse while recording is still on — would race with the
+        # GenServer's batched flush. The button isn't rendered
+        # in this state; this guard catches hand-crafted events.
+        {:noreply, put_flash(socket, :error, "Stop recording before resetting.")}
+
+      true ->
+        {_count, _} = Chambers.delete_recorded_events(chamber.id)
+
+        {:noreply,
+         socket
+         |> assign(:recorded_count, 0)
+         |> push_event("clear_audio_capture", %{})}
     end
   end
 
@@ -636,6 +671,25 @@ defmodule MixwaveWeb.ChamberLive do
             >
               <.icon name="hero-play-mini" class="size-3.5" /> Play recording
               <span class="text-muted-foreground tabular-nums">· {@recorded_count}</span>
+            </button>
+
+            <%!-- Reset recording — creator-only. Wipes the persisted
+                 events for this chamber and tells the client to
+                 drop its captured audio blob. Disabled while
+                 recording is on (would race with the GenServer's
+                 batched flush). --%>
+            <button
+              :if={
+                creator?(@chamber, @current_user) and @recorded_count > 0 and
+                  not @chamber.is_recording
+              }
+              phx-click="reset_recording"
+              data-confirm="Delete the saved recording for this chamber? This can't be undone."
+              type="button"
+              class="inline-flex items-center gap-1.5 px-3 py-1 text-xs rounded-md border bg-card hover:bg-destructive/10 hover:text-destructive hover:border-destructive/40 text-muted-foreground border-input cursor-pointer transition-colors"
+              title="Delete this chamber's recorded events"
+            >
+              <.icon name="hero-trash-mini" class="size-3.5" /> Reset recording
             </button>
           </div>
 

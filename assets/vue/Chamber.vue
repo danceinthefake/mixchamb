@@ -30,8 +30,11 @@ import KendangPad from "@/instruments/KendangPad.vue"
 import {
   ensureStarted,
   play,
+  preload,
   setMasterVolume,
   setChamberKind,
+  startRecording,
+  stopRecording,
   type ChamberKind,
   type DrumName,
   type ChordName,
@@ -149,6 +152,8 @@ type ReplayEvent = {
 }
 
 const isReplaying = ref(false)
+const isCapturing = ref(false)
+const lastRecording = ref<{ blob: Blob; createdAt: Date } | null>(null)
 let replayTimers: number[] = []
 
 function startReplay() {
@@ -163,7 +168,7 @@ function stopReplay() {
   isReplaying.value = false
 }
 
-live.handleEvent("replay_burst", ({ events }: { events: ReplayEvent[] }) => {
+live.handleEvent("replay_burst", async ({ events }: { events: ReplayEvent[] }) => {
   // Cancel any in-flight replay before scheduling the new one.
   for (const id of replayTimers) window.clearTimeout(id)
   replayTimers = []
@@ -173,14 +178,38 @@ live.handleEvent("replay_burst", ({ events }: { events: ReplayEvent[] }) => {
     return
   }
 
+  await ensureStarted()
+
+  // Preload every (instrument, style) referenced in the replay
+  // BEFORE we schedule individual notes. Sampler-based voices
+  // (piano, acoustic guitar, suling) throw "buffer is either not
+  // set or not loaded" if triggered while their samples are
+  // still in flight, and an unhandled rejection mid-replay
+  // tends to silently drop later timers along with it.
+  const uniqueVoices = new Set<string>()
   for (const e of events) {
-    const id = window.setTimeout(async () => {
-      await ensureStarted()
+    uniqueVoices.add(`${e.instrument}|${e.style ?? "synth"}`)
+  }
+  await Promise.all(
+    Array.from(uniqueVoices).map((key) => {
+      const [inst, style] = key.split("|")
+      return preload(inst, style)
+    }),
+  )
+
+  for (const e of events) {
+    const id = window.setTimeout(() => {
       // guitar + pad carry chord; everything else carries note.
       const note = e.chord ?? e.note
       if (!note) return
       const opts = e.phase ? { phase: e.phase, upStrum: e.up_strum } : undefined
-      play(e.instrument, e.style ?? "synth", note, e.octave_offset ?? 0, opts)
+      try {
+        play(e.instrument, e.style ?? "synth", note, e.octave_offset ?? 0, opts)
+      } catch (err) {
+        // Don't let one bad note (sampler not loaded etc.) kill
+        // the rest of the replay.
+        console.warn("replay play() threw:", err)
+      }
     }, e.offset_ms)
     replayTimers.push(id)
   }
@@ -192,6 +221,57 @@ live.handleEvent("replay_burst", ({ events }: { events: ReplayEvent[] }) => {
   }, tail + 200)
   replayTimers.push(doneId)
 })
+
+// Audio capture is now tied to the REC toggle in the chamber, not
+// to replay. The creator's LV push_events here when they flip the
+// chamber-level REC button; non-creators never receive these.
+live.handleEvent("start_audio_capture", async () => {
+  if (isCapturing.value) return
+  await ensureStarted()
+  try {
+    await startRecording()
+    isCapturing.value = true
+  } catch (err) {
+    console.warn("startRecording failed:", err)
+  }
+})
+
+live.handleEvent("stop_audio_capture", async () => {
+  if (!isCapturing.value) return
+  isCapturing.value = false
+  const blob = await stopRecording()
+  if (blob && blob.size > 0) {
+    lastRecording.value = { blob, createdAt: new Date() }
+  }
+})
+
+live.handleEvent("clear_audio_capture", () => {
+  lastRecording.value = null
+})
+
+function downloadLastRecording() {
+  const rec = lastRecording.value
+  if (!rec) return
+
+  const url = URL.createObjectURL(rec.blob)
+  // `audio/webm` on Chrome/Firefox, `audio/mp4` on Safari. The
+  // browser chooses; we just map MIME to extension.
+  const ext = rec.blob.type.includes("mp4") ? "mp4" : "webm"
+  const stamp = rec.createdAt
+    .toISOString()
+    .replace(/[-:]/g, "")
+    .replace(/\..+$/, "")
+    .replace("T", "-")
+  const a = document.createElement("a")
+  a.href = url
+  a.download = `mixwave-jam-${stamp}.${ext}`
+  document.body.appendChild(a)
+  a.click()
+  document.body.removeChild(a)
+  // Hold the URL until next tick so the download has a chance to
+  // start before we revoke; firefox is picky about this.
+  setTimeout(() => URL.revokeObjectURL(url), 1000)
+}
 
 // Cross-instrument audio: every user hears every other user with the
 // sender's chosen style, no matter which pad *they* have on screen.
@@ -266,6 +346,28 @@ live.handleEvent("play_remote_note", async (payload: RemoteNote) => {
         >
           {{ isReplaying ? "Stop replay" : "↩ Replay 30s" }}
         </button>
+
+        <!-- Download audio. Visible only after a recordable replay
+             has produced a Blob; clears on a new replay. -->
+        <button
+          v-if="lastRecording"
+          @click="downloadLastRecording"
+          class="px-2.5 py-1 text-xs rounded-md text-foreground bg-primary/10 hover:bg-primary/20 transition-colors cursor-pointer"
+          :title="`Download the recording as an audio file (${lastRecording.blob.type})`"
+        >
+          ⬇ Download audio
+        </button>
+
+        <!-- Pulsing red dot while a recordable replay is captured.
+             Lets the user know audio is being grabbed without
+             cluttering the bar with extra copy. -->
+        <span
+          v-if="isCapturing"
+          class="inline-flex items-center gap-1.5 px-1.5 text-xs text-red-500"
+        >
+          <span class="size-2 rounded-full bg-red-500 animate-pulse"></span>
+          Capturing…
+        </span>
 
         <div class="w-px h-5 bg-border"></div>
 

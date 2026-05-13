@@ -189,6 +189,17 @@ defmodule Mixwave.Chambers do
   end
 
   @doc """
+  Wipes every persisted event for `chamber_id`. Returns
+  `{count_deleted, nil}` matching Repo.delete_all's shape.
+  Used by the Reset Recording button.
+  """
+  def delete_recorded_events(chamber_id) when is_binary(chamber_id) do
+    ChamberEvent
+    |> where([e], e.chamber_id == ^chamber_id)
+    |> Repo.delete_all()
+  end
+
+  @doc """
   Permanently deletes a chamber row. Called when the chamber's
   GenServer terminates because nobody but the creator showed up.
   """

@@ -148,6 +148,24 @@ defmodule Mixwave.ChambersTest do
       {:ok, _} = Chambers.delete(chamber)
       assert Chambers.recorded_event_count(chamber.id) == 0
     end
+
+    test "delete_recorded_events wipes a chamber's events without dropping the chamber",
+         %{user: user} do
+      {:ok, chamber} = Chambers.create_chamber(user.id)
+
+      {:ok, _} =
+        Chambers.record_events(chamber.id, [
+          {%{"instrument" => "drums"}, DateTime.utc_now()},
+          {%{"instrument" => "kendang"}, DateTime.utc_now()}
+        ])
+
+      assert Chambers.recorded_event_count(chamber.id) == 2
+
+      assert {2, nil} = Chambers.delete_recorded_events(chamber.id)
+      assert Chambers.recorded_event_count(chamber.id) == 0
+      # Chamber row itself stays put.
+      assert Chambers.find_by_id(chamber.id)
+    end
   end
 
   describe "delete/1 + delete_idle_since/1" do
