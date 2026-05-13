@@ -44,6 +44,7 @@ import { onMounted, onUnmounted, ref, watch } from "vue"
 import { useLiveVue } from "live_vue"
 import { ensureStarted, play, stopAll, type DrumName } from "@/lib/audio"
 import { FLASH_MS, REMOTE_FLASH_DELTA_MS } from "@/lib/motion"
+import { isTypingInForm } from "@/lib/utils"
 
 const props = defineProps<{
   remoteHit: { instrument: string; note: string; t: number } | null
@@ -257,6 +258,7 @@ function selectStyle(id: DrumStyle) {
 
 function onKey(event: KeyboardEvent) {
   if (event.repeat) return
+  if (isTypingInForm(event)) return
   const pad = pads.find((p) => p.key === event.key)
   if (pad) {
     event.preventDefault()

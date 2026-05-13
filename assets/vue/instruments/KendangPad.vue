@@ -13,6 +13,7 @@ import { onMounted, onUnmounted, ref, watch } from "vue"
 import { useLiveVue } from "live_vue"
 import { ensureStarted, play, stopAll } from "@/lib/audio"
 import { FLASH_MS, REMOTE_FLASH_DELTA_MS } from "@/lib/motion"
+import { isTypingInForm } from "@/lib/utils"
 
 const props = defineProps<{
   remoteHit: { instrument: string; note: string; t: number } | null
@@ -94,6 +95,7 @@ function selectStyle(id: KendangStyle) {
 
 function onKey(event: KeyboardEvent) {
   if (event.repeat) return
+  if (isTypingInForm(event)) return
   const p = pads.find((x) => x.key === event.key)
   if (p) {
     event.preventDefault()
