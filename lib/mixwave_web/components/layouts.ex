@@ -26,10 +26,27 @@ defmodule MixwaveWeb.Layouts do
 
   attr :width, :atom, default: :default, values: [:default, :wide]
 
+  attr :banner, :any,
+    default: nil,
+    doc: "active system banner, set by the BannerHook on_mount"
+
   slot :inner_block, required: true
 
   def app(assigns) do
     ~H"""
+    <%!-- Admin-broadcast banner. Rendered above the header so it
+         doesn't get scrolled off; auto-hides as soon as the row
+         expires (BannerHook pushes nil on the PubSub topic). --%>
+    <div
+      :if={@banner}
+      class="bg-primary/15 border-b border-primary/30 text-foreground"
+    >
+      <div class="mx-auto max-w-5xl flex items-start gap-3 px-4 sm:px-6 lg:px-8 py-2">
+        <.icon name="hero-megaphone-mini" class="size-4 mt-0.5 shrink-0 text-primary" />
+        <p class="flex-1 text-sm leading-snug">{@banner.message}</p>
+      </div>
+    </div>
+
     <header class="border-b">
       <div class="mx-auto max-w-5xl flex items-center gap-6 px-4 sm:px-6 lg:px-8 py-3">
         <a href="/" class="flex items-center gap-2 hover:opacity-80">

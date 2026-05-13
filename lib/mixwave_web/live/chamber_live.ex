@@ -545,7 +545,7 @@ defmodule MixwaveWeb.ChamberLive do
   @impl true
   def render(assigns) do
     ~H"""
-    <Layouts.app flash={@flash}>
+    <Layouts.app flash={@flash} banner={assigns[:banner]}>
       <%!-- Break out of Layouts.app's max-w-3xl + py-10. The chamber
            uses the full available width as a stage; the dock floats
            at the bottom of the viewport. --%>

@@ -48,6 +48,12 @@ defmodule MixwaveWeb.Admin.Layouts do
       path: "/admin/cluster",
       view: MixwaveWeb.Admin.ClusterLive,
       icon: "hero-globe-alt"
+    },
+    %{
+      label: "Ops",
+      path: "/admin/ops",
+      view: MixwaveWeb.Admin.OpsLive,
+      icon: "hero-megaphone"
     }
   ]
 
@@ -58,13 +64,14 @@ defmodule MixwaveWeb.Admin.Layouts do
   """
   attr :current_view, :atom, required: true
   attr :flash, :map, default: %{}
+  attr :banner, :any, default: nil
   slot :inner_block, required: true
 
   def admin_shell(assigns) do
     assigns = assign(assigns, :tabs, @tabs)
 
     ~H"""
-    <Layouts.app flash={@flash} width={:wide}>
+    <Layouts.app flash={@flash} width={:wide} banner={@banner}>
       <div class="grid grid-cols-1 lg:grid-cols-[14rem_1fr] gap-6">
         <aside class="lg:sticky lg:top-4 lg:self-start">
           <div class="rounded-xl border bg-card p-2">

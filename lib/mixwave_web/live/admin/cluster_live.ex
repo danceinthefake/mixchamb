@@ -83,6 +83,8 @@ defmodule MixwaveWeb.Admin.ClusterLive do
 
         case Node.connect(node) do
           true ->
+            Mixwave.Audit.log("connect_node", "node:#{node}", %{})
+
             {:noreply,
              socket
              |> put_flash(:info, "Connected to #{node}.")
@@ -107,6 +109,7 @@ defmodule MixwaveWeb.Admin.ClusterLive do
   def handle_event("disconnect", %{"node" => target}, socket) do
     node = String.to_atom(target)
     Logger.warning("[admin/cluster] disconnect: #{inspect(node)}")
+    Mixwave.Audit.log("disconnect_node", "node:#{node}", %{})
     Node.disconnect(node)
     {:noreply, load(socket)}
   end
@@ -114,6 +117,7 @@ defmodule MixwaveWeb.Admin.ClusterLive do
   def handle_event("drain", %{"node" => target}, socket) do
     node = String.to_atom(target)
     Logger.warning("[admin/cluster] drain: #{inspect(node)}")
+    Mixwave.Audit.log("drain_node", "node:#{node}", %{})
 
     result =
       cond do
@@ -229,7 +233,7 @@ defmodule MixwaveWeb.Admin.ClusterLive do
   @impl true
   def render(assigns) do
     ~H"""
-    <AdminLayouts.admin_shell current_view={__MODULE__} flash={@flash}>
+    <AdminLayouts.admin_shell current_view={__MODULE__} flash={@flash} banner={assigns[:banner]}>
       <.header>
         Cluster
         <:subtitle>

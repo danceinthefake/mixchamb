@@ -65,7 +65,7 @@ defmodule MixwaveWeb.Admin.DashboardLive do
   @impl true
   def render(assigns) do
     ~H"""
-    <AdminLayouts.admin_shell current_view={__MODULE__} flash={@flash}>
+    <AdminLayouts.admin_shell current_view={__MODULE__} flash={@flash} banner={assigns[:banner]}>
       <.header>
         Dashboard
         <:subtitle>
