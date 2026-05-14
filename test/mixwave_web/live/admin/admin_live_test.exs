@@ -101,6 +101,16 @@ defmodule MixwaveWeb.Admin.AdminLiveTest do
     end
   end
 
+  describe "Health" do
+    test "renders the stats grid + memory + ETS tables", %{conn: conn} do
+      {:ok, _view, html} = live(conn, ~p"/admin/health")
+      assert html =~ "Health"
+      assert html =~ "Memory breakdown"
+      assert html =~ "Our ETS tables"
+      assert html =~ "Chamber restart counts"
+    end
+  end
+
   describe "Rate limits" do
     test "renders the empty state when nothing is saturated", %{conn: conn} do
       {:ok, _view, html} = live(conn, ~p"/admin/rate-limits")
