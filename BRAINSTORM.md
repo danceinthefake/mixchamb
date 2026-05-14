@@ -225,6 +225,14 @@ will add a `jams` table at that point, not before.
   presence list, recording status, GenServer uptime + restart
   count, and Kill / Delete actions (both audited). The Chambers
   sidebar tab stays highlighted via `current_view` override.
+- **System health tab**: ✅ shipped — `/admin/health` surfaces a
+  one-glance snapshot via `Mixwave.SystemHealth` — BEAM (processes,
+  atoms, run queue, schedulers, reductions, ports), memory
+  breakdown by segment (processes, binary, code, ETS, atom,
+  system), our two ETS tables' size + memory, and Postgres
+  connections (via `pg_stat_activity`). Refreshes every 2 s; no
+  graphs (LiveDashboard at `/dev/dashboard` is the time-series
+  view).
 - **Rate limits dashboard**: ✅ shipped — `/admin/rate-limits` is
   fed by a new `Mixwave.Telemetry.RateLimitDrops` GenServer that
   subscribes to `[:mixwave, :chamber, :note_dropped]`. Two

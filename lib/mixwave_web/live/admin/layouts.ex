@@ -60,6 +60,12 @@ defmodule MixwaveWeb.Admin.Layouts do
       path: "/admin/rate-limits",
       view: MixwaveWeb.Admin.RateLimitsLive,
       icon: "hero-no-symbol"
+    },
+    %{
+      label: "Health",
+      path: "/admin/health",
+      view: MixwaveWeb.Admin.HealthLive,
+      icon: "hero-heart"
     }
   ]
 
