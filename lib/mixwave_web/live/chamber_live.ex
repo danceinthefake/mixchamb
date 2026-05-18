@@ -860,6 +860,13 @@ defmodule MixwaveWeb.ChamberLive do
            lifts it above the iOS home-indicator on a notched one. --%>
       <div class="fixed inset-x-0 bottom-[max(1rem,env(safe-area-inset-bottom))] px-4 z-40 pointer-events-none">
         <div class="mx-auto max-w-3xl pointer-events-auto">
+          <%!-- Latency disclaimer. Real musical timing needs sub-30 ms;
+               WebSocket fan-out can't promise that, so we tell the
+               user up front instead of pretending. Hidden on mobile
+               where the dock already eats most of the bottom strip. --%>
+          <p class="hidden sm:block text-center text-[10px] uppercase tracking-wider text-muted-foreground/70 mb-1.5">
+            Best-effort sync · distant players may sound a beat off
+          </p>
           <div class="flex items-center gap-2 rounded-2xl border bg-card/80 backdrop-blur-md px-2 py-1.5 shadow-2xl">
             <%!-- Instrument switcher tabs --%>
             <div class="flex items-center gap-1 flex-1 overflow-x-auto">
