@@ -51,4 +51,27 @@ defmodule MixwaveWeb.UserAuth do
     fallback = Application.get_env(:mixwave, :admin_user, "admin")
     {:cont, assign(socket, :current_admin, fallback)}
   end
+
+  # `:maybe_admin` variant — for public LVs (e.g. ChamberLive) that
+  # aren't behind AdminAuth but want to grant admins extra
+  # capabilities. Assigns the admin username if there's an admin
+  # session, nil otherwise. Use `is_binary(@current_admin)` as the
+  # is-admin check in templates / handlers.
+  def on_mount(:maybe_admin, _params, %{"admin_username" => username}, socket)
+      when is_binary(username) do
+    {:cont, assign(socket, :current_admin, username)}
+  end
+
+  # Stale-session fallback: sessions created before `admin_username`
+  # was added still carry `admin_authenticated => true`. Treat those
+  # as the env break-glass user so they keep their admin powers
+  # until next login.
+  def on_mount(:maybe_admin, _params, %{"admin_authenticated" => true}, socket) do
+    fallback = Application.get_env(:mixwave, :admin_user, "admin")
+    {:cont, assign(socket, :current_admin, fallback)}
+  end
+
+  def on_mount(:maybe_admin, _params, _session, socket) do
+    {:cont, assign(socket, :current_admin, nil)}
+  end
 end

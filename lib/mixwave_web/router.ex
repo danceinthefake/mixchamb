@@ -38,6 +38,7 @@ defmodule MixwaveWeb.Router do
     live_session :default,
       on_mount: [
         {MixwaveWeb.UserAuth, :current_user},
+        {MixwaveWeb.UserAuth, :maybe_admin},
         {MixwaveWeb.Live.BannerHook, :default}
       ] do
       live "/", LandingLive
