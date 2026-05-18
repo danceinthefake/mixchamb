@@ -101,10 +101,12 @@ defmodule MixwaveWeb.ChamberLive do
     user = socket.assigns.current_user
 
     cond do
-      chamber.creator_user_id != user.id ->
-        # Only the creator may change the chamber's audio kind. The
-        # picker isn't even rendered for non-creators; this guard
-        # is for hand-crafted phx-events.
+      not can_change_kind?(chamber, user, socket.assigns[:current_admin]) ->
+        # Creators may change the kind on their own chamber; admins
+        # may change it on any chamber (including the singleton chaos
+        # chamber, which has no human creator they could ask). The
+        # picker isn't rendered for everyone else; this guard is
+        # for hand-crafted phx-events.
         {:noreply, socket}
 
       chamber.kind == kind ->
@@ -510,6 +512,12 @@ defmodule MixwaveWeb.ChamberLive do
 
   defp creator?(chamber, current_user), do: chamber.creator_user_id == current_user.id
 
+  # Kind picker is open to the chamber's creator OR any logged-in
+  # admin — the chaos chamber has no human creator, so without the
+  # admin escape hatch nobody could ever change its audio character.
+  defp can_change_kind?(chamber, current_user, current_admin),
+    do: creator?(chamber, current_user) or is_binary(current_admin)
+
   # Order matters — drives chip render order. From driest to wettest
   # so the picker reads as a "spectrum" left-to-right.
   @chamber_kinds ~w(vacuum anechoic room live hall cathedral plate spring echo)
@@ -604,7 +612,7 @@ defmodule MixwaveWeb.ChamberLive do
             <span class="text-xs uppercase tracking-wider text-muted-foreground mr-1">
               Kind
             </span>
-            <%= if creator?(@chamber, @current_user) do %>
+            <%= if can_change_kind?(@chamber, @current_user, @current_admin) do %>
               <button
                 :for={kind <- chamber_kinds()}
                 phx-click="set_kind"
