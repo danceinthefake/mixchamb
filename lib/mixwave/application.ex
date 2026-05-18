@@ -50,6 +50,10 @@ defmodule Mixwave.Application do
       MixwaveWeb.Presence,
       # Start to serve requests, typically the last entry
       MixwaveWeb.Endpoint,
+      # Auto-Node.connect/1 each peer listed in PEER_NODES env var
+      # (used by `make prod-node1` / `prod-node2` for LAN-cluster
+      # testing). :ignore + no-op when PEER_NODES is unset.
+      Mixwave.PeerConnector,
       # Graceful-shutdown coordinator. Listed LAST so it's the
       # FIRST process terminated when SIGTERM arrives — see the
       # module docstring for the full sequence.
