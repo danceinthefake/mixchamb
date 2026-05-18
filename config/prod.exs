@@ -11,14 +11,20 @@ config :mixwave, MixwaveWeb.Endpoint, []
 # Force using SSL in production. This also sets the "strict-security-transport" header,
 # known as HSTS. If you have a health check endpoint, you may want to exclude it below.
 # Note `:force_ssl` is required to be set at compile-time.
-config :mixwave, MixwaveWeb.Endpoint,
-  force_ssl: [
-    rewrite_on: [:x_forwarded_proto],
-    exclude: [
-      # paths: ["/health"],
-      hosts: ["localhost", "127.0.0.1"]
+#
+# For LAN testing of a prod release over plain HTTP, build with
+# `DISABLE_FORCE_SSL=1` (see Makefile's `prod-build-lan` target);
+# without that env var the redirect is on, which is what Fly wants.
+unless System.get_env("DISABLE_FORCE_SSL") in ~w(1 true) do
+  config :mixwave, MixwaveWeb.Endpoint,
+    force_ssl: [
+      rewrite_on: [:x_forwarded_proto],
+      exclude: [
+        # paths: ["/health"],
+        hosts: ["localhost", "127.0.0.1"]
+      ]
     ]
-  ]
+end
 
 # Do not print debug messages in production
 config :logger, level: :info
