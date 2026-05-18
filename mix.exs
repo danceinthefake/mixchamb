@@ -93,6 +93,9 @@ defmodule Mixwave.MixProject do
       {:live_vue, "~> 1.2"},
       {:bcrypt_elixir, "~> 3.0"},
       {:igniter, "~> 0.5", only: [:dev]},
+      # Dev-only LiveView inspector — process tree, assigns viewer,
+      # callback trace. Runs at http://localhost:4007.
+      {:live_debugger, "~> 1.0", only: [:dev]},
       {:excoveralls, "~> 0.18", only: :test}
     ]
   end
