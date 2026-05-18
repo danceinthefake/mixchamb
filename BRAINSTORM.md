@@ -113,28 +113,33 @@ will add a `jams` table at that point, not before.
 
 ### v1 — the studio works
 
-1. **Scaffolding cleanup**: roll back the songs/comments migrations,
-   delete the v1 LiveViews + schemas + R2 wrapper + Player + howler.
-2. **Studio.Room GenServer** — supervised, holds the last N note
-   events for replay when a new client joins.
-3. **Mixwave.Studio context** — `broadcast_note/2`, subscription
-   helpers wrapping Phoenix.PubSub.
-4. **Phoenix.Presence module** + tracking on join/instrument-switch.
-5. **StudioLive at /** — page shell, instrument tabs, presence
-   sidebar, latency-hint footer, "tap to enter" overlay for
-   `Tone.start()`.
-6. **DrumPad.vue** — five pads (kick / snare / hi-hat / open hat /
-   crash). `Tone.MembraneSynth` for kick, `Tone.NoiseSynth` for
-   snare/hat. Tap or `1–5` keys.
-7. **KeyboardPad.vue** — one octave (12 keys). `Tone.PolySynth`
+1. ✅ **Scaffolding cleanup**: songs/comments migrations rolled back,
+   v1 LiveViews + schemas + R2 wrapper + Player + howler all deleted.
+2. ✅ **Chambers.Server GenServer** (renamed from Studio.Room) —
+   supervised, holds the last 200 note events for join replay.
+3. ✅ **Mixwave.Chambers context** (renamed from Studio) — note
+   broadcast + subscribe helpers wrapping Phoenix.PubSub.
+4. ✅ **Phoenix.Presence module** at `mixwave_web/channels/presence.ex`
+   + tracking on join/instrument-switch from `ChamberLive`.
+5. ✅ **ChamberLive at /:slug** (renamed from StudioLive) — page
+   shell, instrument tabs, presence sidebar, "tap to enter" gate
+   for `Tone.start()`. (Latency hint footer — see #11.)
+6. ✅ **DrumPad.vue** — full drum kit (kick / snare / toms / hats /
+   crashes / ride) across multiple style flavors. `MembraneSynth`
+   for kick, `NoiseSynth` for snare/hat. Tap or keys.
+7. ✅ **KeyboardPad.vue** — one octave with octave-shift. `PolySynth`
    over `Tone.Synth`. Click or `a–p` keys.
-8. **GuitarPad.vue** — eight common chord buttons (C / Am / Dm / G
-   / E / Em / F / B7). `Tone.PluckSynth` per string in a chord.
-9. **PubSub wire-up** — Vue islands push notes to LV via
-   `pushEvent`; LV broadcasts on `studio:lobby`; receives + pushes
-   back to Vue via JS commands; Vue plays via Tone.
-10. **1-second cooldown** on instrument switch.
-11. **Latency hint copy** in the footer.
+8. ✅ **GuitarPad.vue** — common chord buttons across style flavors.
+   `PluckSynth` per string in a chord.
+9. ✅ **PubSub wire-up** — Vue islands push notes to LV via
+   `pushEvent`; LV broadcasts on `chamber:<slug>`; receives push
+   back to Vue via `play_remote_note` JS commands; Vue plays via Tone.
+10. ✅ **1-second cooldown** on instrument switch (`@switch_cooldown_ms`
+    in `chamber_live.ex`).
+11. ✅ **Latency hint copy** — small "Best-effort sync · distant
+    players may sound a beat off" line sits directly above the
+    floating dock on sm+ (hidden on mobile where the dock already
+    fills the bottom strip).
 
 ### v2 — chaos button + recording + polish
 
@@ -148,44 +153,79 @@ will add a `jams` table at that point, not before.
     audio" button — file is `.webm` on Chrome/Firefox, `.mp4`
     on Safari (browser-chosen MIME, not re-encoded). Strict
     WAV needs `Tone.Offline` + a WAV encoder; deferred.
-13. Supervisor LiveView with the chaos button: kill Studio.Room,
-    watch it restart, count restarts.
-14. Animation when others play — instrument panel highlights
-    briefly (CSS-driven via PubSub events).
-15. Per-user volume control (Tone.Gain on the receive side).
-16. More instruments (bass, synth pad, vocal sample bank).
+13. ✅ Supervisor LiveView with the chaos button — `/admin/system`
+    kills a ChamberServer, watches it restart, tracks the count
+    via `Mixwave.RestartWatcher`. Every kill writes to the audit log.
+14. ✅ Animation when others play — `remoteHit` prop on each pad
+    flashes a CSS pulse driven by `play_remote_note` PubSub events.
+15. ✅ Per-user volume control — master output slider on `Chamber.vue`
+    sets `Tone.Destination.volume`; persisted per-user in localStorage.
+16. ✅ More instruments — Bass, Synth, Kendang (Sundanese drum),
+    Suling (bamboo flute) all shipped on top of the original three.
+    Seven instruments total, each with multiple style flavors.
 
 ### v3 — multi-node + public release
 
-17. Fly deploy with `fly scale count 2`; `dns_cluster` autoclusters.
-18. Cluster LiveView (nodes / process counts / cross-node latency).
-19. "Drain node N" button — Presence rebalances; users on the
-    drained node reconnect to the survivor.
-20. README + GIF + open-source.
-21. Public URL (Fly default subdomain).
+17. ✅ Fly deploy scaffolded — `fly.toml` sets `DNS_CLUSTER_QUERY`,
+    IPv6 distribution, kill-signal/timeout for graceful drain;
+    `:dns_cluster` dep wired in `application.ex`. Actual
+    `fly scale count 2` deploy is a deployment step, not code.
+18. ⏳ Cluster LiveView — `/admin/cluster` shows nodes, process
+    counts, memory, and the drain button, but **no cross-node
+    latency / RTT metric**. The BRAINSTORM line called for one;
+    code doesn't have it. See Punch list.
+19. ✅ "Drain node N" button — `/admin/cluster` row action kills the
+    target `MixwaveWeb.Endpoint` via `:rpc.call`; `Mixwave.Drain`
+    broadcasts `system:drain` on SIGTERM so clients see the amber
+    "Server restarting" banner and reconnect to the survivor.
+20. ⏳ README + GIF + open-source — README is comprehensive (479
+    lines, brand assets, badge plumbing) but **no embedded GIF or
+    screenshot** of the app in action. Coverage badge URLs still
+    say `OWNER/REPO`. See Punch list.
+21. ⏳ Public URL — `fly.toml` configures `mixwave.fly.dev` but
+    we haven't actually pushed a deploy yet. User-action item.
+
+## 5a. Audit punch list (2026-05-19)
+
+Two threads of v1–v3 are still genuinely open:
+
+- **Cross-node latency in ClusterLive** (v3 #18) — schedule a
+  small RPC ping from the LV (e.g. `:erpc.call` round-trip with
+  `:erlang.monotonic_time/1` deltas) and render an RTT column
+  next to each peer node.
+- **README walkthrough media + first deploy** (v3 #20, #21) —
+  capture a short loop of two browsers jamming, drop it into
+  README, fix the `OWNER/REPO` badge URLs, then run the first
+  `fly deploy` to claim the public subdomain.
+
+Everything else from the original scope (v1 jam loop, v2 recording
++ chaos + extra instruments, v3 cluster + drain) is shipped.
 
 ## 6. Build Order (high-level)
 
-1. Rewrite BRAINSTORM (this commit).
-2. Roll back songs + comments migrations; delete the migration files.
-3. Delete v1 code: Library/Upload/Song/Manage LiveViews; Storage;
+The original v1 build order — all complete except for the latency
+hint, which is now tracked in §5a Punch list:
+
+1. ✅ Rewrite BRAINSTORM.
+2. ✅ Roll back songs + comments migrations; delete the migration files.
+3. ✅ Delete v1 code: Library/Upload/Song/Manage LiveViews; Storage;
    Library context; `Library.Song` / `Library.Comment`; `VueDemo.vue`;
    `Player.vue`.
-4. Drop deps: `ex_aws`, `ex_aws_s3`, `sweet_xml`, `hackney`, plus
+4. ✅ Drop deps: `ex_aws`, `ex_aws_s3`, `sweet_xml`, `hackney`, plus
    the npm `howler` + `@types/howler`.
-5. Drop the audio MIME-type config in `config/config.exs`.
-6. Add Tone.js (npm).
-7. `Studio.Room` GenServer + `Mixwave.Studio` context + Presence module.
-8. StudioLive shell — empty room, presence sidebar, "tap to enter"
-   overlay.
-9. DrumPad.vue + the full event roundtrip (push → broadcast →
-   receive → play). Once this works for one instrument, the others
-   are mechanical.
-10. KeyboardPad.vue.
-11. GuitarPad.vue.
-12. Cooldown + latency hint.
-13. Smoke test with multiple browsers.
-14. **Ship v1.**
+5. ✅ Drop the audio MIME-type config in `config/config.exs`.
+6. ✅ Add Tone.js (npm).
+7. ✅ Chambers.Server GenServer + Mixwave.Chambers context + Presence
+   module. (Renamed from Studio.Room / Mixwave.Studio.)
+8. ✅ ChamberLive shell — empty room, presence sidebar, "tap to
+   enter" overlay.
+9. ✅ DrumPad.vue + full event roundtrip (push → broadcast →
+   receive → play).
+10. ✅ KeyboardPad.vue.
+11. ✅ GuitarPad.vue.
+12. ✅ Cooldown + latency hint both shipped.
+13. ✅ Smoke test with multiple browsers.
+14. ✅ **v1 shipped.**
 
 ## 7. Decisions (locked)
 
