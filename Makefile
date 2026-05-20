@@ -54,10 +54,10 @@ test: db-up ## Run the Elixir test suite.
 	mix test
 
 test-js: ## Run the Vue / TS test suite (vitest, one-shot).
-	pnpm test
+	npm run test
 
 test-watch: ## Vitest in watch mode.
-	pnpm test:watch
+	npm run test:watch
 
 test-all: test test-js ## Elixir + JS tests, one after the other.
 
@@ -65,18 +65,18 @@ coverage: db-up ## Elixir coverage report (excoveralls).
 	mix coveralls.html
 
 coverage-js: ## Vue / TS coverage report.
-	pnpm test:coverage
+	npm run test:coverage
 
 format: ## Apply mix format + oxfmt.
 	mix format
-	pnpm format
+	npm run format
 
 format-check: ## Read-only format check (what CI runs).
 	mix format --check-formatted
-	pnpm format:check
+	npm run format:check
 
 lint: ## oxlint over the Vue tree.
-	pnpm lint
+	npm run lint
 
 check: format-check lint test-js ## Full JS CI dry run: format-check + lint + tests.
 
