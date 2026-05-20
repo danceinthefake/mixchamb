@@ -126,6 +126,7 @@ onUnmounted(() => {
         v-for="s in styles"
         :key="s.id"
         @click="selectStyle(s.id)"
+        :aria-pressed="style === s.id"
         :class="[
           'px-3 py-1 text-xs rounded-md border transition-colors',
           style === s.id
@@ -145,6 +146,7 @@ onUnmounted(() => {
         v-for="(p, i) in pads"
         :key="p.name"
         @pointerdown.prevent="hit(p.name)"
+        :aria-label="`${p.label}${p.key ? ' (press ' + p.key + ')' : ''}`"
         :class="[
           'pad-touch touch-manipulation aspect-[3/2] rounded-2xl border flex flex-col items-center justify-center gap-1 transition-all active:scale-95 hover:bg-accent',
           i < 3 ? 'bg-card' : 'bg-muted',

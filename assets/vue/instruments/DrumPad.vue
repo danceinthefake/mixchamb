@@ -290,6 +290,7 @@ onUnmounted(() => {
         v-for="s in styles"
         :key="s.id"
         @click="selectStyle(s.id)"
+        :aria-pressed="style === s.id"
         :class="[
           'px-3 py-1 text-xs rounded-md border transition-colors',
           style === s.id
@@ -313,6 +314,7 @@ onUnmounted(() => {
         :key="p.id"
         @pointerdown.prevent="hit(p)"
         :disabled="!p.drum"
+        :aria-label="`${p.label}${p.key ? ' (press ' + p.key + ')' : ''}`"
         :style="{
           left: p.pos.left,
           top: p.pos.top,

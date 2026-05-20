@@ -670,6 +670,12 @@ defmodule MixwaveWeb.ChamberLive do
                     "Starting a new recording will replace the current audio file (it hasn't been downloaded). Continue?"
               }
               type="button"
+              aria-pressed={to_string(@chamber.is_recording)}
+              aria-label={
+                if @chamber.is_recording,
+                  do: "Stop recording",
+                  else: "Start recording"
+              }
               class={[
                 "inline-flex items-center gap-1.5 px-3 py-1 text-xs rounded-md border transition-colors cursor-pointer",
                 @chamber.is_recording &&
@@ -683,14 +689,27 @@ defmodule MixwaveWeb.ChamberLive do
                   else: "Click to start recording"
               }
             >
-              <span class={[
-                "size-2 rounded-full",
-                @chamber.is_recording && "bg-red-500 animate-pulse",
-                !@chamber.is_recording && "bg-muted-foreground/40"
-              ]}>
+              <span
+                aria-hidden="true"
+                class={[
+                  "size-2 rounded-full",
+                  @chamber.is_recording && "bg-red-500 animate-pulse",
+                  !@chamber.is_recording && "bg-muted-foreground/40"
+                ]}
+              >
               </span>
               {if @chamber.is_recording, do: "REC · click to stop", else: "Start recording"}
             </button>
+
+            <%!-- Screen-reader-only live region. The button label
+                 already changes between "Start recording" /
+                 "Stop recording" on toggle, but a polite live
+                 region also announces the state transition itself
+                 so AT users hear "Recording started" without
+                 needing to re-focus the button. --%>
+            <div role="status" aria-live="polite" aria-atomic="true" class="sr-only">
+              {if @chamber.is_recording, do: "Recording started", else: "Recording stopped"}
+            </div>
 
             <%!-- Non-creator live badge — visible only while
                  recording is on. Mirrors the creator's button
@@ -811,6 +830,7 @@ defmodule MixwaveWeb.ChamberLive do
               ]}
             >
               <span
+                aria-hidden="true"
                 class="size-2 rounded-full shrink-0 mt-2"
                 style={"background-color: " <> accent_var(meta.instrument)}
               >
@@ -893,6 +913,8 @@ defmodule MixwaveWeb.ChamberLive do
                 :for={inst <- @instruments}
                 phx-click="switch_instrument"
                 phx-value-to={inst}
+                aria-label={instrument_label(inst)}
+                aria-pressed={to_string(@current_instrument == inst)}
                 class={[
                   "pad-touch touch-manipulation px-3 py-1.5 text-sm rounded-lg transition-all flex items-center gap-1.5 whitespace-nowrap cursor-pointer",
                   @current_instrument == inst && active_tab_class(inst),
@@ -902,6 +924,7 @@ defmodule MixwaveWeb.ChamberLive do
                 title={instrument_label(inst)}
               >
                 <span
+                  aria-hidden="true"
                   class="size-2 rounded-full opacity-80"
                   style={"background-color: " <> accent_var(inst)}
                 >

@@ -249,6 +249,7 @@ onUnmounted(() => {
           v-for="s in styles"
           :key="s.id"
           @click="selectStyle(s.id)"
+          :aria-pressed="style === s.id"
           :class="[
             'px-3 py-1 text-xs rounded-md border transition-colors',
             style === s.id
@@ -266,6 +267,7 @@ onUnmounted(() => {
         <button
           @click="shiftOctave(-1)"
           :disabled="baseOctave <= OCTAVE_MIN"
+          aria-label="Shift octave down"
           class="px-2 py-1 text-xs rounded-md border bg-card hover:bg-accent text-muted-foreground border-input disabled:opacity-30 disabled:cursor-not-allowed"
         >
           −
@@ -276,6 +278,7 @@ onUnmounted(() => {
         <button
           @click="shiftOctave(1)"
           :disabled="baseOctave >= OCTAVE_MAX"
+          aria-label="Shift octave up"
           class="px-2 py-1 text-xs rounded-md border bg-card hover:bg-accent text-muted-foreground border-input disabled:opacity-30 disabled:cursor-not-allowed"
         >
           +
@@ -310,6 +313,7 @@ onUnmounted(() => {
               v-for="key in whiteKeys"
               :key="key.note"
               @pointerdown.prevent="hit(key.note)"
+              :aria-label="`${key.label}${key.octave}${key.key ? ' (press ' + key.key + ')' : ''}`"
               :class="[
                 'pad-touch flex-1 border rounded-b-md flex flex-col items-center justify-end pb-2 transition-all touch-none',
                 flashingNote === key.note
@@ -337,6 +341,7 @@ onUnmounted(() => {
             v-for="bk in blackKeys"
             :key="bk.note"
             @pointerdown.prevent.stop="hit(bk.note)"
+            :aria-label="`${bk.label}${bk.octave}${bk.key ? ' (press ' + bk.key + ')' : ''}`"
             :style="{ left: `calc(${(bk.afterIdx + 1) * (100 / whiteKeys.length)}% - 1.125rem)` }"
             :class="[
               'pad-touch absolute top-0 w-9 h-28 rounded-b-md border border-black flex flex-col items-center justify-end pb-2 transition-all touch-none',
