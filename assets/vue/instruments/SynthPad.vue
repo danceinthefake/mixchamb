@@ -8,11 +8,10 @@
 //   - Bell: FMSynth, glassy bell-tone with harmonic shimmer
 //   - Sweep: sawtooth + filter envelope, classic 80s-pad sweep
 
-import { onMounted, onUnmounted, ref, watch } from "vue"
+import { onUnmounted, ref, toRef } from "vue"
 import { useLiveVue } from "live_vue"
 import { ensureStarted, play, stopAll, type ChordName } from "@/lib/audio"
-import { FLASH_MS, REMOTE_FLASH_DELTA_MS } from "@/lib/motion"
-import { isTypingInForm } from "@/lib/utils"
+import { useInstrumentFlash, useInstrumentKeyboard } from "@/lib/instrument"
 
 const props = defineProps<{
   remoteHit: { instrument: string; note: string; t: number } | null
@@ -56,37 +55,20 @@ const chords: Chord[] = [
   { name: "B7", key: "8" },
 ]
 
-const flashing = ref<ChordName | null>(null)
-const remoteFlashing = ref<ChordName | null>(null)
-let flashTimer: number | null = null
-let remoteFlashTimer: number | null = null
-
-function flash(name: ChordName) {
-  flashing.value = name
-  if (flashTimer !== null) window.clearTimeout(flashTimer)
-  // Pads sustain longer than other instruments — let the visual
-  // mirror that with a longer flash.
-  flashTimer = window.setTimeout(() => (flashing.value = null), FLASH_MS.long)
-}
-
 const chordNames = new Set<string>(["C", "Am", "Dm", "G", "E", "Em", "F", "B7"])
 
-function flashRemote(name: ChordName) {
-  remoteFlashing.value = name
-  if (remoteFlashTimer !== null) window.clearTimeout(remoteFlashTimer)
-  remoteFlashTimer = window.setTimeout(
-    () => (remoteFlashing.value = null),
-    FLASH_MS.long + REMOTE_FLASH_DELTA_MS,
-  )
-}
-
-watch(
-  () => props.remoteHit,
-  (hit) => {
-    if (!hit || hit.instrument !== "pad") return
-    if (chordNames.has(hit.note)) flashRemote(hit.note as ChordName)
-  },
-)
+// Pads sustain longer than other instruments — `duration: "long"`
+// keeps the visual flash matching the audio tail.
+const {
+  local: flashing,
+  remote: remoteFlashing,
+  flash,
+} = useInstrumentFlash<ChordName>({
+  remoteHit: toRef(props, "remoteHit"),
+  instrument: "pad",
+  duration: "long",
+  extractRemote: (hit) => (chordNames.has(hit.note) ? (hit.note as ChordName) : null),
+})
 
 async function trigger(name: ChordName) {
   await ensureStarted()
@@ -106,30 +88,12 @@ function selectStyle(id: PadStyle) {
   style.value = id
 }
 
-function onKey(event: KeyboardEvent) {
-  if (event.repeat) return
-  if (isTypingInForm(event)) return
-  const c = chords.find((x) => x.key === event.key)
-  if (c) {
-    event.preventDefault()
-    trigger(c.name)
-  }
-}
-
-let controller: AbortController | null = null
-
-onMounted(() => {
-  controller = new AbortController()
-  window.addEventListener("keydown", onKey, { signal: controller.signal })
+useInstrumentKeyboard({
+  findByKey: (k) => chords.find((c) => c.key === k),
+  onDown: (c) => trigger(c.name),
 })
 
-onUnmounted(() => {
-  controller?.abort()
-  if (flashTimer !== null) window.clearTimeout(flashTimer)
-  if (remoteFlashTimer !== null) window.clearTimeout(remoteFlashTimer)
-  // Cut any pad still ringing when leaving the instrument.
-  stopAll("pad", style.value)
-})
+onUnmounted(() => stopAll("pad", style.value))
 </script>
 
 <template>

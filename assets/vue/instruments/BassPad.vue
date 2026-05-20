@@ -20,11 +20,10 @@
 // Bass is monophonic; one note at a time. Local play + push;
 // remote audio goes through Chamber.vue's receiver.
 
-import { computed, onMounted, onUnmounted, ref, watch } from "vue"
+import { computed, onUnmounted, ref, toRef } from "vue"
 import { useLiveVue } from "live_vue"
 import { ensureStarted, play, stopAll } from "@/lib/audio"
-import { FLASH_MS, REMOTE_FLASH_DELTA_MS } from "@/lib/motion"
-import { isTypingInForm } from "@/lib/utils"
+import { useInstrumentFlash, useInstrumentKeyboard } from "@/lib/instrument"
 
 const props = defineProps<{
   remoteHit: { instrument: string; note: string; t: number } | null
@@ -130,33 +129,15 @@ function shiftOctave(delta: number) {
   baseOctave.value = next
 }
 
-const flashing = ref<string | null>(null)
-const remoteFlashing = ref<string | null>(null)
-let flashTimer: number | null = null
-let remoteFlashTimer: number | null = null
-
-function flash(note: string) {
-  flashing.value = note
-  if (flashTimer !== null) window.clearTimeout(flashTimer)
-  flashTimer = window.setTimeout(() => (flashing.value = null), FLASH_MS.medium)
-}
-
-function flashRemote(note: string) {
-  remoteFlashing.value = note
-  if (remoteFlashTimer !== null) window.clearTimeout(remoteFlashTimer)
-  remoteFlashTimer = window.setTimeout(
-    () => (remoteFlashing.value = null),
-    FLASH_MS.medium + REMOTE_FLASH_DELTA_MS,
-  )
-}
-
-watch(
-  () => props.remoteHit,
-  (hit) => {
-    if (!hit || hit.instrument !== "bass") return
-    flashRemote(hit.note)
-  },
-)
+const {
+  local: flashing,
+  remote: remoteFlashing,
+  flash,
+} = useInstrumentFlash<string>({
+  remoteHit: toRef(props, "remoteHit"),
+  instrument: "bass",
+  duration: "medium",
+})
 
 async function hit(note: string) {
   await ensureStarted()
@@ -171,32 +152,18 @@ function selectStyle(id: BassStyle) {
   style.value = id
 }
 
-function onKey(event: KeyboardEvent) {
-  if (event.repeat) return
-  if (isTypingInForm(event)) return
-  for (const s of strings.value) {
-    const f = s.frets.find((x) => x.key === event.key)
-    if (f) {
-      event.preventDefault()
-      hit(f.note)
-      return
+useInstrumentKeyboard({
+  findByKey: (k) => {
+    for (const s of strings.value) {
+      const f = s.frets.find((x) => x.key === k)
+      if (f) return f
     }
-  }
-}
-
-let controller: AbortController | null = null
-
-onMounted(() => {
-  controller = new AbortController()
-  window.addEventListener("keydown", onKey, { signal: controller.signal })
+    return undefined
+  },
+  onDown: (f) => hit(f.note),
 })
 
-onUnmounted(() => {
-  controller?.abort()
-  if (flashTimer !== null) window.clearTimeout(flashTimer)
-  if (remoteFlashTimer !== null) window.clearTimeout(remoteFlashTimer)
-  stopAll("bass", style.value)
-})
+onUnmounted(() => stopAll("bass", style.value))
 </script>
 
 <template>

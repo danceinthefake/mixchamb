@@ -18,11 +18,10 @@
 // Local play + push; remote audio goes through Chamber.vue's
 // receiver.
 
-import { onMounted, onUnmounted, ref, watch } from "vue"
+import { onMounted, onUnmounted, ref, toRef } from "vue"
 import { useLiveVue } from "live_vue"
 import { ensureStarted, play, stopAll, preload, type ChordName } from "@/lib/audio"
-import { FLASH_MS, REMOTE_FLASH_DELTA_MS } from "@/lib/motion"
-import { isTypingInForm } from "@/lib/utils"
+import { useInstrumentFlash, useInstrumentKeyboard } from "@/lib/instrument"
 
 const props = defineProps<{
   remoteHit: { instrument: string; note: string; t: number } | null
@@ -109,36 +108,18 @@ const chords: Chord[] = [
 
 const FRET_ROWS = 4
 
-const flashing = ref<ChordName | null>(null)
-const remoteFlashing = ref<ChordName | null>(null)
-let flashTimer: number | null = null
-let remoteFlashTimer: number | null = null
-
-function flash(name: ChordName) {
-  flashing.value = name
-  if (flashTimer !== null) window.clearTimeout(flashTimer)
-  flashTimer = window.setTimeout(() => (flashing.value = null), FLASH_MS.medium)
-}
-
 const chordNames = new Set<string>(chords.map((c) => c.name))
 
-function flashRemote(name: ChordName) {
-  remoteFlashing.value = name
-  if (remoteFlashTimer !== null) window.clearTimeout(remoteFlashTimer)
-  // Chords visibly ring longer than drums; mirror that with a longer flash.
-  remoteFlashTimer = window.setTimeout(
-    () => (remoteFlashing.value = null),
-    FLASH_MS.medium + REMOTE_FLASH_DELTA_MS,
-  )
-}
-
-watch(
-  () => props.remoteHit,
-  (hit) => {
-    if (!hit || hit.instrument !== "guitar") return
-    if (chordNames.has(hit.note)) flashRemote(hit.note as ChordName)
-  },
-)
+const {
+  local: flashing,
+  remote: remoteFlashing,
+  flash,
+} = useInstrumentFlash<ChordName>({
+  remoteHit: toRef(props, "remoteHit"),
+  instrument: "guitar",
+  duration: "medium",
+  extractRemote: (hit) => (chordNames.has(hit.note) ? (hit.note as ChordName) : null),
+})
 
 async function strumDown(name: ChordName) {
   if (heldChords.value.has(name)) return
@@ -202,43 +183,28 @@ function selectStyle(id: GuitarStyle) {
   preload("guitar", id)
 }
 
-function onKeyDown(event: KeyboardEvent) {
-  if (event.repeat) return
-  if (isTypingInForm(event)) return
-  const c = chords.find((x) => x.key === event.key)
-  if (c) {
-    event.preventDefault()
-    strumDown(c.name)
-  }
-}
+useInstrumentKeyboard({
+  findByKey: (k) => chords.find((c) => c.key === k),
+  onDown: (c) => strumDown(c.name),
+  onUp: (c) => strumUp(c.name),
+})
 
-function onKeyUp(event: KeyboardEvent) {
-  if (isTypingInForm(event)) return
-  const c = chords.find((x) => x.key === event.key)
-  if (c) {
-    event.preventDefault()
-    strumUp(c.name)
-  }
-}
-
-let controller: AbortController | null = null
+// Window-level pointerup catches the case where the pointer is
+// pressed on a chord button but released somewhere else (drag-off
+// or off-screen). Without it, those chords would ring forever.
+// The keyboard composable manages its own AbortController; this
+// pointer listener needs a separate one so cleanup stays scoped.
+let pointerController: AbortController | null = null
 
 onMounted(() => {
-  controller = new AbortController()
-  window.addEventListener("keydown", onKeyDown, { signal: controller.signal })
-  window.addEventListener("keyup", onKeyUp, { signal: controller.signal })
-  // Window-level pointerup catches the case where the pointer is
-  // pressed on a chord button but released somewhere else (drag-off
-  // or off-screen). Without it, those chords would ring forever.
+  pointerController = new AbortController()
   window.addEventListener("pointerup", releaseAllHeld, {
-    signal: controller.signal,
+    signal: pointerController.signal,
   })
 })
 
 onUnmounted(() => {
-  controller?.abort()
-  if (flashTimer !== null) window.clearTimeout(flashTimer)
-  if (remoteFlashTimer !== null) window.clearTimeout(remoteFlashTimer)
+  pointerController?.abort()
   // Release any held chords + cut anything still ringing.
   releaseAllHeld()
   stopAll("guitar", style.value)

@@ -9,11 +9,10 @@
 //   f g h    ← top row (Dang Tut Dut)
 //   v b n    ← bottom row (Tak Tung Pak)
 
-import { onMounted, onUnmounted, ref, watch } from "vue"
+import { ref, toRef } from "vue"
 import { useLiveVue } from "live_vue"
 import { ensureStarted, play, stopAll } from "@/lib/audio"
-import { FLASH_MS, REMOTE_FLASH_DELTA_MS } from "@/lib/motion"
-import { isTypingInForm } from "@/lib/utils"
+import { useInstrumentFlash, useInstrumentKeyboard } from "@/lib/instrument"
 
 const props = defineProps<{
   remoteHit: { instrument: string; note: string; t: number } | null
@@ -48,37 +47,18 @@ const pads: Pad[] = [
   { name: "pak", label: "Pak", key: "n" },
 ]
 
-const flashing = ref<KendangSound | null>(null)
-const remoteFlashing = ref<KendangSound | null>(null)
-let flashTimer: number | null = null
-let remoteFlashTimer: number | null = null
-
-function flash(name: KendangSound) {
-  flashing.value = name
-  if (flashTimer !== null) window.clearTimeout(flashTimer)
-  flashTimer = window.setTimeout(() => (flashing.value = null), FLASH_MS.tight)
-}
-
-function flashRemote(name: KendangSound) {
-  remoteFlashing.value = name
-  if (remoteFlashTimer !== null) window.clearTimeout(remoteFlashTimer)
-  remoteFlashTimer = window.setTimeout(
-    () => (remoteFlashing.value = null),
-    FLASH_MS.tight + REMOTE_FLASH_DELTA_MS,
-  )
-}
-
 const kendangNames = new Set<KendangSound>(["dang", "tut", "dut", "tak", "tung", "pak"])
 
-watch(
-  () => props.remoteHit,
-  (hit) => {
-    if (!hit || hit.instrument !== "kendang") return
-    if (kendangNames.has(hit.note as KendangSound)) {
-      flashRemote(hit.note as KendangSound)
-    }
-  },
-)
+const {
+  local: flashing,
+  remote: remoteFlashing,
+  flash,
+} = useInstrumentFlash<KendangSound>({
+  remoteHit: toRef(props, "remoteHit"),
+  instrument: "kendang",
+  extractRemote: (hit) =>
+    kendangNames.has(hit.note as KendangSound) ? (hit.note as KendangSound) : null,
+})
 
 async function hit(name: KendangSound) {
   await ensureStarted()
@@ -93,27 +73,9 @@ function selectStyle(id: KendangStyle) {
   style.value = id
 }
 
-function onKey(event: KeyboardEvent) {
-  if (event.repeat) return
-  if (isTypingInForm(event)) return
-  const p = pads.find((x) => x.key === event.key)
-  if (p) {
-    event.preventDefault()
-    hit(p.name)
-  }
-}
-
-let controller: AbortController | null = null
-
-onMounted(() => {
-  controller = new AbortController()
-  window.addEventListener("keydown", onKey, { signal: controller.signal })
-})
-
-onUnmounted(() => {
-  controller?.abort()
-  if (flashTimer !== null) window.clearTimeout(flashTimer)
-  if (remoteFlashTimer !== null) window.clearTimeout(remoteFlashTimer)
+useInstrumentKeyboard({
+  findByKey: (k) => pads.find((p) => p.key === k),
+  onDown: (p) => hit(p.name),
 })
 </script>
 

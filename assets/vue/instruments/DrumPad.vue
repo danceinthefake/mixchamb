@@ -40,11 +40,10 @@
 // hear *the sender's* style — coherent kit sound for everyone in
 // the jam.
 
-import { onMounted, onUnmounted, ref, watch } from "vue"
+import { onUnmounted, ref, toRef } from "vue"
 import { useLiveVue } from "live_vue"
 import { ensureStarted, play, stopAll, type DrumName } from "@/lib/audio"
-import { FLASH_MS, REMOTE_FLASH_DELTA_MS } from "@/lib/motion"
-import { isTypingInForm } from "@/lib/utils"
+import { useInstrumentFlash, useInstrumentKeyboard } from "@/lib/instrument"
 
 const props = defineProps<{
   remoteHit: { instrument: string; note: string; t: number } | null
@@ -189,31 +188,10 @@ const pads: Pad[] = [
   },
 ]
 
-// `flashing` is keyed by pad id (so tapping Crash 1 doesn't ring
-// both crashes); `remoteFlashing` is keyed by drum name (the
-// network sends only the drum, so both pads of a doubled piece
+// Local flash is keyed by pad id (so tapping Crash 1 doesn't ring
+// both crashes); remote flash is keyed by drum name (the wire
+// format only carries the drum, so both pads of a doubled piece
 // flash on a remote hit).
-const flashing = ref<string | null>(null)
-const remoteFlashing = ref<DrumName | null>(null)
-let flashTimer: number | null = null
-let remoteFlashTimer: number | null = null
-
-function flash(padId: string) {
-  flashing.value = padId
-  if (flashTimer !== null) window.clearTimeout(flashTimer)
-  flashTimer = window.setTimeout(() => (flashing.value = null), FLASH_MS.tight)
-}
-
-function flashRemote(name: DrumName) {
-  remoteFlashing.value = name
-  if (remoteFlashTimer !== null) window.clearTimeout(remoteFlashTimer)
-  // Slightly longer than local so it's visible even after a short network hop.
-  remoteFlashTimer = window.setTimeout(
-    () => (remoteFlashing.value = null),
-    FLASH_MS.tight + REMOTE_FLASH_DELTA_MS,
-  )
-}
-
 const drumNames = new Set<DrumName>([
   "kick",
   "snare",
@@ -227,13 +205,15 @@ const drumNames = new Set<DrumName>([
   "tom_floor",
 ])
 
-watch(
-  () => props.remoteHit,
-  (hit) => {
-    if (!hit || hit.instrument !== "drums") return
-    if (drumNames.has(hit.note as DrumName)) flashRemote(hit.note as DrumName)
-  },
-)
+const {
+  local: flashing,
+  remote: remoteFlashing,
+  flash,
+} = useInstrumentFlash<string, DrumName>({
+  remoteHit: toRef(props, "remoteHit"),
+  instrument: "drums",
+  extractRemote: (hit) => (drumNames.has(hit.note as DrumName) ? (hit.note as DrumName) : null),
+})
 
 async function hit(pad: Pad) {
   // Decorative pads (throne, hi-hat foot pedal) have no drum
@@ -256,29 +236,12 @@ function selectStyle(id: DrumStyle) {
   style.value = id
 }
 
-function onKey(event: KeyboardEvent) {
-  if (event.repeat) return
-  if (isTypingInForm(event)) return
-  const pad = pads.find((p) => p.key === event.key)
-  if (pad) {
-    event.preventDefault()
-    hit(pad)
-  }
-}
-
-let controller: AbortController | null = null
-
-onMounted(() => {
-  controller = new AbortController()
-  window.addEventListener("keydown", onKey, { signal: controller.signal })
+useInstrumentKeyboard({
+  findByKey: (k) => pads.find((p) => p.key === k),
+  onDown: hit,
 })
 
-onUnmounted(() => {
-  controller?.abort()
-  if (flashTimer !== null) window.clearTimeout(flashTimer)
-  if (remoteFlashTimer !== null) window.clearTimeout(remoteFlashTimer)
-  stopAll("drums", style.value)
-})
+onUnmounted(() => stopAll("drums", style.value))
 </script>
 
 <template>
