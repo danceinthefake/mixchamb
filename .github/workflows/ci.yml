@@ -1,10 +1,14 @@
 name: CI
 
+# CI is paused until a hosting platform is chosen — keep the
+# workflow file around but only allow manual runs. Re-enable by
+# restoring the push / pull_request triggers below.
 on:
-  push:
-    branches: [main]
-  pull_request:
-    branches: [main]
+  workflow_dispatch:
+  # push:
+  #   branches: [main]
+  # pull_request:
+  #   branches: [main]
 
 # Cancel any in-flight run on the same branch when a new push lands —
 # saves runner minutes during rapid pushes.
