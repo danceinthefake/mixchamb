@@ -304,17 +304,14 @@ function extensionFor(mime: string): string {
 // dash, and underscore so the name is filesystem-safe across
 // platforms.
 function recordingFilename(blob: Blob, createdAt: Date): string {
-  const stem = (props.chamber_title?.trim() || props.chamber_slug)
-    .toLowerCase()
-    .replace(/\s+/g, "-")
-    .replace(/[^a-z0-9_-]/g, "")
-    .slice(0, 60) || "jam"
+  const stem =
+    (props.chamber_title?.trim() || props.chamber_slug)
+      .toLowerCase()
+      .replace(/\s+/g, "-")
+      .replace(/[^a-z0-9_-]/g, "")
+      .slice(0, 60) || "jam"
 
-  const stamp = createdAt
-    .toISOString()
-    .replace(/[-:]/g, "")
-    .replace(/\..+$/, "")
-    .replace("T", "-")
+  const stamp = createdAt.toISOString().replace(/[-:]/g, "").replace(/\..+$/, "").replace("T", "-")
 
   return `mixwave-${stem}-${stamp}.${extensionFor(blob.type)}`
 }

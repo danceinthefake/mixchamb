@@ -54,12 +54,7 @@ export async function stopRecording(): Promise<Blob | null> {
   }
   console.info("[mixwave] stopping recorder, state before stop:", recorder.state)
   const blob = await recorder.stop()
-  console.info(
-    "[mixwave] recorder stopped, blob:",
-    blob?.size,
-    "bytes, type:",
-    blob?.type,
-  )
+  console.info("[mixwave] recorder stopped, blob:", blob?.size, "bytes, type:", blob?.type)
   recorder.dispose()
   recorder = null
   return blob
