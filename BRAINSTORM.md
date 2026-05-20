@@ -259,6 +259,16 @@ hint, which is now tracked in §5a Punch list:
   padding use `env(safe-area-inset-bottom)` so the home indicator
   doesn't cover controls; the dock collapses instrument tabs to
   their colored dot below `sm:` so all 7 fit a 360 px viewport.
+- **A11y baseline**: ✅ shipped — every instrument-pad button
+  carries an `aria-label` with the pad's name plus its keyboard
+  shortcut hint; style-flavor buttons announce selection via
+  `aria-pressed`; the floating dock's instrument tabs expose
+  `aria-label` (so the mobile-collapsed dots are still announced)
+  and `aria-pressed` for the active tab; the REC button is
+  `aria-pressed` + `aria-label`, paired with a polite live region
+  that announces "Recording started / stopped" on toggle;
+  decorative dots (presence sidebar, dock tabs, REC indicator)
+  are marked `aria-hidden="true"` so they don't double-read.
 - **User alias**: ✅ shipped — additive nickname on top of the
   auto-generated `display_name`. Inline editor at the bottom of
   the Jamming panel; alias renders above the anon name, never

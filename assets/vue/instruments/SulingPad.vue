@@ -132,6 +132,7 @@ onUnmounted(() => {
         v-for="s in styles"
         :key="s.id"
         @click="selectStyle(s.id)"
+        :aria-pressed="style === s.id"
         :class="[
           'px-3 py-1 text-xs rounded-md border transition-colors',
           style === s.id
@@ -162,6 +163,7 @@ onUnmounted(() => {
             v-for="n in notes"
             :key="n.note"
             @pointerdown.prevent="hit(n.note)"
+            :aria-label="`${n.label}${n.key ? ' (press ' + n.key + ')' : ''}`"
             :class="[
               'pad-touch touch-manipulation rounded-md border bg-card flex flex-col items-center justify-center gap-1 py-6 transition-all active:scale-95 hover:bg-accent',
               n.label.includes('#') && 'bg-muted',
