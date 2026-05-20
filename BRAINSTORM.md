@@ -259,6 +259,17 @@ hint, which is now tracked in §5a Punch list:
   padding use `env(safe-area-inset-bottom)` so the home indicator
   doesn't cover controls; the dock collapses instrument tabs to
   their colored dot below `sm:` so all 7 fit a 360 px viewport.
+- **Instrument composables**: ✅ shipped — extracted the two
+  patterns every pad was duplicating into `assets/vue/lib/instrument.ts`:
+  `useInstrumentFlash<L, R>` owns the local/remote pulse refs,
+  timers, and the `watch` on `remoteHit`; `useInstrumentKeyboard`
+  owns the window keydown/keyup listener pair, the
+  `isTypingInForm` + `event.repeat` guards, and the AbortController
+  lifecycle. All 7 pad components consume them — net **-270 lines**
+  (378 deleted, 108 added) and per-instrument client chunks 8-16%
+  smaller. GuitarPad still keeps its own tiny `onMounted`/
+  `onUnmounted` for the window-level `pointerup` listener that
+  releases drag-off chords.
 - **Lazy Vue islands**: ✅ shipped — `assets/vue/index.ts` resolver
   drops `eager: true` from the `import.meta.glob` calls. live_vue
   already accepts `Promise<Component>` in its `ComponentMap`

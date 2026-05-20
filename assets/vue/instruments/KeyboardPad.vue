@@ -19,11 +19,10 @@
 // PolySynth lets multiple keys ring at once. JamReceiver handles
 // remote players' notes — pads only push.
 
-import { computed, onMounted, onUnmounted, ref, watch } from "vue"
+import { computed, onUnmounted, ref, toRef } from "vue"
 import { useLiveVue } from "live_vue"
 import { ensureStarted, play, stopAll, preload } from "@/lib/audio"
-import { FLASH_MS, REMOTE_FLASH_DELTA_MS } from "@/lib/motion"
-import { isTypingInForm } from "@/lib/utils"
+import { useInstrumentFlash, useInstrumentKeyboard } from "@/lib/instrument"
 
 const props = defineProps<{
   remoteHit: { instrument: string; note: string; t: number } | null
@@ -171,33 +170,15 @@ function shiftOctave(delta: number) {
   baseOctave.value = next
 }
 
-const flashingNote = ref<string | null>(null)
-const remoteFlashingNote = ref<string | null>(null)
-let flashTimer: number | null = null
-let remoteFlashTimer: number | null = null
-
-function flash(note: string) {
-  flashingNote.value = note
-  if (flashTimer !== null) window.clearTimeout(flashTimer)
-  flashTimer = window.setTimeout(() => (flashingNote.value = null), FLASH_MS.medium)
-}
-
-function flashRemote(note: string) {
-  remoteFlashingNote.value = note
-  if (remoteFlashTimer !== null) window.clearTimeout(remoteFlashTimer)
-  remoteFlashTimer = window.setTimeout(
-    () => (remoteFlashingNote.value = null),
-    FLASH_MS.medium + REMOTE_FLASH_DELTA_MS,
-  )
-}
-
-watch(
-  () => props.remoteHit,
-  (hit) => {
-    if (!hit || hit.instrument !== "keyboard") return
-    flashRemote(hit.note)
-  },
-)
+const {
+  local: flashingNote,
+  remote: remoteFlashingNote,
+  flash,
+} = useInstrumentFlash<string>({
+  remoteHit: toRef(props, "remoteHit"),
+  instrument: "keyboard",
+  duration: "medium",
+})
 
 async function hit(note: string) {
   await ensureStarted()
@@ -213,30 +194,13 @@ function selectStyle(id: KeyboardStyle) {
   preload("keyboard", id)
 }
 
-function onKey(event: KeyboardEvent) {
-  if (event.repeat) return
-  if (isTypingInForm(event)) return
-  const all = [...whiteKeys.value, ...blackKeys.value]
-  const k = all.find((x) => x.key === event.key)
-  if (k) {
-    event.preventDefault()
-    hit(k.note)
-  }
-}
-
-let controller: AbortController | null = null
-
-onMounted(() => {
-  controller = new AbortController()
-  window.addEventListener("keydown", onKey, { signal: controller.signal })
+useInstrumentKeyboard({
+  findByKey: (k) =>
+    whiteKeys.value.find((x) => x.key === k) ?? blackKeys.value.find((x) => x.key === k),
+  onDown: (k) => hit(k.note),
 })
 
-onUnmounted(() => {
-  controller?.abort()
-  if (flashTimer !== null) window.clearTimeout(flashTimer)
-  if (remoteFlashTimer !== null) window.clearTimeout(remoteFlashTimer)
-  stopAll("keyboard", style.value)
-})
+onUnmounted(() => stopAll("keyboard", style.value))
 </script>
 
 <template>

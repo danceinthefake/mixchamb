@@ -11,11 +11,10 @@
 //     instruments CDN.
 //   - Sweet: triangle PolySynth + chorus, soft and airy.
 
-import { onMounted, onUnmounted, ref, watch } from "vue"
+import { onUnmounted, ref, toRef } from "vue"
 import { useLiveVue } from "live_vue"
 import { ensureStarted, play, stopAll, preload } from "@/lib/audio"
-import { FLASH_MS, REMOTE_FLASH_DELTA_MS } from "@/lib/motion"
-import { isTypingInForm } from "@/lib/utils"
+import { useInstrumentFlash, useInstrumentKeyboard } from "@/lib/instrument"
 
 const props = defineProps<{
   remoteHit: { instrument: string; note: string; t: number } | null
@@ -54,35 +53,18 @@ const notes: Note[] = [
   { note: "B5", label: "B", key: "h" },
 ]
 
-const flashing = ref<string | null>(null)
-const remoteFlashing = ref<string | null>(null)
-let flashTimer: number | null = null
-let remoteFlashTimer: number | null = null
-
-function flash(note: string) {
-  flashing.value = note
-  if (flashTimer !== null) window.clearTimeout(flashTimer)
-  flashTimer = window.setTimeout(() => (flashing.value = null), FLASH_MS.medium)
-}
-
-function flashRemote(note: string) {
-  remoteFlashing.value = note
-  if (remoteFlashTimer !== null) window.clearTimeout(remoteFlashTimer)
-  remoteFlashTimer = window.setTimeout(
-    () => (remoteFlashing.value = null),
-    FLASH_MS.medium + REMOTE_FLASH_DELTA_MS,
-  )
-}
-
 const noteSet = new Set(notes.map((n) => n.note))
 
-watch(
-  () => props.remoteHit,
-  (hit) => {
-    if (!hit || hit.instrument !== "suling") return
-    if (noteSet.has(hit.note)) flashRemote(hit.note)
-  },
-)
+const {
+  local: flashing,
+  remote: remoteFlashing,
+  flash,
+} = useInstrumentFlash<string>({
+  remoteHit: toRef(props, "remoteHit"),
+  instrument: "suling",
+  duration: "medium",
+  extractRemote: (hit) => (noteSet.has(hit.note) ? hit.note : null),
+})
 
 async function hit(note: string) {
   await ensureStarted()
@@ -98,29 +80,12 @@ function selectStyle(id: SulingStyle) {
   preload("suling", id)
 }
 
-function onKey(event: KeyboardEvent) {
-  if (event.repeat) return
-  if (isTypingInForm(event)) return
-  const n = notes.find((x) => x.key === event.key)
-  if (n) {
-    event.preventDefault()
-    hit(n.note)
-  }
-}
-
-let controller: AbortController | null = null
-
-onMounted(() => {
-  controller = new AbortController()
-  window.addEventListener("keydown", onKey, { signal: controller.signal })
+useInstrumentKeyboard({
+  findByKey: (k) => notes.find((n) => n.key === k),
+  onDown: (n) => hit(n.note),
 })
 
-onUnmounted(() => {
-  controller?.abort()
-  if (flashTimer !== null) window.clearTimeout(flashTimer)
-  if (remoteFlashTimer !== null) window.clearTimeout(remoteFlashTimer)
-  stopAll("suling", style.value)
-})
+onUnmounted(() => stopAll("suling", style.value))
 </script>
 
 <template>
