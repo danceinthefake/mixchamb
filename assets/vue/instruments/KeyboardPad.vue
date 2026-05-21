@@ -300,15 +300,17 @@ onUnmounted(() => stopAll("keyboard", style.value))
           </div>
           <!-- black keys overlay. Width derives from total white-key
                count so positions stay correct as the layout flexes.
-               1.125rem = half of w-9 = horizontal centring offset. -->
+               1.375rem = half of w-11 = horizontal centring offset
+               (was w-9 / 1.125rem until 2026-05-21; widened to 44 px
+               to clear the WCAG 2.5.5 touch-target minimum). -->
           <button
             v-for="bk in blackKeys"
             :key="bk.note"
             @pointerdown.prevent.stop="hit(bk.note)"
             :aria-label="`${bk.label}${bk.octave}${bk.key ? ' (press ' + bk.key + ')' : ''}`"
-            :style="{ left: `calc(${(bk.afterIdx + 1) * (100 / whiteKeys.length)}% - 1.125rem)` }"
+            :style="{ left: `calc(${(bk.afterIdx + 1) * (100 / whiteKeys.length)}% - 1.375rem)` }"
             :class="[
-              'pad-touch absolute top-0 w-9 h-28 rounded-b-md border border-black flex flex-col items-center justify-end pb-2 transition-all touch-none',
+              'pad-touch absolute top-0 w-11 h-28 rounded-b-md border border-black flex flex-col items-center justify-end pb-2 transition-all touch-none',
               flashingNote === bk.note
                 ? 'bg-accent-keyboard glow-keyboard'
                 : remoteFlashingNote === bk.note

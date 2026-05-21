@@ -916,7 +916,7 @@ defmodule MixchambWeb.ChamberLive do
                 aria-label={instrument_label(inst)}
                 aria-pressed={to_string(@current_instrument == inst)}
                 class={[
-                  "pad-touch touch-manipulation px-3 py-1.5 text-sm rounded-lg transition-all flex items-center gap-1.5 whitespace-nowrap cursor-pointer",
+                  "pad-touch touch-manipulation min-h-11 min-w-11 px-3 py-1.5 text-sm rounded-lg transition-all flex items-center justify-center gap-1.5 whitespace-nowrap cursor-pointer",
                   @current_instrument == inst && active_tab_class(inst),
                   @current_instrument != inst &&
                     "text-muted-foreground hover:bg-accent hover:text-foreground"
@@ -951,6 +951,7 @@ defmodule MixchambWeb.ChamberLive do
                     user_id == @current_user.id && "bg-primary text-primary-foreground",
                     user_id != @current_user.id && "bg-muted text-muted-foreground"
                   ]}
+                  aria-label={"#{primary_name(meta)}#{if alias_set?(meta), do: " · " <> meta.display_name, else: ""} on #{instrument_label(meta.instrument)}"}
                   title={"#{primary_name(meta)}#{if alias_set?(meta), do: " · " <> meta.display_name, else: ""} · #{instrument_label(meta.instrument)}"}
                 >
                   {primary_name(meta) |> String.first() |> String.upcase()}
