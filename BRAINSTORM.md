@@ -290,6 +290,16 @@ hint, which is now tracked in §5a Punch list:
   that announces "Recording started / stopped" on toggle;
   decorative dots (presence sidebar, dock tabs, REC indicator)
   are marked `aria-hidden="true"` so they don't double-read.
+- **A11y tier-2 (touch targets + dock-presence labels)**: ✅
+  shipped — dock instrument tabs gained `min-h-11 min-w-11
+  justify-center` so the mobile dot-only state clears WCAG 2.5.5's
+  44×44 minimum; keyboard black keys widened from `w-9` (36 px) to
+  `w-11` (44 px) with a matching `1.375rem` positioning offset;
+  the bottom-of-dock presence-avatar initials now carry an
+  `aria-label` with `<primary-name> · <display-name> on
+  <instrument>` so screen readers identify each jammer instead of
+  reading "J" "K" "L" (the avatars were `title=`-only before,
+  which AT can't reliably surface).
 - **User alias**: ✅ shipped — additive nickname on top of the
   auto-generated `display_name`. Inline editor at the bottom of
   the Jamming panel; alias renders above the anon name, never
