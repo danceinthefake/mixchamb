@@ -1,4 +1,4 @@
-defmodule Mixwave.Repo.Migrations.CreateChambers do
+defmodule Mixchamb.Repo.Migrations.CreateChambers do
   use Ecto.Migration
 
   def change do

@@ -1,4 +1,4 @@
-defmodule Mixwave.Repo.Migrations.AddRecordingToChambers do
+defmodule Mixchamb.Repo.Migrations.AddRecordingToChambers do
   use Ecto.Migration
 
   def change do

@@ -17,19 +17,19 @@ config :phoenix_vite, PhoenixVite.Npm,
     env: %{"MIX_BUILD_PATH" => Mix.Project.build_path()}
   ]
 
-config :mixwave,
-  ecto_repos: [Mixwave.Repo],
+config :mixchamb,
+  ecto_repos: [Mixchamb.Repo],
   generators: [timestamp_type: :utc_datetime, binary_id: true]
 
 # Configure the endpoint
-config :mixwave, MixwaveWeb.Endpoint,
+config :mixchamb, MixchambWeb.Endpoint,
   url: [host: "localhost"],
   adapter: Bandit.PhoenixAdapter,
   render_errors: [
-    formats: [html: MixwaveWeb.ErrorHTML, json: MixwaveWeb.ErrorJSON],
+    formats: [html: MixchambWeb.ErrorHTML, json: MixchambWeb.ErrorJSON],
     layout: false
   ],
-  pubsub_server: Mixwave.PubSub,
+  pubsub_server: Mixchamb.PubSub,
   live_view: [signing_salt: "NBj/PDcP"]
 
 # Configure Elixir's Logger

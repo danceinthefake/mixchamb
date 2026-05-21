@@ -12,15 +12,15 @@ import Config
 # If you use `mix release`, you need to explicitly enable the server
 # by passing the PHX_SERVER=true when you start it:
 #
-#     PHX_SERVER=true bin/mixwave start
+#     PHX_SERVER=true bin/mixchamb start
 #
 # Alternatively, you can use `mix phx.gen.release` to generate a `bin/server`
 # script that automatically sets the env var above.
 if System.get_env("PHX_SERVER") do
-  config :mixwave, MixwaveWeb.Endpoint, server: true
+  config :mixchamb, MixchambWeb.Endpoint, server: true
 end
 
-config :mixwave, MixwaveWeb.Endpoint,
+config :mixchamb, MixchambWeb.Endpoint,
   http: [port: String.to_integer(System.get_env("PORT", "4000"))]
 
 if config_env() == :prod do
@@ -35,7 +35,7 @@ if config_env() == :prod do
       Generate one with: mix phx.gen.secret 32
       """
 
-  config :mixwave,
+  config :mixchamb,
     admin_user: System.get_env("ADMIN_USER", "admin"),
     admin_password: admin_password
 
@@ -48,7 +48,7 @@ if config_env() == :prod do
 
   maybe_ipv6 = if System.get_env("ECTO_IPV6") in ~w(true 1), do: [:inet6], else: []
 
-  config :mixwave, Mixwave.Repo,
+  config :mixchamb, Mixchamb.Repo,
     # ssl: true,
     url: database_url,
     pool_size: String.to_integer(System.get_env("POOL_SIZE") || "10"),
@@ -78,9 +78,9 @@ if config_env() == :prod do
   scheme = System.get_env("PHX_SCHEME") || "https"
   url_port = String.to_integer(System.get_env("PHX_URL_PORT") || "443")
 
-  config :mixwave, :dns_cluster_query, System.get_env("DNS_CLUSTER_QUERY")
+  config :mixchamb, :dns_cluster_query, System.get_env("DNS_CLUSTER_QUERY")
 
-  config :mixwave, MixwaveWeb.Endpoint,
+  config :mixchamb, MixchambWeb.Endpoint,
     url: [host: host, port: url_port, scheme: scheme],
     http: [
       # Enable IPv6 and bind on all interfaces.
@@ -90,14 +90,14 @@ if config_env() == :prod do
       ip: {0, 0, 0, 0, 0, 0, 0, 0}
     ],
     secret_key_base: secret_key_base,
-    cache_static_manifest_latest: PhoenixVite.cache_static_manifest_latest(:mixwave)
+    cache_static_manifest_latest: PhoenixVite.cache_static_manifest_latest(:mixchamb)
 
   # ## SSL Support
   #
   # To get SSL working, you will need to add the `https` key
   # to your endpoint configuration:
   #
-  #     config :mixwave, MixwaveWeb.Endpoint,
+  #     config :mixchamb, MixchambWeb.Endpoint,
   #       https: [
   #         ...,
   #         port: 443,
@@ -119,7 +119,7 @@ if config_env() == :prod do
   # We also recommend setting `force_ssl` in your config/prod.exs,
   # ensuring no data is ever sent via http, always redirecting to https:
   #
-  #     config :mixwave, MixwaveWeb.Endpoint,
+  #     config :mixchamb, MixchambWeb.Endpoint,
   #       force_ssl: [hsts: true]
   #
   # Check `Plug.SSL` for all available options in `force_ssl`.

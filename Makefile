@@ -1,4 +1,4 @@
-# mixwave — convenience targets. `make` with no args prints help.
+# mixchamb — convenience targets. `make` with no args prints help.
 #
 # Real source of truth is still `mix.exs` aliases and `package.json`
 # scripts; this file just gives the things you type 20 times a day
@@ -43,10 +43,10 @@ iex-server: db-up ## iex + Phoenix server in one shell.
 ##@ Multi-node cluster (two BEAM nodes, one Postgres, one Vite)
 
 node1: db-up ## Terminal 1: primary node (owns Vite).
-	PORT=4000 iex --sname mixwave1 --cookie shared -S mix phx.server
+	PORT=4000 iex --sname mixchamb1 --cookie shared -S mix phx.server
 
 node2: db-up ## Terminal 2: peer node (skips Vite, auto-clusters via dns_cluster).
-	PORT=4001 SKIP_VITE=1 iex --sname mixwave2 --cookie shared -S mix phx.server
+	PORT=4001 SKIP_VITE=1 iex --sname mixchamb2 --cookie shared -S mix phx.server
 
 ##@ Tests / lint / format
 
@@ -85,12 +85,12 @@ precommit: db-up ## Elixir precommit alias (compile-as-errors + unlock + format 
 
 ##@ Database
 
-db-up: ## Start the local Postgres container (mixwave-pg). Creates it on first run.
-	@if docker container inspect mixwave-pg >/dev/null 2>&1; then \
-		docker start mixwave-pg >/dev/null; \
+db-up: ## Start the local Postgres container (mixchamb-pg). Creates it on first run.
+	@if docker container inspect mixchamb-pg >/dev/null 2>&1; then \
+		docker start mixchamb-pg >/dev/null; \
 	else \
-		echo "  Creating mixwave-pg container..."; \
-		docker run -d --name mixwave-pg \
+		echo "  Creating mixchamb-pg container..."; \
+		docker run -d --name mixchamb-pg \
 			-e POSTGRES_PASSWORD=postgres -e POSTGRES_USER=postgres \
 			-p 5432:5432 postgres:16-alpine >/dev/null; \
 	fi
@@ -98,8 +98,8 @@ db-up: ## Start the local Postgres container (mixwave-pg). Creates it on first r
 db-reset: db-up ## Drop + recreate the dev DB.
 	mix ecto.reset
 
-psql: db-up ## Open psql inside the mixwave-pg container.
-	docker exec -it mixwave-pg psql -U postgres -d mixwave_dev
+psql: db-up ## Open psql inside the mixchamb-pg container.
+	docker exec -it mixchamb-pg psql -U postgres -d mixchamb_dev
 
 ##@ Assets
 
@@ -115,12 +115,12 @@ assets-clean: ## Undo a stray assets-build so dev mode works again.
 # LAN IP so a phone or laptop on the same Wi-Fi can hit it. Two release
 # nodes form an Erlang cluster (same cookie, different snames); they
 # don't auto-connect — `make prod-remote` and run
-# `Node.connect(:'mixwave2@<hostname>')` once.
+# `Node.connect(:'mixchamb2@<hostname>')` once.
 #
 # Override LAN_HOST with your machine's LAN IP. `hostname -I` finds it.
 #   make prod-node1 LAN_HOST=192.168.1.42
 LAN_HOST     ?= 0.0.0.0
-PROD_DB_URL  ?= ecto://postgres:postgres@localhost/mixwave_prod
+PROD_DB_URL  ?= ecto://postgres:postgres@localhost/mixchamb_prod
 ADMIN_PW     ?= admin
 LAN_ENV_FILE := .env.lan
 
@@ -135,7 +135,7 @@ prod-secret: ## Generate persistent SECRET_KEY_BASE + RELEASE_COOKIE in .env.lan
 # `mix release` evaluates runtime.exs at build time to bundle it, so
 # every env var runtime.exs raises on must be set even for the build.
 # These values are throw-away — the real ones come from the env at
-# `bin/mixwave start` time, see prod-node1 / prod-node2.
+# `bin/mixchamb start` time, see prod-node1 / prod-node2.
 BUILD_ENV = SECRET_KEY_BASE=build-only-secret-key-base-padding-padding-padding-padding-padding \
             DATABASE_URL=ecto://build@build/build \
             ADMIN_PASSWORD=build-only-admin-password
@@ -152,7 +152,14 @@ prod-build-lan: $(LAN_ENV_FILE) ## Build the prod release for LAN testing (force
 	$(BUILD_ENV) DISABLE_FORCE_SSL=1 MIX_ENV=prod mix assets.deploy
 	$(BUILD_ENV) DISABLE_FORCE_SSL=1 MIX_ENV=prod mix release --overwrite
 
-prod-db-setup: db-up ## Create + migrate the prod DB locally (mixwave_prod). Run after prod-build-lan.
+prod-db-setup: db-up ## Create + migrate the prod DB locally (mixchamb_prod). Self-contained — recompiles to match its own env so prod-build-lan isn't required first.
+	# Elixir's compile-env validator fires at app-load time and aborts
+	# if _build/prod was last compiled with a different DISABLE_FORCE_SSL
+	# than the runtime env passed here. `mix compile --force` re-evaluates
+	# prod.exs with this target's env vars so the compile and runtime
+	# values match, then ecto can run cleanly. There is no Mix-task-level
+	# escape hatch (`--no-validate-compile-env` only exists on `mix release`).
+	$(BUILD_ENV) DISABLE_FORCE_SSL=1 MIX_ENV=prod mix compile --force
 	$(BUILD_ENV) DISABLE_FORCE_SSL=1 DATABASE_URL=$(PROD_DB_URL) MIX_ENV=prod mix ecto.create
 	$(BUILD_ENV) DISABLE_FORCE_SSL=1 DATABASE_URL=$(PROD_DB_URL) MIX_ENV=prod mix ecto.migrate
 
@@ -164,9 +171,9 @@ prod-node1: $(LAN_ENV_FILE) ## Run prod release node1 on $LAN_HOST:4000 (overrid
 	PHX_SERVER=true PORT=4000 \
 	PHX_HOST=$(LAN_HOST) PHX_SCHEME=http PHX_URL_PORT=4000 \
 	DATABASE_URL=$(PROD_DB_URL) ADMIN_PASSWORD=$(ADMIN_PW) \
-	RELEASE_DISTRIBUTION=sname RELEASE_NODE=mixwave1 \
-	PEER_NODES=mixwave2@$$(hostname -s) \
-	_build/prod/rel/mixwave/bin/mixwave start
+	RELEASE_DISTRIBUTION=sname RELEASE_NODE=mixchamb1 \
+	PEER_NODES=mixchamb2@$$(hostname -s) \
+	_build/prod/rel/mixchamb/bin/mixchamb start
 
 prod-node2: $(LAN_ENV_FILE) ## Run prod release node2 on $LAN_HOST:4001 (override LAN_HOST=...).
 	@if [ "$(LAN_HOST)" = "0.0.0.0" ]; then \
@@ -176,14 +183,14 @@ prod-node2: $(LAN_ENV_FILE) ## Run prod release node2 on $LAN_HOST:4001 (overrid
 	PHX_SERVER=true PORT=4001 \
 	PHX_HOST=$(LAN_HOST) PHX_SCHEME=http PHX_URL_PORT=4001 \
 	DATABASE_URL=$(PROD_DB_URL) ADMIN_PASSWORD=$(ADMIN_PW) \
-	RELEASE_DISTRIBUTION=sname RELEASE_NODE=mixwave2 \
-	PEER_NODES=mixwave1@$$(hostname -s) \
-	_build/prod/rel/mixwave/bin/mixwave start
+	RELEASE_DISTRIBUTION=sname RELEASE_NODE=mixchamb2 \
+	PEER_NODES=mixchamb1@$$(hostname -s) \
+	_build/prod/rel/mixchamb/bin/mixchamb start
 
 prod-remote: $(LAN_ENV_FILE) ## Open a remote shell on node1 (use to Node.connect/1 the cluster).
 	@set -a; . ./$(LAN_ENV_FILE); set +a; \
-	RELEASE_DISTRIBUTION=sname RELEASE_NODE=mixwave1 \
-	_build/prod/rel/mixwave/bin/mixwave remote
+	RELEASE_DISTRIBUTION=sname RELEASE_NODE=mixchamb1 \
+	_build/prod/rel/mixchamb/bin/mixchamb remote
 
 # File rule so `make prod-node1` auto-generates the env file if missing.
 $(LAN_ENV_FILE):

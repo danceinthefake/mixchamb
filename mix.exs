@@ -1,9 +1,9 @@
-defmodule Mixwave.MixProject do
+defmodule Mixchamb.MixProject do
   use Mix.Project
 
   def project do
     [
-      app: :mixwave,
+      app: :mixchamb,
       version: "0.1.0",
       elixir: "~> 1.15",
       elixirc_paths: elixirc_paths(Mix.env()),
@@ -24,7 +24,7 @@ defmodule Mixwave.MixProject do
   # straight out of the image.
   defp releases do
     [
-      mixwave: [
+      mixchamb: [
         include_executables_for: [:unix],
         applications: [runtime_tools: :permanent]
       ]
@@ -36,7 +36,7 @@ defmodule Mixwave.MixProject do
   # Type `mix help compile.app` for more information.
   def application do
     [
-      mod: {Mixwave.Application, []},
+      mod: {Mixchamb.Application, []},
       # :os_mon powers LiveDashboard's "OS Data" tab (CPU / memory /
       # disk via Erlang's OS-monitor app).
       extra_applications: [:logger, :runtime_tools, :os_mon]

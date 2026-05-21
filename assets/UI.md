@@ -1,8 +1,8 @@
-# mixwave UI primitives
+# mixchamb UI primitives
 
 A reference for the patterns that already exist in the studio. New UI work should copy from this canon instead of inventing its own — that's how a design system stays one.
 
-The CSS variables and Tailwind theme tokens that back these classes live in `assets/css/app.css`. The motion timings live in `assets/vue/lib/motion.ts`. The fonts come from Google Fonts via `lib/mixwave_web/components/layouts/root.html.heex`.
+The CSS variables and Tailwind theme tokens that back these classes live in `assets/css/app.css`. The motion timings live in `assets/vue/lib/motion.ts`. The fonts come from Google Fonts via `lib/mixchamb_web/components/layouts/root.html.heex`.
 
 ---
 

@@ -7,7 +7,7 @@
 @source "../css";
 @source "../js";
 @source "../vue";
-@source "../../lib/mixwave_web";
+@source "../../lib/mixchamb_web";
 
 /* A Tailwind plugin that makes "hero-#{ICON}" classes available.
    The heroicons installation itself is managed by your mix.exs */
