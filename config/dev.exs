@@ -11,16 +11,16 @@ config :live_vue, vite_host: "http://#{dev_host}:5173", ssr_module: LiveVue.SSR.
 
 # Default admin credentials for /admin in dev. Override via env vars
 # (`ADMIN_USER` / `ADMIN_PASSWORD`) if you want non-defaults locally.
-config :mixwave,
+config :mixchamb,
   admin_user: System.get_env("ADMIN_USER", "admin"),
   admin_password: System.get_env("ADMIN_PASSWORD", "dev")
 
 # Configure your database
-config :mixwave, Mixwave.Repo,
+config :mixchamb, Mixchamb.Repo,
   username: "postgres",
   password: "postgres",
   hostname: "localhost",
-  database: "mixwave_dev",
+  database: "mixchamb_dev",
   stacktrace: true,
   show_sensitive_data_on_connection_error: true,
   pool_size: 10
@@ -31,11 +31,11 @@ config :mixwave, Mixwave.Repo,
 # The watchers configuration can be used to run external
 # watchers to your application. For example, we can use it
 # to bundle .js and .css sources.
-config :mixwave, MixwaveWeb.Endpoint,
+config :mixchamb, MixchambWeb.Endpoint,
   # Bind to all interfaces so other machines on the LAN can join the
   # studio for multi-user testing. (Loopback-only is the safer default
   # for normal Phoenix dev; we override because the whole point of
-  # mixwave's v1 is multi-user.)
+  # mixchamb's v1 is multi-user.)
   http: [ip: {0, 0, 0, 0}],
   check_origin: false,
   code_reloader: true,
@@ -75,7 +75,7 @@ config :mixwave, MixwaveWeb.Endpoint,
 # different ports.
 
 # Reload browser tabs when matching files change.
-config :mixwave, MixwaveWeb.Endpoint,
+config :mixchamb, MixchambWeb.Endpoint,
   live_reload: [
     web_console_logger: true,
     patterns: [
@@ -84,13 +84,13 @@ config :mixwave, MixwaveWeb.Endpoint,
       # Gettext translations
       ~r"priv/gettext/.*\.po$"E,
       # Router, Controllers, LiveViews and LiveComponents
-      ~r"lib/mixwave_web/router\.ex$"E,
-      ~r"lib/mixwave_web/(controllers|live|components)/.*\.(ex|heex)$"E
+      ~r"lib/mixchamb_web/router\.ex$"E,
+      ~r"lib/mixchamb_web/(controllers|live|components)/.*\.(ex|heex)$"E
     ]
   ]
 
 # Enable dev routes for dashboard and mailbox
-config :mixwave, dev_routes: true
+config :mixchamb, dev_routes: true
 
 # Do not include metadata nor timestamps in development logs
 config :logger, :default_formatter, format: "[$level] $message\n"

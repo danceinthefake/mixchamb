@@ -1,4 +1,4 @@
-# mixwave — real-time collaborative studio
+# mixchamb — real-time collaborative studio
 
 A real-time collaborative music studio. One global studio,
 anyone with the URL joins a single shared jam; pick up an
@@ -7,7 +7,7 @@ everyone else online. Built on **Vue + Elixir/Phoenix/LiveView**.
 
 **Non-goal**: studio-quality timing sync. Real musical performance
 needs <30 ms end-to-end; WebSocket round-trips can't hit that
-without WebRTC. mixwave is a best-effort jam-along — visual
+without WebRTC. mixchamb is a best-effort jam-along — visual
 presence + fast-but-not-instant audio fanout — and the UI
 acknowledges it openly.
 
@@ -20,7 +20,7 @@ acknowledges it openly.
 | **LiveView** | Room shell — presence sidebar, instrument switcher, latency-hint footer; hosts the Vue islands |
 | **Phoenix.PubSub** | Sub-100 ms fanout of note events to all connected players. The "everyone hears everyone" backbone |
 | **Phoenix.Presence** | "Who's in the room, what instrument they have" — sidebar list, updates live on join/leave/switch |
-| **OTP fault tolerance** | A `Mixwave.Studio.Room` GenServer holds room state (recent events for join-time replay). On the v2 supervisor LiveView, the chaos button kills it → supervisor restarts in <100 ms → users see a brief "reconnecting" → the jam resumes |
+| **OTP fault tolerance** | A `Mixchamb.Studio.Room` GenServer holds room state (recent events for join-time replay). On the v2 supervisor LiveView, the chaos button kills it → supervisor restarts in <100 ms → users see a brief "reconnecting" → the jam resumes |
 | **BEAM distribution (v3)** | Multi-node Fly deploy. Players on node 1 + node 2 jam together; PubSub + Presence cross-node fanout is native — no Redis, no Kafka, no message broker |
 
 Real-time many-user collaboration is the canonical "what BEAM
@@ -56,12 +56,12 @@ was built for" story.
 ## 3. Layout (revised)
 
 ```
-mixwave/
+mixchamb/
 ├── BRAINSTORM.md (this file)
 ├── README.md
 ├── mix.exs
 ├── lib/
-│   ├── mixwave/
+│   ├── mixchamb/
 │   │   ├── application.ex
 │   │   ├── repo.ex
 │   │   ├── accounts/                  (kept verbatim from v1)
@@ -72,7 +72,7 @@ mixwave/
 │   │   ├── studio/
 │   │   │   └── room.ex                GenServer — supervised, holds recent events for join replay
 │   │   └── studio.ex                  context (broadcast_note, list_recent_events)
-│   └── mixwave_web/
+│   └── mixchamb_web/
 │       ├── components/                layouts.ex, core_components.ex (kept, mostly)
 │       ├── live/
 │       │   └── studio_live.ex         the whole app
@@ -117,9 +117,9 @@ will add a `jams` table at that point, not before.
    v1 LiveViews + schemas + R2 wrapper + Player + howler all deleted.
 2. ✅ **Chambers.Server GenServer** (renamed from Studio.Room) —
    supervised, holds the last 200 note events for join replay.
-3. ✅ **Mixwave.Chambers context** (renamed from Studio) — note
+3. ✅ **Mixchamb.Chambers context** (renamed from Studio) — note
    broadcast + subscribe helpers wrapping Phoenix.PubSub.
-4. ✅ **Phoenix.Presence module** at `mixwave_web/channels/presence.ex`
+4. ✅ **Phoenix.Presence module** at `mixchamb_web/channels/presence.ex`
    + tracking on join/instrument-switch from `ChamberLive`.
 5. ✅ **ChamberLive at /:slug** (renamed from StudioLive) — page
    shell, instrument tabs, presence sidebar, "tap to enter" gate
@@ -155,7 +155,7 @@ will add a `jams` table at that point, not before.
     WAV needs `Tone.Offline` + a WAV encoder; deferred.
 13. ✅ Supervisor LiveView with the chaos button — `/admin/system`
     kills a ChamberServer, watches it restart, tracks the count
-    via `Mixwave.RestartWatcher`. Every kill writes to the audit log.
+    via `Mixchamb.RestartWatcher`. Every kill writes to the audit log.
 14. ✅ Animation when others play — `remoteHit` prop on each pad
     flashes a CSS pulse driven by `play_remote_note` PubSub events.
 15. ✅ Per-user volume control — master output slider on `Chamber.vue`
@@ -175,16 +175,16 @@ will add a `jams` table at that point, not before.
     rendered next to each peer), process counts, memory,
     schedulers, OTP release, plus the drain button.
 19. ✅ "Drain node N" button — `/admin/cluster` row action kills the
-    target `MixwaveWeb.Endpoint` via `:rpc.call`; `Mixwave.Drain`
+    target `MixchambWeb.Endpoint` via `:rpc.call`; `Mixchamb.Drain`
     broadcasts `system:drain` on SIGTERM so clients see the amber
     "Server restarting" banner and reconnect to the survivor.
 20. ⏳ README + GIF + open-source — README is comprehensive (479
     lines, brand assets, badge plumbing). Coverage badge URLs now
-    point at `danceinthefake/mixwave` (resolve once CI is back on).
+    point at `danceinthefake/mixchamb` (resolve once CI is back on).
     README has an `<img>` slot reserved for `docs/walkthrough.gif`
     with capture instructions inline; the asset itself still has
     to be recorded. See Punch list.
-21. ⏳ Public URL — `fly.toml` configures `mixwave.fly.dev` but
+21. ⏳ Public URL — `fly.toml` configures `mixchamb.fly.dev` but
     we haven't actually pushed a deploy yet. User-action item.
 
 ## 5a. Audit punch list (2026-05-19)
@@ -224,8 +224,8 @@ hint, which is now tracked in §5a Punch list:
    the npm `howler` + `@types/howler`.
 5. ✅ Drop the audio MIME-type config in `config/config.exs`.
 6. ✅ Add Tone.js (npm).
-7. ✅ Chambers.Server GenServer + Mixwave.Chambers context + Presence
-   module. (Renamed from Studio.Room / Mixwave.Studio.)
+7. ✅ Chambers.Server GenServer + Mixchamb.Chambers context + Presence
+   module. (Renamed from Studio.Room / Mixchamb.Studio.)
 8. ✅ ChamberLive shell — empty room, presence sidebar, "tap to
    enter" overlay.
 9. ✅ DrumPad.vue + full event roundtrip (push → broadcast →
@@ -245,11 +245,11 @@ hint, which is now tracked in §5a Punch list:
   instrument. Cleaner than letting them ring through the change.
 - **Mobile keyboard pad**: horizontal scroll for the full octave.
   Acceptable in v1.
-- **Anti-spam**: ✅ shipped — `Mixwave.RateLimiter` caps each user
+- **Anti-spam**: ✅ shipped — `Mixchamb.RateLimiter` caps each user
   at 20 note events/sec/chamber via an ETS fixed-window bucket;
-  drops past budget emit `[:mixwave, :chamber, :note_dropped]`
+  drops past budget emit `[:mixchamb, :chamber, :note_dropped]`
   which the admin Dashboard surfaces as "Notes — dropped".
-- **CSP**: ✅ shipped — `MixwaveWeb.Plugs.SecurityHeaders` emits a
+- **CSP**: ✅ shipped — `MixchambWeb.Plugs.SecurityHeaders` emits a
   per-request Content-Security-Policy header. Prod is nonce-based
   with no `'unsafe-inline'` for scripts; dev is permissive enough
   for Vite HMR + LiveReloader.
@@ -315,7 +315,7 @@ hint, which is now tracked in §5a Punch list:
   pulls it into `:current_admin`, and audit rows now use
   `Audit.log_as/4` so they attribute to a real person instead
   of all reading "admin".
-- **Graceful shutdown / drain**: ✅ shipped — `Mixwave.Drain`
+- **Graceful shutdown / drain**: ✅ shipped — `Mixchamb.Drain`
   sits at the tail of the supervision tree so it's the first
   process terminated on SIGTERM. Its `terminate/2` broadcasts
   `{:node_draining, Node.self()}` on `system:drain` PubSub, then
@@ -326,7 +326,7 @@ hint, which is now tracked in §5a Punch list:
   was already flushing the recording queue, so an in-progress
   recording is preserved across rolling deploys.
 - **System health tab**: ✅ shipped — `/admin/health` surfaces a
-  one-glance snapshot via `Mixwave.SystemHealth` — BEAM (processes,
+  one-glance snapshot via `Mixchamb.SystemHealth` — BEAM (processes,
   atoms, run queue, schedulers, reductions, ports), memory
   breakdown by segment (processes, binary, code, ETS, atom,
   system), our two ETS tables' size + memory, and Postgres
@@ -334,8 +334,8 @@ hint, which is now tracked in §5a Punch list:
   graphs (LiveDashboard at `/dev/dashboard` is the time-series
   view).
 - **Rate limits dashboard**: ✅ shipped — `/admin/rate-limits` is
-  fed by a new `Mixwave.Telemetry.RateLimitDrops` GenServer that
-  subscribes to `[:mixwave, :chamber, :note_dropped]`. Two
+  fed by a new `Mixchamb.Telemetry.RateLimitDrops` GenServer that
+  subscribes to `[:mixchamb, :chamber, :note_dropped]`. Two
   sections: "Saturated right now" (ETS bucket walk for users at
   ≥80% of the 20/sec cap in the current window) and "Lifetime
   drops" (per-(user × chamber) counters since BEAM start).

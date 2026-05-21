@@ -1,4 +1,4 @@
-defmodule Mixwave.Repo.Migrations.AddLastActivityAtToChambers do
+defmodule Mixchamb.Repo.Migrations.AddLastActivityAtToChambers do
   use Ecto.Migration
 
   def change do

@@ -35,7 +35,7 @@ let recorder: Tone.Recorder | null = null
 export async function startRecording(): Promise<void> {
   if (recorder) return
   if (!Tone.Recorder.supported) {
-    console.warn("[mixwave] Tone.Recorder not supported in this browser")
+    console.warn("[mixchamb] Tone.Recorder not supported in this browser")
     return
   }
   recorder = new Tone.Recorder()
@@ -44,17 +44,17 @@ export async function startRecording(): Promise<void> {
   // chamber FX bus without us tapping individual synths.
   Tone.getDestination().connect(recorder)
   await recorder.start()
-  console.info("[mixwave] recorder started, state:", recorder.state, "mime:", recorder.mimeType)
+  console.info("[mixchamb] recorder started, state:", recorder.state, "mime:", recorder.mimeType)
 }
 
 export async function stopRecording(): Promise<Blob | null> {
   if (!recorder) {
-    console.warn("[mixwave] stopRecording called with no active recorder")
+    console.warn("[mixchamb] stopRecording called with no active recorder")
     return null
   }
-  console.info("[mixwave] stopping recorder, state before stop:", recorder.state)
+  console.info("[mixchamb] stopping recorder, state before stop:", recorder.state)
   const blob = await recorder.stop()
-  console.info("[mixwave] recorder stopped, blob:", blob?.size, "bytes, type:", blob?.type)
+  console.info("[mixchamb] recorder stopped, blob:", blob?.size, "bytes, type:", blob?.type)
   recorder.dispose()
   recorder = null
   return blob

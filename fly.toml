@@ -1,12 +1,12 @@
-# fly.toml — mixwave deployment config.
+# fly.toml — mixchamb deployment config.
 #
-# Replace `mixwave` with whatever app name you registered with
+# Replace `mixchamb` with whatever app name you registered with
 # `fly apps create` if it differs. The primary_region picks where
-# new machines spawn by default; mixwave benefits from running
+# new machines spawn by default; mixchamb benefits from running
 # multi-machine for the cross-node BEAM showcase, so plan to
 # `fly scale count 2` after the first deploy.
 
-app = "mixwave"
+app = "mixchamb"
 primary_region = "sin"   # Singapore. Change to whatever's nearest.
 kill_signal = "SIGTERM"
 kill_timeout = "10s"
@@ -27,8 +27,8 @@ kill_timeout = "10s"
   # the app via Fly's private DNS. dns_cluster polls it on a
   # schedule and Node.connect/1's any peer it finds. Two machines
   # → automatic Erlang cluster, no extra wiring.
-  DNS_CLUSTER_QUERY = "mixwave.internal"
-  PHX_HOST = "mixwave.fly.dev"
+  DNS_CLUSTER_QUERY = "mixchamb.internal"
+  PHX_HOST = "mixchamb.fly.dev"
   PORT = "8080"
   ECTO_IPV6 = "true"
 

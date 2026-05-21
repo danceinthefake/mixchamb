@@ -23,7 +23,7 @@ import "phoenix_html"
 // Establish Phoenix Socket and LiveView configuration.
 import {Socket} from "phoenix"
 import {LiveSocket} from "phoenix_live_view"
-import {hooks as colocatedHooks} from "phoenix-colocated/mixwave"
+import {hooks as colocatedHooks} from "phoenix-colocated/mixchamb"
 import topbar from "topbar"
 import {getHooks} from "live_vue"
 import liveVueApp from "../vue"
@@ -34,7 +34,7 @@ import liveVueApp from "../vue"
 // `'unsafe-inline'` from `script-src`.
 //
 // `navigator.clipboard` only resolves in secure contexts (HTTPS,
-// localhost, 127.0.0.1). When mixwave is opened over plain HTTP
+// localhost, 127.0.0.1). When mixchamb is opened over plain HTTP
 // on a LAN IP — the common dev/cross-device-test scenario — that
 // API silently rejects, so the fallback uses a hidden textarea +
 // `document.execCommand("copy")`, which still works there.

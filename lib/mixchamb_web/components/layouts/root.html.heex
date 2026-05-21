@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="csrf-token" content={get_csrf_token()} />
+    <link rel="icon" type="image/svg+xml" href={~p"/images/logo.svg"} />
+    <%!-- Brand fonts. Space Grotesk = display (wordmark, headings),
+         JetBrains Mono = numerics + kbd hints. System sans for
+         everything else. --%>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Space+Grotesk:wght@500;600;700&display=swap"
+    />
+    <.live_title default="Mixchamb" suffix=" · Phoenix Framework" phx-no-format>{assigns[:page_title]}</.live_title>
+    <%!-- `dev_server` decides between Vite-dev paths (/@vite/client +
+         source files) and the prod manifest with hashed filenames.
+         The default `has_vite_watcher?` check assumes any node
+         without a Vite watcher is in prod — but for local cluster
+         testing we set SKIP_VITE=1 on node 2 so it borrows node 1's
+         Vite, and that node has no local watcher even though we're
+         in dev. Using the live_vue :vite_host config (set in dev.exs,
+         unset in prod) decouples the two signals. --%>
+    <PhoenixVite.Components.assets
+      names={["js/app.js", "css/app.css"]}
+      manifest={{:mixchamb, "priv/static/.vite/manifest.json"}}
+      dev_server={Application.get_env(:live_vue, :vite_host) != nil}
+      to_url={fn p -> static_url(@conn, p) end}
+    />
+    <%!-- `nonce={@csp_nonce}` opts this inline block into the strict
+         prod CSP that disallows `'unsafe-inline'` for scripts. In
+         dev `@csp_nonce` is nil → HEEx omits the attribute and the
+         dev-mode `'unsafe-inline'` source expression covers it. --%>
+    <script nonce={assigns[:csp_nonce]}>
+      // shadcn-style theming: toggle the `dark` class on <html>.
+      // "system" = respect prefers-color-scheme; "light"/"dark" = explicit override stored in localStorage.
+      (() => {
+        const root = document.documentElement;
+        const apply = (theme) => {
+          const dark =
+            theme === "dark" ||
+            (theme === "system" && window.matchMedia("(prefers-color-scheme: dark)").matches);
+          root.classList.toggle("dark", dark);
+        };
+        const setTheme = (theme) => {
+          if (theme === "system") {
+            localStorage.removeItem("phx:theme");
+          } else {
+            localStorage.setItem("phx:theme", theme);
+          }
+          apply(theme);
+        };
+        // Default to dark — the chambers are meant to feel like a music
+        // app, not a light-mode admin tool. Users can still flip it.
+        apply(localStorage.getItem("phx:theme") || "dark");
+        window.addEventListener("storage", (e) => e.key === "phx:theme" && setTheme(e.newValue || "system"));
+        window.addEventListener("phx:set-theme", (e) => setTheme(e.target.dataset.phxTheme));
+      })();
+    </script>
+    <%!-- LiveDebugger dev overlay tags. Returns nil in prod (the
+         dep is dev-only). Browser tools surface at :4007. --%>
+    {Application.get_env(:live_debugger, :live_debugger_tags)}
+  </head>
+  <body>
+    {@inner_content}
+  </body>
+</html>

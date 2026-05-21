@@ -83,7 +83,7 @@ RUN chown nobody /app
 ENV MIX_ENV="prod"
 
 # Copy the compiled release from the build stage.
-COPY --from=builder --chown=nobody:root /app/_build/${MIX_ENV}/rel/mixwave ./
+COPY --from=builder --chown=nobody:root /app/_build/${MIX_ENV}/rel/mixchamb ./
 
 USER nobody
 

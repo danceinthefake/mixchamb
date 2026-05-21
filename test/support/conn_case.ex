@@ -1,4 +1,4 @@
-defmodule MixwaveWeb.ConnCase do
+defmodule MixchambWeb.ConnCase do
   @moduledoc """
   This module defines the test case to be used by
   tests that require setting up a connection.
@@ -11,7 +11,7 @@ defmodule MixwaveWeb.ConnCase do
   we enable the SQL sandbox, so changes done to the database
   are reverted at the end of every test. If you are using
   PostgreSQL, you can even run database tests asynchronously
-  by setting `use MixwaveWeb.ConnCase, async: true`, although
+  by setting `use MixchambWeb.ConnCase, async: true`, although
   this option is not recommended for other databases.
   """
 
@@ -20,20 +20,20 @@ defmodule MixwaveWeb.ConnCase do
   using do
     quote do
       # The default endpoint for testing
-      @endpoint MixwaveWeb.Endpoint
+      @endpoint MixchambWeb.Endpoint
 
-      use MixwaveWeb, :verified_routes
+      use MixchambWeb, :verified_routes
 
       # Import conveniences for testing with connections
       import Plug.Conn
       import Phoenix.ConnTest
       import Phoenix.LiveViewTest
-      import MixwaveWeb.ConnCase
+      import MixchambWeb.ConnCase
     end
   end
 
   setup tags do
-    Mixwave.DataCase.setup_sandbox(tags)
+    Mixchamb.DataCase.setup_sandbox(tags)
     {:ok, conn: Phoenix.ConnTest.build_conn()}
   end
 end

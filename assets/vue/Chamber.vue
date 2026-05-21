@@ -99,7 +99,7 @@ const lastRemoteHit = ref<RemoteHit | null>(null)
 // localStorage and Tone.js are browser-only; live_vue runs this
 // `<script setup>` on the server too via SSR. Defer to onMounted
 // (client-only) for the initial read + Tone.Destination call.
-const VOLUME_KEY = "mixwave:volume"
+const VOLUME_KEY = "mixchamb:volume"
 const volume = ref(80)
 
 watch(volume, (v) => {
@@ -313,7 +313,7 @@ function recordingFilename(blob: Blob, createdAt: Date): string {
 
   const stamp = createdAt.toISOString().replace(/[-:]/g, "").replace(/\..+$/, "").replace("T", "-")
 
-  return `mixwave-${stem}-${stamp}.${extensionFor(blob.type)}`
+  return `mixchamb-${stem}-${stamp}.${extensionFor(blob.type)}`
 }
 
 function formatDuration(ms: number): string {

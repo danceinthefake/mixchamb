@@ -17,7 +17,7 @@
   "include": [
     "./assets/js/**/*",
     "./assets/vue/**/*",
-    "./lib/mixwave_web/**/*"
+    "./lib/mixchamb_web/**/*"
   ],
   "exclude": [
     "node_modules"

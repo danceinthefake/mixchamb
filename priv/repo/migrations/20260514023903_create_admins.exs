@@ -1,4 +1,4 @@
-defmodule Mixwave.Repo.Migrations.CreateAdmins do
+defmodule Mixchamb.Repo.Migrations.CreateAdmins do
   use Ecto.Migration
 
   def change do

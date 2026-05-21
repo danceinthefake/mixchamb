@@ -5,17 +5,17 @@ import Config
 # The MIX_TEST_PARTITION environment variable can be used
 # to provide built-in test partitioning in CI environment.
 # Run `mix help test` for more information.
-config :mixwave, Mixwave.Repo,
+config :mixchamb, Mixchamb.Repo,
   username: "postgres",
   password: "postgres",
   hostname: "localhost",
-  database: "mixwave_test#{System.get_env("MIX_TEST_PARTITION")}",
+  database: "mixchamb_test#{System.get_env("MIX_TEST_PARTITION")}",
   pool: Ecto.Adapters.SQL.Sandbox,
   pool_size: System.schedulers_online() * 2
 
 # We don't run a server during test. If one is required,
 # you can enable the server option below.
-config :mixwave, MixwaveWeb.Endpoint,
+config :mixchamb, MixchambWeb.Endpoint,
   http: [ip: {127, 0, 0, 1}, port: 4002],
   secret_key_base: "WsLmtJmGxGYEiiW6MCIGYR0UrB9VZ7SXleWWGlO4/NVgKd7lsjyV+QimNsKulAw6",
   server: false
@@ -25,7 +25,7 @@ config :logger, level: :warning
 
 # Fixed admin creds so the /admin pipeline doesn't 401 the test
 # client; AdminAuth refuses requests when no password is set.
-config :mixwave, admin_user: "admin", admin_password: "test"
+config :mixchamb, admin_user: "admin", admin_password: "test"
 
 # Use bcrypt's minimum rounds in tests — production-grade rounds
 # make every Admins.create_admin call take ~250 ms.

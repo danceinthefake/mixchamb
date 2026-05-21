@@ -1,4 +1,4 @@
-defmodule Mixwave.Repo.Migrations.CreateAnonymousUsers do
+defmodule Mixchamb.Repo.Migrations.CreateAnonymousUsers do
   use Ecto.Migration
 
   def change do

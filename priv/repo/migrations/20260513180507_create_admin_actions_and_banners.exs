@@ -1,4 +1,4 @@
-defmodule Mixwave.Repo.Migrations.CreateAdminActionsAndBanners do
+defmodule Mixchamb.Repo.Migrations.CreateAdminActionsAndBanners do
   use Ecto.Migration
 
   def change do
@@ -12,7 +12,7 @@ defmodule Mixwave.Repo.Migrations.CreateAdminActionsAndBanners do
       # "drain_node", "broadcast", "run_sweeper", etc.
       add :action, :text, null: false
       # Free-form identifier of what was acted on, e.g.
-      # "chamber:funky-meerkat" or "node:mixwave1@hostname".
+      # "chamber:funky-meerkat" or "node:mixchamb1@hostname".
       add :target, :text
       # Whoever was authenticated when the action fired (the env
       # ADMIN_USER value today; a real per-admin username once
