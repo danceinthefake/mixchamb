@@ -630,6 +630,16 @@ defmodule MixchambWeb.ChamberLive do
   defp activity_label("music"), do: "Music"
   defp activity_label("poker"), do: "Poker"
 
+  # Active-state class for each activity chip. Music carries the
+  # brand pink (--primary); poker carries cyan (--accent-poker)
+  # so the chip-strip itself reads which activity the chamber is in.
+  # Static class strings so Tailwind picks them up at build time.
+  defp activity_chip_active_class("music"),
+    do: "bg-primary/15 text-primary border-primary/40"
+
+  defp activity_chip_active_class("poker"),
+    do: "bg-accent-poker/15 text-accent-poker border-accent-poker/40"
+
   defp chamber_og_title(%{activity: "poker"} = chamber),
     do: "Planning poker · #{chamber.title} · mixchamb"
 
@@ -856,8 +866,7 @@ defmodule MixchambWeb.ChamberLive do
               }
               class={[
                 "px-3 py-1 text-xs rounded-md border transition-colors cursor-pointer",
-                @chamber.activity == a &&
-                  "bg-primary/15 text-primary border-primary/40",
+                @chamber.activity == a && activity_chip_active_class(a),
                 @chamber.activity != a &&
                   "bg-card hover:bg-accent text-muted-foreground border-input"
               ]}

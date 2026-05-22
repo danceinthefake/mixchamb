@@ -76,6 +76,12 @@
   --color-accent-suling: var(--accent-suling);
   --color-accent-kendang: var(--accent-kendang);
 
+  /* Activity-palette + semantic accent tokens. Register here so
+     Tailwind picks up bg-accent-poker / text-accent-poker /
+     bg-success / text-success etc. at build time. */
+  --color-accent-poker: var(--accent-poker);
+  --color-success: var(--success);
+
   /* Brand typography. Display = Space Grotesk (wordmark + headings).
      Mono = JetBrains Mono (kbd hints, numeric tabular displays).
      Everything else falls through to the system sans stack. */
@@ -136,6 +142,18 @@
   --accent-pad: oklch(0.6 0.24 290);
   --accent-suling: oklch(0.7 0.18 85);
   --accent-kendang: oklch(0.6 0.22 25);
+
+  /* Activity-palette accents. Tied to the logo's gradient stops
+     so the brand identity carries through each activity's chrome:
+     pink for the music activity (uses --primary), cyan for poker,
+     future activities pick their own token. See UI.md
+     "Activity palette" sub-section. */
+  --accent-poker: oklch(0.78 0.13 215);
+
+  /* Success/confirmation accent — the green end of the brand
+     gradient (#b5e651). Used for completed states, positive
+     feedback, and the right-end accents on stats. */
+  --success: oklch(0.86 0.20 125);
 }
 
 .dark {
@@ -188,6 +206,12 @@
      earthy red for kendang (hand drum). */
   --accent-suling: oklch(0.85 0.18 85);
   --accent-kendang: oklch(0.7 0.22 25);
+
+  /* Dark-mode activity-palette + semantic accents — same brand
+     gradient hues as light mode, slightly tuned for legibility
+     against the deep mixchamb dark background. */
+  --accent-poker: oklch(0.80 0.13 215);
+  --success: oklch(0.88 0.20 125);
 }
 
 @layer base {
