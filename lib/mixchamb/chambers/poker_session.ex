@@ -1,0 +1,123 @@
+defmodule Mixchamb.Chambers.PokerSession do
+  @moduledoc """
+  Per-chamber state for the planning-poker activity. Owned by
+  `Mixchamb.Chambers.Server`'s GenServer state and ephemeral —
+  lives in memory only, dies with the chamber.
+
+  Design: `features/planning-poker.md`. All mutations return one
+  of:
+
+    * `{:ok, new_session}` — state changed; caller should broadcast
+    * `{:noop, session}`   — no-op (idempotent re-vote, etc.); caller skips broadcast
+    * `{:error, reason}`   — validation failure; caller logs / ignores
+
+  Mutations don't broadcast on their own; that's the GenServer's
+  job so the cast/call surface stays the only place messages leave
+  the process.
+  """
+
+  @decks ~w(fibonacci modified_fibonacci tshirt pow2)a
+  def decks, do: @decks
+
+  @cards_by_deck %{
+    fibonacci: ~w(1 2 3 5 8 13 21 ? ☕),
+    modified_fibonacci: ~w(0 ½ 1 2 3 5 8 13 20 40 100 ? ☕),
+    tshirt: ~w(XS S M L XL ?),
+    pow2: ~w(1 2 4 8 16 32 ? ☕)
+  }
+
+  @doc "Returns the card list for `deck`, oldest-first ordering."
+  def cards_for(deck) when deck in @decks, do: Map.fetch!(@cards_by_deck, deck)
+
+  defstruct status: :voting,
+            deck: :fibonacci,
+            story: nil,
+            votes: %{},
+            round: 1
+
+  @type t :: %__MODULE__{
+          status: :voting | :revealed,
+          deck: atom(),
+          story: String.t() | nil,
+          votes: %{optional(String.t()) => String.t()},
+          round: pos_integer()
+        }
+
+  @doc "Fresh session at round 1 with the given deck."
+  def new(deck \\ :fibonacci) when deck in @decks do
+    %__MODULE__{deck: deck}
+  end
+
+  @doc """
+  Cast a vote during `:voting`. Idempotent — re-voting the same
+  card is a no-op. Rejected during `:revealed`. Returns
+  `{:error, :invalid_card}` if `card` isn't in the active deck.
+  """
+  def cast_vote(%__MODULE__{status: :voting} = s, user_id, card)
+      when is_binary(user_id) and is_binary(card) do
+    cond do
+      card not in cards_for(s.deck) -> {:error, :invalid_card}
+      Map.get(s.votes, user_id) == card -> {:noop, s}
+      true -> {:ok, %{s | votes: Map.put(s.votes, user_id, card)}}
+    end
+  end
+
+  def cast_vote(%__MODULE__{} = s, _user_id, _card), do: {:noop, s}
+
+  @doc """
+  Drop a user's vote during `:voting`. No-op if the user hasn't
+  voted yet or the session is already revealed. Also called when
+  a participant leaves the chamber (via Presence).
+  """
+  def withdraw_vote(%__MODULE__{status: :voting, votes: votes} = s, user_id)
+      when is_binary(user_id) do
+    if Map.has_key?(votes, user_id) do
+      {:ok, %{s | votes: Map.delete(votes, user_id)}}
+    else
+      {:noop, s}
+    end
+  end
+
+  def withdraw_vote(%__MODULE__{} = s, _user_id), do: {:noop, s}
+
+  @doc """
+  Flip from `:voting` to `:revealed`. Re-revealing is a no-op.
+  Reveal with zero votes is allowed (the doc explicitly chose not
+  to gate on "≥1 vote required").
+  """
+  def reveal(%__MODULE__{status: :voting} = s), do: {:ok, %{s | status: :revealed}}
+  def reveal(%__MODULE__{} = s), do: {:noop, s}
+
+  @doc """
+  Clear the round: votes wiped, round counter incremented, status
+  back to `:voting`. Optionally accepts a `:story` to swap to.
+  Always succeeds (it's the host's "next" button).
+  """
+  def next_round(%__MODULE__{round: r} = s, opts \\ []) do
+    new_story = Keyword.get(opts, :story, s.story)
+    {:ok, %{s | status: :voting, votes: %{}, round: r + 1, story: new_story}}
+  end
+
+  @doc """
+  Replace the active story line. Nil clears the story (display
+  falls back to "Round N"). Always succeeds.
+  """
+  def set_story(%__MODULE__{} = s, story) when is_nil(story) or is_binary(story) do
+    if s.story == story, do: {:noop, s}, else: {:ok, %{s | story: story}}
+  end
+
+  @doc """
+  Switch to a different deck. Allowed only while `votes` is empty
+  — mid-round deck switches would orphan card values that no longer
+  exist in the new deck.
+  """
+  def set_deck(%__MODULE__{votes: votes}, _) when votes != %{},
+    do: {:error, :votes_in_progress}
+
+  def set_deck(%__MODULE__{deck: same} = s, deck) when deck == same, do: {:noop, s}
+
+  def set_deck(%__MODULE__{} = s, deck) when deck in @decks,
+    do: {:ok, %{s | deck: deck}}
+
+  def set_deck(%__MODULE__{} = _s, _), do: {:error, :invalid_deck}
+end

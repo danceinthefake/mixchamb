@@ -91,6 +91,57 @@ defmodule Mixchamb.Chambers.Server do
   """
   def record(slug, event), do: GenServer.cast(via(slug), {:record, event})
 
+  ## Planning-poker API
+  #
+  # Each function below mutates the chamber's PokerSession (when
+  # one exists) and broadcasts the matching event on the same
+  # `chamber:<slug>` topic that note events use. See
+  # `features/planning-poker.md` §4 for the full event vocabulary.
+  # Calling these on a chamber whose activity isn't `"poker"` is a
+  # no-op — the session doesn't exist, so the cast is silently
+  # dropped.
+
+  @doc "Cast or change `user_id`'s vote during `:voting`."
+  def poker_vote(slug, user_id, card),
+    do: GenServer.cast(via(slug), {:poker_vote, user_id, card})
+
+  @doc "Drop `user_id`'s vote (e.g. on leave) during `:voting`."
+  def poker_withdraw_vote(slug, user_id),
+    do: GenServer.cast(via(slug), {:poker_withdraw_vote, user_id})
+
+  @doc "Flip the session from `:voting` to `:revealed`."
+  def poker_reveal(slug), do: GenServer.cast(via(slug), :poker_reveal)
+
+  @doc "Clear votes + increment round; optionally swap the story."
+  def poker_next_round(slug, story \\ nil),
+    do: GenServer.cast(via(slug), {:poker_next_round, story})
+
+  @doc "Replace the active story line."
+  def poker_set_story(slug, story),
+    do: GenServer.cast(via(slug), {:poker_set_story, story})
+
+  @doc "Switch deck — rejected when votes are in progress."
+  def poker_set_deck(slug, deck),
+    do: GenServer.cast(via(slug), {:poker_set_deck, deck})
+
+  @doc """
+  Synchronously read the current PokerSession (or `nil` if the
+  chamber isn't in poker activity). Used by late joiners to
+  rebuild their UI from the live state.
+  """
+  def poker_state(slug), do: GenServer.call(via(slug), :poker_state)
+
+  @doc """
+  Swap the chamber's active activity. Creates a new PokerSession
+  on switch-to-poker; clears it on switch-away. Broadcasts
+  `{:activity_changed, activity}` so subscribed LiveViews can
+  re-render. The chamber row itself isn't updated by this call —
+  the caller (`Mixchamb.Chambers.update_activity/2`) writes to DB
+  first, then signals the GenServer.
+  """
+  def set_activity(slug, activity),
+    do: GenServer.cast(via(slug), {:set_activity, activity})
+
   @doc """
   Updates the in-memory recording flag. Called by
   `Mixchamb.Chambers.set_recording/2` after the DB row is updated
@@ -149,18 +200,28 @@ defmodule Mixchamb.Chambers.Server do
 
     started_at = System.monotonic_time(:millisecond)
 
-    # Seed the recording flag from the DB so a chamber whose
-    # creator turned REC on, then refreshed, keeps recording when
-    # the GenServer is restarted.
-    is_recording =
+    # Seed the recording flag + activity from the DB so a chamber
+    # whose creator turned REC on (or whose activity is "poker")
+    # rehydrates correctly when the GenServer is restarted by
+    # the supervisor.
+    {is_recording, activity} =
       case state.chamber_id && Mixchamb.Chambers.find_by_id(state.chamber_id) do
-        %{is_recording: on?} -> on?
-        _ -> false
+        %{is_recording: rec, activity: act} -> {rec, act}
+        _ -> {false, "music"}
       end
 
     if is_recording do
       Process.send_after(self(), :flush_recording, @recording_flush_interval_ms)
     end
+
+    # Lazily allocate a PokerSession only when the chamber is
+    # actually running poker. Non-poker chambers carry `nil`, so
+    # the poker cast handlers can pattern-match against it as a
+    # cheap "is this chamber playing poker?" gate.
+    poker_session =
+      if activity == "poker" do
+        Mixchamb.Chambers.PokerSession.new()
+      end
 
     state =
       Map.merge(state, %{
@@ -169,7 +230,9 @@ defmodule Mixchamb.Chambers.Server do
         dirty?: false,
         started_at: started_at,
         is_recording: is_recording,
-        to_persist: []
+        to_persist: [],
+        activity: activity,
+        poker_session: poker_session
       })
 
     {:ok, state}
@@ -221,6 +284,118 @@ defmodule Mixchamb.Chambers.Server do
     end
   end
 
+  ## Planning-poker cast handlers
+  #
+  # All six follow the same shape: pattern-match `state.poker_session`
+  # as non-nil (chamber is in poker mode), delegate the mutation to
+  # `PokerSession`, broadcast on `{:ok, _}`, swallow `{:noop, _}` /
+  # `{:error, _}`. When the session is `nil`, the cast is a silent
+  # no-op — the chamber isn't in poker mode, nothing to do.
+
+  def handle_cast({:poker_vote, user_id, card}, %{poker_session: session} = state)
+      when not is_nil(session) do
+    case Mixchamb.Chambers.PokerSession.cast_vote(session, user_id, card) do
+      {:ok, updated} ->
+        broadcast_poker(state.slug, {:poker, :vote_cast, user_id})
+        {:noreply, %{state | poker_session: updated, dirty?: true}}
+
+      _ ->
+        {:noreply, state}
+    end
+  end
+
+  def handle_cast({:poker_withdraw_vote, user_id}, %{poker_session: session} = state)
+      when not is_nil(session) do
+    case Mixchamb.Chambers.PokerSession.withdraw_vote(session, user_id) do
+      {:ok, updated} ->
+        broadcast_poker(state.slug, {:poker, :vote_withdrawn, user_id})
+        {:noreply, %{state | poker_session: updated, dirty?: true}}
+
+      _ ->
+        {:noreply, state}
+    end
+  end
+
+  def handle_cast(:poker_reveal, %{poker_session: session} = state)
+      when not is_nil(session) do
+    case Mixchamb.Chambers.PokerSession.reveal(session) do
+      {:ok, updated} ->
+        broadcast_poker(state.slug, {:poker, :revealed, updated.votes})
+        {:noreply, %{state | poker_session: updated, dirty?: true}}
+
+      _ ->
+        {:noreply, state}
+    end
+  end
+
+  def handle_cast({:poker_next_round, story}, %{poker_session: session} = state)
+      when not is_nil(session) do
+    opts = if is_nil(story), do: [], else: [story: story]
+
+    case Mixchamb.Chambers.PokerSession.next_round(session, opts) do
+      {:ok, updated} ->
+        broadcast_poker(
+          state.slug,
+          {:poker, :cleared, updated.round, updated.story, updated.deck}
+        )
+
+        {:noreply, %{state | poker_session: updated, dirty?: true}}
+
+      _ ->
+        {:noreply, state}
+    end
+  end
+
+  def handle_cast({:poker_set_story, story}, %{poker_session: session} = state)
+      when not is_nil(session) do
+    case Mixchamb.Chambers.PokerSession.set_story(session, story) do
+      {:ok, updated} ->
+        broadcast_poker(state.slug, {:poker, :story_changed, updated.story})
+        {:noreply, %{state | poker_session: updated, dirty?: true}}
+
+      _ ->
+        {:noreply, state}
+    end
+  end
+
+  def handle_cast({:poker_set_deck, deck}, %{poker_session: session} = state)
+      when not is_nil(session) do
+    case Mixchamb.Chambers.PokerSession.set_deck(session, deck) do
+      {:ok, updated} ->
+        broadcast_poker(state.slug, {:poker, :deck_changed, updated.deck})
+        {:noreply, %{state | poker_session: updated, dirty?: true}}
+
+      _ ->
+        {:noreply, state}
+    end
+  end
+
+  # Cast-with-no-session fall-through: poker actions against a
+  # music-mode chamber are silently dropped. Keeps the caller
+  # simple (no need to check activity before casting).
+  def handle_cast({:poker_vote, _, _}, state), do: {:noreply, state}
+  def handle_cast({:poker_withdraw_vote, _}, state), do: {:noreply, state}
+  def handle_cast(:poker_reveal, state), do: {:noreply, state}
+  def handle_cast({:poker_next_round, _}, state), do: {:noreply, state}
+  def handle_cast({:poker_set_story, _}, state), do: {:noreply, state}
+  def handle_cast({:poker_set_deck, _}, state), do: {:noreply, state}
+
+  def handle_cast({:set_activity, activity}, state) do
+    poker_session =
+      case activity do
+        "poker" -> state.poker_session || Mixchamb.Chambers.PokerSession.new()
+        _ -> nil
+      end
+
+    Phoenix.PubSub.broadcast(
+      Mixchamb.PubSub,
+      Mixchamb.Chambers.topic(state.slug),
+      {:activity_changed, activity}
+    )
+
+    {:noreply, %{state | activity: activity, poker_session: poker_session}}
+  end
+
   @impl true
   def handle_call(:info, _from, state) do
     uptime_ms = System.monotonic_time(:millisecond) - state.started_at
@@ -240,6 +415,10 @@ defmodule Mixchamb.Chambers.Server do
       |> Enum.reverse()
 
     {:reply, events, state}
+  end
+
+  def handle_call(:poker_state, _from, state) do
+    {:reply, state.poker_session, state}
   end
 
   @impl true
@@ -330,5 +509,17 @@ defmodule Mixchamb.Chambers.Server do
   defp flush_recording(%{chamber_id: chamber_id, to_persist: queue} = state) do
     Mixchamb.Chambers.record_events(chamber_id, Enum.reverse(queue))
     %{state | to_persist: []}
+  end
+
+  # Broadcast a poker lifecycle event on the chamber's PubSub topic.
+  # LiveViews subscribed via `Mixchamb.Chambers.subscribe/1` receive
+  # the message verbatim and can pattern-match on the leading
+  # `:poker` tag to route to the poker UI.
+  defp broadcast_poker(slug, message) do
+    Phoenix.PubSub.broadcast(
+      Mixchamb.PubSub,
+      Mixchamb.Chambers.topic(slug),
+      message
+    )
   end
 end
