@@ -220,7 +220,7 @@ Casual but capable. Like a friend showing you a tool they built, not a corporate
 
 | Surface             | Current text                                              | Notes                                                  |
 | ------------------- | --------------------------------------------------------- | ------------------------------------------------------ |
-| Header subtitle     | "real-time jam chambers"                                  | ✓ on tone                                               |
+| Header subtitle     | "realtime collaborative chambers"                         | ✓ on tone; broadened past music for v4 multi-activity |
 | Tap-to-enter title  | "Tap to start jamming"                                    | ✓ on tone                                               |
 | Tap-to-enter helper | "Browsers need a gesture before audio can play"           | ✓ informative, neutral                                  |
 | Tap-to-enter button | "Enter studio"                                            | ✓ verb-led                                              |

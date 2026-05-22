@@ -93,13 +93,10 @@ defmodule MixchambWeb.ChamberLive do
      |> assign(:page_title, page_title_for(chamber))
      # Open Graph / Twitter card overrides — when someone shares
      # this chamber's URL, the link preview shows the chamber's
-     # name and a jam-specific description instead of the
+     # name and an activity-specific description instead of the
      # site-wide defaults in root.html.heex.
-     |> assign(:og_title, "Jamming in #{chamber.title} · mixchamb")
-     |> assign(
-       :og_description,
-       "Join the live jam in #{chamber.title}. Pick an instrument, hear everyone else who has the link."
-     )
+     |> assign(:og_title, chamber_og_title(chamber))
+     |> assign(:og_description, chamber_og_description(chamber))
      |> assign(:og_url, url(~p"/chamber/#{slug}"))
      |> assign(:instruments, @instruments)
      |> assign(:current_instrument, :drums)
@@ -632,6 +629,20 @@ defmodule MixchambWeb.ChamberLive do
 
   defp activity_label("music"), do: "Music"
   defp activity_label("poker"), do: "Poker"
+
+  defp chamber_og_title(%{activity: "poker"} = chamber),
+    do: "Planning poker · #{chamber.title} · mixchamb"
+
+  defp chamber_og_title(chamber),
+    do: "Jamming in #{chamber.title} · mixchamb"
+
+  defp chamber_og_description(%{activity: "poker"} = chamber) do
+    "Join the planning session in #{chamber.title}. Vote on stories, reveal together, anyone with the link can join."
+  end
+
+  defp chamber_og_description(chamber) do
+    "Join the live jam in #{chamber.title}. Pick an instrument, hear everyone else who has the link."
+  end
 
   defp instrument_label(:drums), do: "Drums"
   defp instrument_label(:keyboard), do: "Keyboard"
