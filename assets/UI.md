@@ -1,14 +1,43 @@
 # mixchamb UI primitives
 
-A reference for the patterns that already exist in the studio. New UI work should copy from this canon instead of inventing its own — that's how a design system stays one.
+A reference for the patterns that already exist in mixchamb. New UI work should copy from this canon instead of inventing its own — that's how a design system stays one.
 
 The CSS variables and Tailwind theme tokens that back these classes live in `assets/css/app.css`. The motion timings live in `assets/vue/lib/motion.ts`. The fonts come from Google Fonts via `lib/mixchamb_web/components/layouts/root.html.heex`.
 
 ---
 
+## Design principles
+
+The visual language was re-anchored to the **brick-stack M** logo when mixchamb pivoted from music-only to multi-activity in v4. The mark is 23 small rounded-rectangle tiles arranged in seven horizontal courses; the M shape emerges from which cells are filled. Three properties carry into the rest of the system:
+
+- **Modular.** Compose UI from repeating units with consistent proportions. A row of voting cards, a participant strip, an instrument switcher tab strip — they should all read as the same kind of object at a different scale. Avoid one-off shapes when a tile rhythm fits.
+- **Gridded.** Spacing rhythm is 2 / 4 / 8 / 16 / 24 — the proportions of bricks-and-gaps in the logo. Pick the increment that matches the relationship being drawn (2 px between siblings in a tight cluster, 8 px between sections of a card, 24 px between unrelated regions). Don't pick 6, 10, 14.
+- **Restrained.** The gradient and the per-activity accents do the chromatic work; everything else is neutral. The logo doesn't carry effects (shadows, glow, outline) and neither should card chrome — surfaces are flat, borders are 1 px, motion is in service of state transitions only.
+
+Where these principles point at concrete numbers, see *Spacing & radius* below.
+
+---
+
 ## Color tokens
 
-### Neutral surfaces (shadcn-vue zinc, with a deeper studio dark variant)
+### Brand gradient
+
+The mixchamb mark fills with a 3-stop linear gradient, applied top-left to bottom-right:
+
+```
+0%    #e94886   pink / magenta
+55%   #56d2e6   cyan
+100%  #b5e651   lime / spring green
+```
+
+Use this gradient on:
+
+- the logo (canonical use in `priv/static/images/logo.svg`)
+- "primary" hero treatments where the brand needs to lead (landing page hero, OG image background, optional first-paint splash)
+
+Don't use it as a fill on small UI chrome — small gradient bands read as noise, and the per-activity accents are the right palette there. The gradient is hard-coded in the SVG rather than tokenized because it appears in exactly one place by design.
+
+### Neutral surfaces (shadcn-vue zinc, with a deeper mixchamb dark variant)
 
 ```
 bg-background    near-black w/ faint hue 280 tint   (page background)
@@ -20,19 +49,36 @@ text-muted-foreground  ~65% opacity                   (subdued text)
 border           white / 8%                           (1px borders)
 ```
 
-### Per-instrument neon accents
+### Music palette (per-instrument)
 
-| Instrument | Token            | Hue                | Used for                                         |
-| ---------- | ---------------- | ------------------ | ------------------------------------------------ |
+These tokens are scoped to the music activity. They're available everywhere but should only render when `chamber.activity == "music"`. Other activities reach for their own palette (see *Activity palette* below).
+
+| Instrument | Token             | Hue                            | Used for                                          |
+| ---------- | ----------------- | ------------------------------ | ------------------------------------------------- |
 | Drums      | `accent-drums`    | magenta `oklch(0.72 0.27 340)` | flash ring, glow, dock tab when active            |
 | Keyboard   | `accent-keyboard` | cyan    `oklch(0.80 0.17 200)` | "                                                 |
 | Guitar     | `accent-guitar`   | lime    `oklch(0.85 0.22 130)` | " + chord-diagram dots + barre line               |
 | Bass       | `accent-bass`     | orange  `oklch(0.80 0.20 55)`  | " + fretboard pressed-fret tint                   |
 | Pad        | `accent-pad`      | violet  `oklch(0.72 0.24 290)` | "                                                 |
+| Suling     | `accent-suling`   | gold    `oklch(0.85 0.18 85)`  | "                                                 |
+| Kendang    | `accent-kendang`  | rust    `oklch(0.70 0.22 25)`  | "                                                 |
 
 Available as `bg-accent-{instrument}`, `ring-accent-{instrument}`, `text-accent-{instrument}`, `border-accent-{instrument}`, `glow-{instrument}`.
 
 Remote flashes use `ring-orange-400` regardless of which instrument played them — a deliberately distinct colour so "someone else played this" always reads the same.
+
+### Activity palette
+
+Each new activity gets one accent token that carries its primary affordances (button highlights, chip-strip tints, presence dot when the activity is in play). Music is special — it uses the per-instrument palette above instead of a single accent.
+
+| Activity | Token               | Status                                                     |
+| -------- | ------------------- | ---------------------------------------------------------- |
+| Music    | (uses Music palette) | active                                                     |
+| Poker    | `accent-poker`      | reserved — defaults to `--primary` until the v4.1 polish pass |
+| Standup  | `accent-standup`    | reserved — not yet shipped                                  |
+| Retro    | `accent-retro`      | reserved — not yet shipped                                  |
+
+When a new activity ships, add one `oklch(...)` entry under `@theme inline` in `assets/css/app.css` and a row here. Don't introduce ad-hoc colors per component.
 
 ---
 
@@ -45,6 +91,38 @@ default         system sans          body, labels, dock chip text
 ```
 
 Use `font-display` for the brand wordmark and any prominent heading the user is meant to read first. `font-mono` for keyboard-shortcut chips and any number that the user reads as data (volume %, octave shift, BPM if we ever add one).
+
+---
+
+## Spacing & radius
+
+### Spacing scale (the brick rhythm)
+
+The brick-stack logo has small consistent gaps between tiles — ~16% of a tile's width. Scaled up to component land that becomes the increments below. Pick the one that names the relationship, not the one that "looks about right":
+
+| Tailwind | px | Use                                                                                  |
+| -------- | -- | ------------------------------------------------------------------------------------ |
+| `gap-0.5` / `p-0.5` | 2 | inside a single visual unit (icon ↔ label inside a chip)                          |
+| `gap-1` / `p-1`     | 4 | between siblings of the same kind (vote cards in a deck, chips in a strip)         |
+| `gap-2` / `p-2`     | 8 | inside-card gutters, between control + its hint                                   |
+| `gap-4` / `p-4`     | 16 | between sections of a card                                                       |
+| `gap-6` / `p-6`     | 24 | between cards / unrelated regions                                                |
+
+`gap-3` (12 px) is the one in-between value that's allowed — used inside the floating dock and other mid-density horizontal layouts. Avoid `gap-1.5`, `gap-2.5`, `gap-5`, `gap-7` unless you can name what they're for.
+
+### Radius scale
+
+Tighter than the previous default. The brick mark's tiles use `rx ≈ 6%` — modest rounding, not pill-like.
+
+| Tailwind  | px | Use                                                                                |
+| --------- | -- | ---------------------------------------------------------------------------------- |
+| `rounded-sm` | 2 | kbd hint chips, the smallest interactive elements                                |
+| `rounded-md` | 6 | buttons, chips, control toggles — the workhorse                                  |
+| `rounded-lg` | 8 | pad surfaces, vote cards, instrument tiles                                       |
+| `rounded-xl` | 12 | cards, dock, modals, mini-bar                                                   |
+| `rounded-2xl` | 16 | hero containers, the chamber landing-page entry cards                          |
+
+`rounded-full` is reserved for avatar circles and presence dots only. Don't reach for it on rectangles — the brick motif is square-ish.
 
 ---
 
@@ -64,9 +142,9 @@ Each pad's `flash()` and `flashRemote()` should clear the highlight after `FLASH
 
 ## Layout primitives
 
-### Stage (the big instrument area)
+### Stage (the chamber's big interactive area)
 
-The studio breaks out of `Layouts.app`'s `max-w-3xl` constraint with a negative-margin wrapper, then applies its own `max-w-5xl` so the kit / fretboard / chord grid has room. See `studio_live.ex` for the wrapper.
+A chamber breaks out of `Layouts.app`'s `max-w-3xl` constraint with a negative-margin wrapper, then applies its own `max-w-5xl` so the kit / fretboard / chord grid / poker board has room. See `chamber_live.ex` for the wrapper.
 
 ### Floating dock (bottom)
 
@@ -76,7 +154,7 @@ class="fixed inset-x-0 bottom-4 px-4 z-40 pointer-events-none"
      └─ content: class="flex items-center gap-2 rounded-2xl border bg-card/80 backdrop-blur-md px-2 py-1.5 shadow-2xl"
 ```
 
-Holds the instrument switcher tabs, presence avatar stack, and "N jamming" count. The outer `pointer-events-none` means clicks fall through the empty area around the dock to whatever is behind.
+Holds the instrument switcher tabs (music only), presence avatar stack, and the activity-aware count ("N jamming" for music, "N here" otherwise). The outer `pointer-events-none` means clicks fall through the empty area around the dock to whatever is behind.
 
 ### Floating mini-bar (top-right control strip)
 
@@ -86,7 +164,7 @@ Same visual language as the dock, lighter weight:
 class="rounded-xl border bg-card/60 backdrop-blur-sm px-3 py-1.5 shadow-sm"
 ```
 
-Used for the studio's Replay 30s + master volume strip.
+Used for the music chamber's Replay 30s + master volume strip. Reuse the same class for any future per-activity floating mini-bar.
 
 ### Full-screen overlay (tap-to-enter)
 
@@ -167,27 +245,29 @@ black-key:  "text-[9px]  px-1       rounded bg-slate-700 text-slate-300 font-mon
 
 ## Logo
 
-The mark is the M-wave: two pillars + a wave-shaped top edge, drawn as one continuous stroke. Two SVG variants ship at `assets/public/images/`:
+The mark is the **brick-stack M**: 23 small rounded-rectangle tiles arranged in seven horizontal courses, gradient-filled, the M shape emerging from which cells are present. Replaced the earlier M-wave mark when the brand broadened past music in v4 — the modular brick metaphor maps to mixchamb's "chambers of activities" framing in a way a single audio waveform never could.
 
-| File             | Stroke fill                          | When to use                                                                  |
-| ---------------- | ------------------------------------ | ---------------------------------------------------------------------------- |
-| `logo.svg`       | magenta → cyan → lime gradient       | Default. Header wordmark, favicon, branding moments.                          |
-| `logo-mono.svg`  | `currentColor` — inherits from text   | Monochrome contexts: print, OG cards if reduced-color, single-tone embeds.    |
+Two SVG variants ship at `assets/public/images/`:
+
+| File             | Fill                                          | When to use                                                                |
+| ---------------- | --------------------------------------------- | -------------------------------------------------------------------------- |
+| `logo.svg`       | brand gradient (pink → cyan → lime)            | Default. Header wordmark, favicon, branding moments.                       |
+| `logo-mono.svg`  | `currentColor` — inherits from text            | Monochrome contexts: print, OG cards if reduced-color, single-tone embeds. |
 
 ### Sizes
 
-| Size  | Use                                                                |
-| ----- | ------------------------------------------------------------------ |
-| 16 px | favicon                                                             |
-| 32 px | header chip alongside the wordmark                                  |
-| 80 px | tap-to-enter overlay, "hero" moments                                |
-| ≥256 px | print, OS app icon, social card                                  |
+| Size       | Use                                                                |
+| ---------- | ------------------------------------------------------------------ |
+| 16 px      | favicon (brick rhythm blurs into a textured M — acceptable)        |
+| 32 px      | header chip alongside the wordmark                                 |
+| 80 px      | hero moments, larger header treatments                             |
+| ≥256 px    | print, OS app icon, social card, marketing                         |
 
-PNG exports at 16 / 32 / 48 / 64 / 128 / 256 / 512 / 1024 + a multi-size `.ico` live in `branding/`. Re-export after editing the SVG with the snippet in that commit (`8e8137c`).
+PNG exports at 16 / 32 / 48 / 64 / 128 / 256 / 512 / 1024 + a multi-size `.ico` live in `branding/`. Re-render with `rsvg-convert -w <size> -h <size> priv/static/images/logo.svg > branding/logo-<size>.png` after editing the SVG, then repack the `.ico` with `magick branding/logo-16.png branding/logo-32.png branding/logo-48.png branding/logo.ico`.
 
 ### Clearspace
 
-Reserve at least one **stroke-width** of empty space (≈ 8% of the logo's height) on every side. The wordmark next to the logo in the header gets `gap-2` (8 px) — that's the floor.
+Reserve at least one **brick-height** of empty space on every side (~8% of the logo's height — same proportional rule as before, just measured against the brick instead of the old wave-stroke). The wordmark next to the logo in the header gets `gap-2` (8 px) — that's the floor.
 
 ### Wordmark + logo combination
 
@@ -196,8 +276,10 @@ When both appear together (header pattern), set the wordmark in `font-display fo
 ### Don'ts
 
 - Don't recolor the gradient. If you need a different colour, use `logo-mono.svg` and let `currentColor` carry the brand.
-- Don't apply effects (shadow, glow, outline) — the mark is meant to read as pure line art.
+- Don't apply shadow, glow, outline, or any post-process — the bricks already carry the gradient; effects on top read as noise.
+- Don't rebuild the M out of different tile counts or layouts to "fit" a new context. The 7-course, 23-tile composition is fixed.
 - Don't crop or distort. The viewBox is square; if you need a wordmark-only layout, use plain `font-display` text instead.
+- Don't try to animate individual bricks. The mark is meant to read as one object.
 
 ---
 
@@ -205,13 +287,13 @@ When both appear together (header pattern), set the wordmark in `font-display fo
 
 ### Tone
 
-Casual but capable. Like a friend showing you a tool they built, not a corporate dashboard. The user is here to make music — copy should stay out of the way and, when it does speak, sound like another musician would.
+Casual but capable. Like a friend showing you a tool they built, not a corporate dashboard. The user is here to *do something together with other people* — music, planning poker, whatever the chamber's activity is. Copy stays out of the way and, when it speaks, sounds like another teammate would.
 
 ### Rules
 
-- **Sentence case** for buttons, labels, and prompts. Not Title Case, not ALL CAPS — except for the small uppercase control labels (`Vol`, `Oct`, `Style`) which are visual badges, not sentences.
-- **Verb-led button labels.** "Enter studio" not "Click here", "Replay 30s" not "Replay last 30 seconds", "Stop replay" not "Cancel".
-- **Speak like a musician.** "jam", "strum", "hold", "tap" — not "submit", "execute", "perform action".
+- **Sentence case** for buttons, labels, and prompts. Not Title Case, not ALL CAPS — except for the small uppercase control labels (`Vol`, `Oct`, `Style`, `Kind`, `Activity`) which are visual badges, not sentences.
+- **Verb-led button labels.** "Enter chamber" not "Click here", "Replay 30s" not "Replay last 30 seconds", "Stop replay" not "Cancel".
+- **Speak in the activity's idiom.** Music UI says "jam", "strum", "hold", "tap". Poker UI says "vote", "reveal", "re-vote". Don't import music vocabulary into non-music UIs or vice versa.
 - **Be short.** A control label that needs to wrap is too long; rename it.
 - **No exclamation points** unless something genuinely critical happens (audio failure, disconnect). Casual ≠ excitable.
 - **Numbers stay numerals.** "3 jamming" not "three jamming". Tabular-nums + `font-mono` everywhere a count appears.
@@ -220,17 +302,21 @@ Casual but capable. Like a friend showing you a tool they built, not a corporate
 
 | Surface             | Current text                                              | Notes                                                  |
 | ------------------- | --------------------------------------------------------- | ------------------------------------------------------ |
-| Header subtitle     | "realtime collaborative chambers"                         | ✓ on tone; broadened past music for v4 multi-activity |
-| Tap-to-enter title  | "Tap to start jamming"                                    | ✓ on tone                                               |
+| Header subtitle     | "realtime collaborative chambers"                         | ✓ on tone; broadened past music for v4 multi-activity   |
+| Tap-to-enter title  | "Tap to start jamming"                                    | ✓ music-specific (gate is music-only)                   |
 | Tap-to-enter helper | "Browsers need a gesture before audio can play"           | ✓ informative, neutral                                  |
-| Tap-to-enter button | "Enter studio"                                            | ✓ verb-led                                              |
+| Tap-to-enter button | "Enter chamber"                                           | ✓ verb-led                                              |
 | Replay button       | "Replay 30s" / "Stop replay"                              | ✓ short + verb-led                                      |
-| Dock count          | "{N} jamming"                                             | ✓ casual, action-coloured                               |
+| Dock count (music)  | "{N} jamming"                                             | ✓ casual, action-coloured                               |
+| Dock count (other)  | "{N} here"                                                | ✓ neutral when no activity idiom fits                   |
 | Volume / octave     | `Vol` / `Oct`                                             | ✓ uppercase = control badge, fine                       |
+| Poker · pick prompt | "Pick a card"                                             | ✓ verb-led, in the poker idiom                          |
+| Poker · re-vote     | "Re-vote" / "Next round"                                  | ✓ short, names the action precisely                     |
 
 ### Empty / error states (when we add them)
 
-- **Empty chamber**: "Quiet here — start a chord and someone'll join." (suggest action, don't shame the count)
+- **Empty music chamber**: "Quiet here — start a chord and someone'll join." (suggest action, don't shame the count)
+- **Empty poker chamber**: "Waiting for the team. Share the link to start." (action + reason)
 - **Audio failure**: "Audio dropped. Tap to try again." (specific, recoverable)
 - **Disconnect**: "Reconnecting…" (calm, ephemeral)
 
@@ -238,7 +324,7 @@ Casual but capable. Like a friend showing you a tool they built, not a corporate
 
 ## Responsive
 
-The studio is designed desktop-first, but every primitive has a mobile fallback. Tailwind breakpoints we use:
+Chambers are designed desktop-first (music in particular needs the horizontal room for keyboards and fretboards), but every primitive has a mobile fallback. Tailwind breakpoints we use:
 
 ```
 default: mobile           (< 640 px)
