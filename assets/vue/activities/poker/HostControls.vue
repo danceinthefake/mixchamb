@@ -15,6 +15,7 @@ defineProps<{
 
 defineEmits<{
   reveal: []
+  revote: []
   "next-round": []
   "change-deck": [deck: DeckId]
 }>()
@@ -42,14 +43,24 @@ const deckLabels: Record<DeckId, string> = {
         >
           Reveal
         </button>
-        <button
-          v-else
-          type="button"
-          @click="$emit('next-round')"
-          class="px-3 py-1.5 text-sm rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors cursor-pointer font-medium"
-        >
-          Next round
-        </button>
+        <template v-else>
+          <button
+            type="button"
+            @click="$emit('revote')"
+            class="px-3 py-1.5 text-sm rounded-md border bg-card hover:bg-accent text-foreground cursor-pointer font-medium transition-colors"
+            title="Clear votes and let the team vote again on this same story"
+          >
+            Re-vote
+          </button>
+          <button
+            type="button"
+            @click="$emit('next-round')"
+            class="px-3 py-1.5 text-sm rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors cursor-pointer font-medium"
+            title="Move on to the next story (round number advances)"
+          >
+            Next round
+          </button>
+        </template>
       </div>
     </div>
 
