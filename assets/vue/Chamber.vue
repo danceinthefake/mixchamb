@@ -29,6 +29,7 @@ import BassPad from "@/instruments/BassPad.vue"
 import SynthPad from "@/instruments/SynthPad.vue"
 import SulingPad from "@/instruments/SulingPad.vue"
 import KendangPad from "@/instruments/KendangPad.vue"
+import PokerBoard from "@/activities/poker/PokerBoard.vue"
 import {
   ensureStarted,
   play,
@@ -67,10 +68,13 @@ const props = defineProps<{
 // during SSR setup, which calls into Tone.js and tries to build
 // an AudioContext that doesn't exist on Node. The initial apply
 // happens in onMounted below, after we know we're on the client.
+//
+// Also gated on activity: poker chambers never play audio, so
+// touching the FX bus would needlessly wake the AudioContext.
 watch(
   () => props.chamber_kind,
   (kind) => {
-    if (kind) setChamberKind(kind)
+    if (props.activity === "music" && kind) setChamberKind(kind)
   },
 )
 
@@ -117,6 +121,11 @@ watch(volume, (v) => {
 })
 
 onMounted(() => {
+  // Skip Tone.js bootstrap for non-music chambers — they never
+  // play sound, so building an AudioContext or reading the
+  // volume slider is wasted work.
+  if (props.activity !== "music") return
+
   // Initial apply of the chamber's audio character. Has to live
   // here (not in a watch with immediate: true) because Tone.js
   // builds an AudioContext on first use and there's no such thing
@@ -391,7 +400,7 @@ live.handleEvent("play_remote_note", async (payload: RemoteNote) => {
     </div>
   </Transition>
 
-  <div class="space-y-4">
+  <div v-if="props.activity === 'music'" class="space-y-4">
     <!-- Top control strip: replay + master volume. Floating-bar
          look matches the bottom dock for visual consistency. -->
     <div class="flex justify-end">
@@ -455,4 +464,10 @@ live.handleEvent("play_remote_note", async (payload: RemoteNote) => {
     <SulingPad v-else-if="current_instrument === 'suling'" :remote-hit="lastRemoteHit" />
     <KendangPad v-else-if="current_instrument === 'kendang'" :remote-hit="lastRemoteHit" />
   </div>
+
+  <PokerBoard
+    v-else-if="props.activity === 'poker'"
+    :chamber_slug="props.chamber_slug"
+    :chamber_title="props.chamber_title"
+  />
 </template>
