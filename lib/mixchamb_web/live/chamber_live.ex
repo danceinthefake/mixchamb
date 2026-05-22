@@ -91,6 +91,16 @@ defmodule MixchambWeb.ChamberLive do
      |> assign(:chamber, chamber)
      |> assign(:chamber_slug, slug)
      |> assign(:page_title, page_title_for(chamber))
+     # Open Graph / Twitter card overrides — when someone shares
+     # this chamber's URL, the link preview shows the chamber's
+     # name and a jam-specific description instead of the
+     # site-wide defaults in root.html.heex.
+     |> assign(:og_title, "Jamming in #{chamber.title} · mixchamb")
+     |> assign(
+       :og_description,
+       "Join the live jam in #{chamber.title}. Pick an instrument, hear everyone else who has the link."
+     )
+     |> assign(:og_url, url(~p"/chamber/#{slug}"))
      |> assign(:instruments, @instruments)
      |> assign(:current_instrument, :drums)
      |> assign(:recorded_count, Chambers.recorded_event_count(chamber.id))

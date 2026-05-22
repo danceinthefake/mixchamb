@@ -15,6 +15,35 @@
       href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Space+Grotesk:wght@500;600;700&display=swap"
     />
     <.live_title default="Mixchamb" suffix=" · Phoenix Framework" phx-no-format>{assigns[:page_title]}</.live_title>
+    <%!-- Open Graph + Twitter card meta. Defaults below show on the
+         landing page and admin; LiveViews can assign `:og_title`
+         / `:og_description` / `:og_url` to override per route —
+         see ChamberLive.mount_chamber/2 for the chamber-specific
+         override. `og-image.png` is the 1024×1024 square logo;
+         when a wide 1200×630 hero exists, swap the file and flip
+         `twitter:card` to `summary_large_image`. --%>
+    <meta property="og:site_name" content="mixchamb" />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content={assigns[:og_title] || "mixchamb — real-time jam"} />
+    <meta
+      property="og:description"
+      content={
+        assigns[:og_description] ||
+          "Real-time collaborative music chambers. Pick an instrument, jam alongside everyone with the link."
+      }
+    />
+    <meta property="og:image" content={url(~p"/images/og-image.png")} />
+    <meta property="og:url" content={assigns[:og_url] || url(~p"/")} />
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:title" content={assigns[:og_title] || "mixchamb — real-time jam"} />
+    <meta
+      name="twitter:description"
+      content={
+        assigns[:og_description] ||
+          "Real-time collaborative music chambers. Pick an instrument, jam alongside everyone with the link."
+      }
+    />
+    <meta name="twitter:image" content={url(~p"/images/og-image.png")} />
     <%!-- `dev_server` decides between Vite-dev paths (/@vite/client +
          source files) and the prod manifest with hashed filenames.
          The default `has_vite_watcher?` check assumes any node
