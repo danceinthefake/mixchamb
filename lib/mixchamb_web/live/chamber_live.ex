@@ -812,6 +812,7 @@ defmodule MixchambWeb.ChamberLive do
             chamber_kind={@chamber.kind}
             chamber_title={@chamber.title}
             chamber_slug={@chamber.slug}
+            activity={@chamber.activity}
           />
         </div>
       </div>
