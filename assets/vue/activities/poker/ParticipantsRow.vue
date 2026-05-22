@@ -118,7 +118,11 @@ const votedCount = computed(() => props.voted_user_ids.length)
 }
 
 .card-silhouette.is-voted {
-  border: 2.5px solid var(--primary);
+  /* Pre-reveal "vote pending" border picks up --accent-poker so the
+     vote-cast state reads as "in progress" (cyan = activity-poker
+     accent); the post-reveal face-up state already carries the
+     value at text-3xl, no border colour needed there. */
+  border: 2.5px solid var(--accent-poker);
 }
 
 .card-silhouette.is-revealed {

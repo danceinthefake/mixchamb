@@ -87,7 +87,7 @@ const totalVotes = computed(() => Object.keys(props.votes).length)
           </span>
           <div class="flex-1 h-5 rounded-md bg-muted overflow-hidden">
             <div
-              class="h-full bg-primary/60"
+              class="h-full bg-accent-poker/70"
               :style="{ width: (count / totalVotes) * 100 + '%' }"
             ></div>
           </div>
@@ -97,21 +97,24 @@ const totalVotes = computed(() => Object.keys(props.votes).length)
         </li>
       </ul>
 
-      <!-- Stats: numeric decks get avg + median, t-shirt gets mode. -->
+      <!-- Stats: numeric decks get avg + median, t-shirt gets mode.
+           Values picked up the brand green token (--success) so the
+           outcome numbers read as "the result you walked away with"
+           rather than just more body text. -->
       <dl class="flex flex-wrap gap-x-6 gap-y-1 text-sm">
         <template v-if="isNumericDeck">
           <div v-if="average !== null" class="flex gap-1.5">
             <dt class="text-muted-foreground">Average:</dt>
-            <dd class="font-bold font-mono">{{ format(average) }}</dd>
+            <dd class="font-bold font-mono text-success">{{ format(average) }}</dd>
           </div>
           <div v-if="median !== null" class="flex gap-1.5">
             <dt class="text-muted-foreground">Median:</dt>
-            <dd class="font-bold font-mono">{{ format(median) }}</dd>
+            <dd class="font-bold font-mono text-success">{{ format(median) }}</dd>
           </div>
         </template>
         <div v-if="mode !== null" class="flex gap-1.5">
           <dt class="text-muted-foreground">Mode:</dt>
-          <dd class="font-bold font-mono">{{ mode }}</dd>
+          <dd class="font-bold font-mono text-success">{{ mode }}</dd>
         </div>
       </dl>
     </div>
