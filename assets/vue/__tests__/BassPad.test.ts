@@ -14,6 +14,8 @@ vi.mock("@/lib/audio", () => ({
   stopAll: stopAllMock,
 }))
 
+vi.mock("@/lib/audio/bass", () => ({}))
+
 vi.mock("live_vue", () => ({
   useLiveVue: () => ({ pushEvent: pushEventMock }),
 }))

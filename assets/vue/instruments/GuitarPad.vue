@@ -20,6 +20,7 @@
 
 import { onMounted, onUnmounted, ref, toRef } from "vue"
 import { useLiveVue } from "live_vue"
+import "@/lib/audio/guitar"
 import { ensureStarted, play, stopAll, preload, type ChordName } from "@/lib/audio"
 import { useInstrumentFlash, useInstrumentKeyboard } from "@/lib/instrument"
 
