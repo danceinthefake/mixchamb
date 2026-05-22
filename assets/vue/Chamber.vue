@@ -51,6 +51,11 @@ const props = defineProps<{
   // 80 chars and trims whitespace.
   chamber_title?: string | null
   chamber_slug: string
+  // Which activity this chamber hosts. Gates the music-only UI
+  // (tap-to-enter audio gate, FX bus, master volume). Defaults
+  // to "music" so legacy chambers without the column behave
+  // identically to v3.
+  activity: "music" | "poker"
 }>()
 
 // Apply the chamber's audio character whenever the LiveView
@@ -367,7 +372,7 @@ live.handleEvent("play_remote_note", async (payload: RemoteNote) => {
     leave-to-class="opacity-0"
   >
     <div
-      v-if="!audioReady"
+      v-if="props.activity === 'music' && !audioReady"
       @click="enterChamber"
       class="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-md bg-background/80 cursor-pointer select-none"
     >
