@@ -269,10 +269,12 @@
 
   /* Gradient text fill for hero headings. Keep this rare — one
      heading per page at most, and only on the hero copy that's
-     meant to read as the brand mark spelt out. */
+     meant to read as the brand mark spelt out. Direction + stops
+     match the logo's userSpaceOnUse linear gradient (pink -> cyan
+     -> green, left to right, equal thirds). */
   .brand-gradient-text {
     background-image: linear-gradient(
-      135deg, #e94886 0%, #56d2e6 55%, #b5e651 100%
+      to right, #e94886 0%, #56d2e6 50%, #b5e651 100%
     );
     background-clip: text;
     -webkit-background-clip: text;
