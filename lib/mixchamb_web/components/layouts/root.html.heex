@@ -24,23 +24,29 @@
          `twitter:card` to `summary_large_image`. --%>
     <meta property="og:site_name" content="mixchamb" />
     <meta property="og:type" content="website" />
-    <meta property="og:title" content={assigns[:og_title] || "mixchamb — real-time jam"} />
+    <meta
+      property="og:title"
+      content={assigns[:og_title] || "mixchamb — realtime collaborative chambers"}
+    />
     <meta
       property="og:description"
       content={
         assigns[:og_description] ||
-          "Real-time collaborative music chambers. Pick an instrument, jam alongside everyone with the link."
+          "Realtime collaborative chambers — jam together, plan together, or just hang out. Anyone with the link can join."
       }
     />
     <meta property="og:image" content={url(~p"/images/og-image.png")} />
     <meta property="og:url" content={assigns[:og_url] || url(~p"/")} />
     <meta name="twitter:card" content="summary" />
-    <meta name="twitter:title" content={assigns[:og_title] || "mixchamb — real-time jam"} />
+    <meta
+      name="twitter:title"
+      content={assigns[:og_title] || "mixchamb — realtime collaborative chambers"}
+    />
     <meta
       name="twitter:description"
       content={
         assigns[:og_description] ||
-          "Real-time collaborative music chambers. Pick an instrument, jam alongside everyone with the link."
+          "Realtime collaborative chambers — jam together, plan together, or just hang out. Anyone with the link can join."
       }
     />
     <meta name="twitter:image" content={url(~p"/images/og-image.png")} />

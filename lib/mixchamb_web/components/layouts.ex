@@ -75,7 +75,7 @@ defmodule MixchambWeb.Layouts do
           <img src={static_url(MixchambWeb.Endpoint, ~p"/images/logo.svg")} width="32" />
           <span class="text-base font-bold tracking-tight font-display">mixchamb</span>
         </a>
-        <span class="text-xs text-muted-foreground">real-time jam chambers</span>
+        <span class="text-xs text-muted-foreground">realtime collaborative chambers</span>
         <div class="ml-auto flex items-center gap-2">
           <.theme_toggle />
         </div>
