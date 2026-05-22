@@ -52,12 +52,16 @@ defmodule MixchambWeb.Plugs.SecurityHeaders do
 
   ## Policy
 
-  # Dev: lax enough that Vite HMR + LiveReloader + LiveDashboard
-  # can all run. The Vite host is read from the runtime config —
-  # so `DEV_LAN_HOST=192.168.x.y` for cross-machine testing flows
-  # through automatically.
+  # Dev: lax enough that Vite HMR + LiveReloader + LiveDashboard +
+  # live_debugger can all run. The Vite host is read from the
+  # runtime config — so `DEV_LAN_HOST=192.168.x.y` for cross-machine
+  # testing flows through automatically. live_debugger lives on its
+  # own loopback port (default 4007) and injects its client script
+  # into every dev HTML response; without an explicit allow-list its
+  # script + WS get blocked and clutter the console.
   defp policy(true = _dev?, _nonce) do
     vite = vite_origin()
+    live_debugger = "http://localhost:4007 http://127.0.0.1:4007"
 
     # The Vite dev server is cross-origin from Phoenix
     # (`localhost:4000` ↔ `localhost:5173`), so every directive
@@ -66,13 +70,14 @@ defmodule MixchambWeb.Plugs.SecurityHeaders do
     # against the wall while styles vanish.
     [
       "default-src 'self'",
-      "script-src 'self' 'unsafe-inline' 'unsafe-eval' #{vite} blob:",
-      "style-src 'self' 'unsafe-inline' #{vite} https://fonts.googleapis.com",
-      "font-src 'self' #{vite} https://fonts.gstatic.com data:",
-      "img-src 'self' #{vite} data: blob:",
+      "script-src 'self' 'unsafe-inline' 'unsafe-eval' #{vite} #{live_debugger} blob:",
+      "style-src 'self' 'unsafe-inline' #{vite} #{live_debugger} https://fonts.googleapis.com",
+      "font-src 'self' #{vite} #{live_debugger} https://fonts.gstatic.com data:",
+      "img-src 'self' #{vite} #{live_debugger} data: blob:",
       # Loose connect-src in dev to cover Vite WS HMR + live_reload
-      # WS + any future devtool. Tightened in prod below.
-      "connect-src 'self' #{vite} ws: wss: #{@sample_cdns}",
+      # WS + live_debugger WS + any future devtool. Tightened in
+      # prod below.
+      "connect-src 'self' #{vite} #{live_debugger} ws: wss: #{@sample_cdns}",
       "worker-src 'self' #{vite} blob:",
       "frame-ancestors 'none'",
       "form-action 'self'",
