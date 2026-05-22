@@ -95,7 +95,12 @@
   --card-foreground: oklch(0.141 0.005 285.823);
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.141 0.005 285.823);
-  --primary: oklch(0.21 0.006 285.885);
+  /* Primary action tied to the brand mark's pink stop (#e94886).
+     Same hue is the leftmost stop in the logo's horizontal
+     gradient, so primary buttons + selected states pick up brand
+     identity without using the full gradient. White text on pink
+     in light mode clears WCAG AA for large/UI text. */
+  --primary: oklch(0.68 0.21 5);
   --primary-foreground: oklch(0.985 0 0);
   --secondary: oklch(0.967 0.001 286.375);
   --secondary-foreground: oklch(0.21 0.006 285.885);
@@ -106,7 +111,9 @@
   --destructive: oklch(0.577 0.245 27.325);
   --border: oklch(0.92 0.004 286.32);
   --input: oklch(0.92 0.004 286.32);
-  --ring: oklch(0.705 0.015 286.067);
+  /* Focus ring picks up the same brand pink so keyboard-only
+     navigation traces the brand colour. */
+  --ring: oklch(0.68 0.21 5);
   --chart-1: oklch(0.646 0.222 41.116);
   --chart-2: oklch(0.6 0.118 184.704);
   --chart-3: oklch(0.398 0.07 227.392);
@@ -141,8 +148,11 @@
   --card-foreground: oklch(0.98 0 0);
   --popover: oklch(0.14 0.012 280);
   --popover-foreground: oklch(0.98 0 0);
-  --primary: oklch(0.92 0.004 286.32);
-  --primary-foreground: oklch(0.14 0.006 285.885);
+  /* Dark mode keeps the same brand-pink primary; pairs with
+     near-white text for AA-clear contrast over the saturated
+     pink fill. */
+  --primary: oklch(0.68 0.21 5);
+  --primary-foreground: oklch(0.985 0 0);
   --secondary: oklch(0.2 0.012 280);
   --secondary-foreground: oklch(0.98 0 0);
   --muted: oklch(0.18 0.012 280);
@@ -152,7 +162,9 @@
   --destructive: oklch(0.704 0.191 22.216);
   --border: oklch(1 0 0 / 8%);
   --input: oklch(1 0 0 / 12%);
-  --ring: oklch(0.552 0.016 285.938);
+  /* Focus ring picks up the same brand pink so keyboard-only
+     navigation traces the brand colour, dark mode included. */
+  --ring: oklch(0.68 0.21 5);
   --chart-1: oklch(0.488 0.243 264.376);
   --chart-2: oklch(0.696 0.17 162.48);
   --chart-3: oklch(0.769 0.188 70.08);
