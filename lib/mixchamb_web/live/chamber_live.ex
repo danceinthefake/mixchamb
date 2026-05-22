@@ -498,6 +498,21 @@ defmodule MixchambWeb.ChamberLive do
   defp instrument_label(:suling), do: "Suling"
   defp instrument_label(:kendang), do: "Kendang"
 
+  # Activity-specific presence copy. "Jamming" carries music
+  # connotation; "Here" is neutral for non-music activities.
+  defp presence_heading("music"), do: "Jamming"
+  defp presence_heading(_), do: "Here"
+
+  defp presence_label("music"), do: "jamming"
+  defp presence_label(_), do: "here"
+
+  # Color of the small dot next to each user in the presence panel.
+  # Music uses the per-instrument neon; everything else falls back
+  # to the muted-foreground token so the dot doesn't reference a
+  # meaningless instrument choice.
+  defp presence_dot_color("music", meta), do: accent_var(meta.instrument)
+  defp presence_dot_color(_, _), do: "var(--muted-foreground)"
+
   # Static class strings per instrument so Tailwind picks them up at
   # build time. Uses the per-instrument neon variables defined in
   # app.css. Tailwind can't synthesize these from a runtime string.
@@ -628,8 +643,13 @@ defmodule MixchambWeb.ChamberLive do
                between presets; everyone else sees a single chip
                showing what's active. Changes ripple via the
                :chamber_updated broadcast so the FX bus on every
-               client retunes within ~100 ms. --%>
-          <div class="flex flex-wrap items-center gap-2">
+               client retunes within ~100 ms. Music-only — kind is
+               the audio reverb preset and is meaningless outside
+               music chambers. --%>
+          <div
+            :if={@chamber.activity == "music"}
+            class="flex flex-wrap items-center gap-2"
+          >
             <span class="text-xs uppercase tracking-wider text-muted-foreground mr-1">
               Kind
             </span>
@@ -665,8 +685,12 @@ defmodule MixchambWeb.ChamberLive do
           <%!-- Recording controls. Creator gets a REC toggle.
                Everyone sees the live REC badge while recording is
                on, and a "Play recording" button once there's at
-               least one persisted event. --%>
-          <div class="flex flex-wrap items-center gap-2">
+               least one persisted event. Music-only — only audio
+               events are captured / replayed. --%>
+          <div
+            :if={@chamber.activity == "music"}
+            class="flex flex-wrap items-center gap-2"
+          >
             <span class="text-xs uppercase tracking-wider text-muted-foreground mr-1">
               Recording
             </span>
@@ -826,7 +850,7 @@ defmodule MixchambWeb.ChamberLive do
         <div class="rounded-xl border bg-card/80 backdrop-blur-md shadow-lg">
           <div class="flex items-center justify-between px-3 py-2 border-b">
             <span class="text-xs font-semibold uppercase tracking-wider font-display">
-              Jamming
+              {presence_heading(@chamber.activity)}
             </span>
             <span class="text-xs text-muted-foreground tabular-nums">
               {map_size(@presences)}
@@ -843,7 +867,7 @@ defmodule MixchambWeb.ChamberLive do
               <span
                 aria-hidden="true"
                 class="size-2 rounded-full shrink-0 mt-2"
-                style={"background-color: " <> accent_var(meta.instrument)}
+                style={"background-color: " <> presence_dot_color(@chamber.activity, meta)}
               >
               </span>
               <div class="flex-1 min-w-0">
@@ -863,10 +887,11 @@ defmodule MixchambWeb.ChamberLive do
                      alias is present (so the auto-generated
                      identifier never disappears), with the
                      instrument label trailing. --%>
-                <div class="text-[11px] text-muted-foreground leading-tight truncate font-mono">
-                  <span :if={alias_set?(meta)}>{meta.display_name} · </span>{instrument_label(
-                    meta.instrument
-                  )}
+                <div
+                  :if={@chamber.activity == "music" or alias_set?(meta)}
+                  class="text-[11px] text-muted-foreground leading-tight truncate font-mono"
+                >
+                  <span :if={alias_set?(meta)}>{meta.display_name}</span><span :if={alias_set?(meta) and @chamber.activity == "music"}> · </span><span :if={@chamber.activity == "music"}>{instrument_label(meta.instrument)}</span>
                 </div>
               </div>
             </li>
@@ -913,13 +938,21 @@ defmodule MixchambWeb.ChamberLive do
           <%!-- Latency disclaimer. Real musical timing needs sub-30 ms;
                WebSocket fan-out can't promise that, so we tell the
                user up front instead of pretending. Hidden on mobile
-               where the dock already eats most of the bottom strip. --%>
-          <p class="hidden sm:block text-center text-[10px] uppercase tracking-wider text-muted-foreground/70 mb-1.5">
+               where the dock already eats most of the bottom strip.
+               Music-only — poker votes don't care about timing. --%>
+          <p
+            :if={@chamber.activity == "music"}
+            class="hidden sm:block text-center text-[10px] uppercase tracking-wider text-muted-foreground/70 mb-1.5"
+          >
             Best-effort sync · distant players may sound a beat off
           </p>
           <div class="flex items-center gap-2 rounded-2xl border bg-card/80 backdrop-blur-md px-2 py-1.5 shadow-2xl">
-            <%!-- Instrument switcher tabs --%>
-            <div class="flex items-center gap-1 flex-1 overflow-x-auto">
+            <%!-- Instrument switcher tabs. Music-only — non-music
+                 activities don't pick an instrument. --%>
+            <div
+              :if={@chamber.activity == "music"}
+              class="flex items-center gap-1 flex-1 overflow-x-auto"
+            >
               <button
                 :for={inst <- @instruments}
                 phx-click="switch_instrument"
@@ -949,8 +982,13 @@ defmodule MixchambWeb.ChamberLive do
               </button>
             </div>
 
-            <%!-- Divider --%>
-            <div class="w-px h-6 bg-border shrink-0"></div>
+            <%!-- Divider between instrument switcher + presence
+                 summary. Only needed when the switcher is visible. --%>
+            <div
+              :if={@chamber.activity == "music"}
+              class="w-px h-6 bg-border shrink-0"
+            >
+            </div>
 
             <%!-- Presence summary: avatar stack + count --%>
             <div class="flex items-center gap-2 pr-2 pl-1 shrink-0">
@@ -968,10 +1006,11 @@ defmodule MixchambWeb.ChamberLive do
                   {primary_name(meta) |> String.first() |> String.upcase()}
                 </span>
               </div>
-              <%!-- Just the count on mobile, full "N jamming" on
-                   sm+ where the dock has room for both. --%>
+              <%!-- Just the count on mobile, full label on sm+
+                   where the dock has room for both. Label tracks
+                   activity: "jamming" for music, "here" otherwise. --%>
               <span class="text-xs text-muted-foreground tabular-nums whitespace-nowrap">
-                {map_size(@presences)}<span class="hidden sm:inline">{" jamming"}</span>
+                {map_size(@presences)}<span class="hidden sm:inline">{" " <> presence_label(@chamber.activity)}</span>
               </span>
             </div>
           </div>

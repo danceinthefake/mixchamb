@@ -176,7 +176,7 @@ order I'd recommend:
    chamber is link-only by default; the chaos chamber is a
    pre-seeded singleton and never created through this form.
    (~2 hours.)
-4. **`Chamber.vue` activity-branching** — render existing
+4. ✅ **`Chamber.vue` activity-branching** — render existing
    instrument shell when `"music"`, render `<PokerBoard>` when
    `"poker"`; hide music FX bus / volume slider in non-music.
    (~1 hour.)
