@@ -449,7 +449,7 @@ live.handleEvent("play_remote_note", async (payload: RemoteNote) => {
              cluttering the bar with extra copy. -->
         <span
           v-if="isCapturing"
-          class="inline-flex items-center gap-1.5 px-1.5 text-xs text-red-500"
+          class="inline-flex items-center gap-1.5 px-2 text-xs text-red-500"
         >
           <span class="size-2 rounded-full bg-red-500 animate-pulse"></span>
           Capturing…
