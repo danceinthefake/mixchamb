@@ -1,8 +1,17 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none" aria-hidden="true">
   <defs>
-    <linearGradient id="mix-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+    <!-- Horizontal gradient applied across the whole 32x32 userspace
+         so the bricks each pick up one slice of the gradient based
+         on their x position: left column pink, middle cyan, right
+         green. Matches the gradient direction of the original
+         mixwave wave-M wordmark. -->
+    <linearGradient
+      id="mix-grad"
+      x1="4" y1="16" x2="28" y2="16"
+      gradientUnits="userSpaceOnUse"
+    >
       <stop offset="0%" stop-color="#e94886" />
-      <stop offset="55%" stop-color="#56d2e6" />
+      <stop offset="50%" stop-color="#56d2e6" />
       <stop offset="100%" stop-color="#b5e651" />
     </linearGradient>
   </defs>

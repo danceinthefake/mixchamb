@@ -22,20 +22,22 @@ Where these principles point at concrete numbers, see *Spacing & radius* below.
 
 ### Brand gradient
 
-The mixchamb mark fills with a 3-stop linear gradient, applied top-left to bottom-right:
+The mixchamb mark fills with a 3-stop linear gradient, running left → right across the whole logo (`userSpaceOnUse`, not per-element), with the cyan stop at the true centre so pink and green each hold a full third of the visible mark:
 
 ```
 0%    #e94886   pink / magenta
-55%   #56d2e6   cyan
+50%   #56d2e6   cyan
 100%  #b5e651   lime / spring green
 ```
+
+The horizontal direction matches the original mixwave wave-M wordmark — left column of bricks reads pink, middle column cyan, right column green. A 135° diagonal version was tried in 2026-05 and shipped briefly; cyan ended up dominating because the middle of the brick stack sits at ~50% offset on the diagonal, leaving pink and green only at the two corner bricks.
 
 Use this gradient on:
 
 - the logo (canonical use in `priv/static/images/logo.svg`)
-- "primary" hero treatments where the brand needs to lead (landing page hero, OG image background, optional first-paint splash)
+- "primary" hero treatments where the brand needs to lead (landing page hero copy via `.brand-gradient-text`, OG image background, optional first-paint splash)
 
-Don't use it as a fill on small UI chrome — small gradient bands read as noise, and the per-activity accents are the right palette there. The gradient is hard-coded in the SVG rather than tokenized because it appears in exactly one place by design.
+Don't use it as a fill on small UI chrome — small gradient bands read as noise, and the per-activity accents are the right palette there.
 
 ### Neutral surfaces (shadcn-vue zinc, with a deeper mixchamb dark variant)
 
