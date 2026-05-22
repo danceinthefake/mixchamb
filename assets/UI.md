@@ -122,7 +122,10 @@ The brick-stack logo has small consistent gaps between tiles — ~16% of a tile'
 
 `gap-3` (12 px) is the one in-between value that's allowed — used inside the floating dock and other mid-density horizontal layouts. Avoid `gap-1.5`, `gap-2.5`, `gap-5`, `gap-7` unless you can name what they're for.
 
-Named exception: **`gap-1.5` (6 px) for the icon-plus-label gutter inside a chip / button.** 4 px is too tight when a 14-or-16-px icon sits next to text, 8 px reads as a sibling separator rather than as "part of the same chip." 6 px is the one place that "between an icon and its label" needs its own value, and the codebase already uses it consistently for this — recording chips, dock tabs, the activity-switch chip-strip. Don't reach for `gap-1.5` anywhere else.
+Named exceptions:
+
+- **`gap-1.5` (6 px) for the icon-plus-label gutter inside a chip / button.** 4 px is too tight when a 14-or-16-px icon sits next to text, 8 px reads as a sibling separator rather than as "part of the same chip." 6 px is the one place that "between an icon and its label" needs its own value, and the codebase already uses it consistently for this — recording chips, dock tabs, the activity-switch chip-strip. Don't reach for `gap-1.5` anywhere else.
+- **`py-1.5` (6 px) for vertical padding inside chip / button rows.** `py-1` (4 px) is too cramped to give text + icon room to breathe; `py-2` (8 px) makes the floating dock / mini-bar feel chunky. 6 px is the line-height that buttons, dock tabs, the floating mini-bar, presence list items, and the host-controls buttons all share. Don't reach for `py-1.5` anywhere else.
 
 ### Radius scale
 

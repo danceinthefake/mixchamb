@@ -151,7 +151,7 @@ defmodule MixchambWeb.Layouts do
     ~H"""
     <div class="inline-flex items-center rounded-md border bg-card p-0.5">
       <button
-        class="inline-flex items-center justify-center rounded-sm p-1.5 text-muted-foreground hover:bg-accent hover:text-accent-foreground cursor-pointer"
+        class="inline-flex items-center justify-center rounded-sm p-2 text-muted-foreground hover:bg-accent hover:text-accent-foreground cursor-pointer"
         title="Match system theme"
         phx-click={JS.dispatch("phx:set-theme")}
         data-phx-theme="system"
@@ -159,7 +159,7 @@ defmodule MixchambWeb.Layouts do
         <.icon name="hero-computer-desktop-micro" class="size-4" />
       </button>
       <button
-        class="inline-flex items-center justify-center rounded-sm p-1.5 text-muted-foreground hover:bg-accent hover:text-accent-foreground cursor-pointer"
+        class="inline-flex items-center justify-center rounded-sm p-2 text-muted-foreground hover:bg-accent hover:text-accent-foreground cursor-pointer"
         title="Light theme"
         phx-click={JS.dispatch("phx:set-theme")}
         data-phx-theme="light"
@@ -167,7 +167,7 @@ defmodule MixchambWeb.Layouts do
         <.icon name="hero-sun-micro" class="size-4" />
       </button>
       <button
-        class="inline-flex items-center justify-center rounded-sm p-1.5 text-muted-foreground hover:bg-accent hover:text-accent-foreground cursor-pointer"
+        class="inline-flex items-center justify-center rounded-sm p-2 text-muted-foreground hover:bg-accent hover:text-accent-foreground cursor-pointer"
         title="Dark theme"
         phx-click={JS.dispatch("phx:set-theme")}
         data-phx-theme="dark"
