@@ -186,9 +186,19 @@ order I'd recommend:
 6. ✅ **Host controls + deck dropdown gating** — reveal / re-vote
    / next-round / inline story edit / deck dropdown
    (disabled when `votes != %{}`). (Half-day.)
-7. **Smoke test** — open three browsers, vote, reveal, re-vote,
+7. ✅ **Smoke test** — open three browsers, vote, reveal, re-vote,
    switch decks between rounds, switch activity to music and
    back. Confirm presence and state behave as specified.
    (Few hours.)
+
+   Status: 3-browser Playwright smoke test passes end-to-end —
+   vote, reveal (avg/median/mode for numeric decks, mode-only
+   for t-shirt), re-vote (Round 1 preserved), next-round
+   (advances), deck switch (gated when votes exist on host,
+   non-hosts have no dropdown at all). The "switch activity
+   mid-session" part of the matrix is deferred — no UI for it
+   yet (set_activity GenServer cast exists, no button wires to
+   it). Track that in BRAINSTORM-v4.md if it's needed for the
+   first user-facing release.
 
 Total estimate: **~3-4 working days**.
