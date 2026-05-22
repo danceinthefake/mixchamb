@@ -99,6 +99,17 @@ defmodule Mixchamb.Chambers.PokerSession do
   end
 
   @doc """
+  Soft reset: clear votes and return to `:voting` while keeping the
+  current round number, story, and deck. Useful from `:revealed`
+  when the team wants to vote again on the same story without
+  bumping the round counter.
+  """
+  def revote(%__MODULE__{status: :voting, votes: votes} = s) when votes == %{},
+    do: {:noop, s}
+
+  def revote(%__MODULE__{} = s), do: {:ok, %{s | status: :voting, votes: %{}}}
+
+  @doc """
   Replace the active story line. Nil clears the story (display
   falls back to "Round N"). Always succeeds.
   """

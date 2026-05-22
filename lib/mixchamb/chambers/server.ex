@@ -112,6 +112,13 @@ defmodule Mixchamb.Chambers.Server do
   @doc "Flip the session from `:voting` to `:revealed`."
   def poker_reveal(slug), do: GenServer.cast(via(slug), :poker_reveal)
 
+  @doc """
+  Soft reset: clear votes and return to `:voting` without bumping
+  the round counter. Lets the team revote on the same story after
+  a reveal that didn't converge.
+  """
+  def poker_revote(slug), do: GenServer.cast(via(slug), :poker_revote)
+
   @doc "Clear votes + increment round; optionally swap the story."
   def poker_next_round(slug, story \\ nil),
     do: GenServer.cast(via(slug), {:poker_next_round, story})
@@ -328,6 +335,25 @@ defmodule Mixchamb.Chambers.Server do
     end
   end
 
+  def handle_cast(:poker_revote, %{poker_session: session} = state)
+      when not is_nil(session) do
+    case Mixchamb.Chambers.PokerSession.revote(session) do
+      {:ok, updated} ->
+        # Reuse the :cleared event — same wire-shape (status back
+        # to :voting, votes empty); clients re-derive the rest
+        # from the included round + story + deck.
+        broadcast_poker(
+          state.slug,
+          {:poker, :cleared, updated.round, updated.story, updated.deck}
+        )
+
+        {:noreply, %{state | poker_session: updated, dirty?: true}}
+
+      _ ->
+        {:noreply, state}
+    end
+  end
+
   def handle_cast({:poker_next_round, story}, %{poker_session: session} = state)
       when not is_nil(session) do
     opts = if is_nil(story), do: [], else: [story: story]
@@ -376,6 +402,7 @@ defmodule Mixchamb.Chambers.Server do
   def handle_cast({:poker_vote, _, _}, state), do: {:noreply, state}
   def handle_cast({:poker_withdraw_vote, _}, state), do: {:noreply, state}
   def handle_cast(:poker_reveal, state), do: {:noreply, state}
+  def handle_cast(:poker_revote, state), do: {:noreply, state}
   def handle_cast({:poker_next_round, _}, state), do: {:noreply, state}
   def handle_cast({:poker_set_story, _}, state), do: {:noreply, state}
   def handle_cast({:poker_set_deck, _}, state), do: {:noreply, state}

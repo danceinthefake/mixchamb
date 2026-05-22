@@ -93,6 +93,35 @@ defmodule Mixchamb.Chambers.PokerSessionTest do
     end
   end
 
+  describe "revote/1" do
+    test "from :revealed clears votes and flips to :voting, keeping round + story + deck" do
+      s = %{
+        PokerSession.new(:tshirt)
+        | status: :revealed,
+          votes: %{"alice" => "M", "bob" => "L"},
+          round: 4,
+          story: "Carry over"
+      }
+
+      assert {:ok, updated} = PokerSession.revote(s)
+      assert updated.status == :voting
+      assert updated.votes == %{}
+      assert updated.round == 4
+      assert updated.story == "Carry over"
+      assert updated.deck == :tshirt
+    end
+
+    test "from :voting with votes also clears (host can restart mid-round)" do
+      s = %{PokerSession.new() | votes: %{"alice" => "3"}}
+      assert {:ok, %{votes: %{}, status: :voting}} = PokerSession.revote(s)
+    end
+
+    test "no-op when already :voting with empty votes" do
+      s = PokerSession.new()
+      assert {:noop, ^s} = PokerSession.revote(s)
+    end
+  end
+
   describe "next_round/2" do
     test "clears votes, increments round, returns to :voting" do
       s = %{
