@@ -13,6 +13,7 @@
 
 import { onUnmounted, ref, toRef } from "vue"
 import { useLiveVue } from "live_vue"
+import "@/lib/audio/suling"
 import { ensureStarted, play, stopAll, preload } from "@/lib/audio"
 import { useInstrumentFlash, useInstrumentKeyboard } from "@/lib/instrument"
 

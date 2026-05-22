@@ -16,6 +16,8 @@ vi.mock("@/lib/audio", () => ({
   preload: preloadMock,
 }))
 
+vi.mock("@/lib/audio/guitar", () => ({}))
+
 vi.mock("live_vue", () => ({
   useLiveVue: () => ({ pushEvent: pushEventMock }),
 }))

@@ -22,6 +22,7 @@
 
 import { computed, onUnmounted, ref, toRef } from "vue"
 import { useLiveVue } from "live_vue"
+import "@/lib/audio/bass"
 import { ensureStarted, play, stopAll } from "@/lib/audio"
 import { useInstrumentFlash, useInstrumentKeyboard } from "@/lib/instrument"
 

@@ -11,6 +11,7 @@
 
 import { ref, toRef } from "vue"
 import { useLiveVue } from "live_vue"
+import "@/lib/audio/kendang"
 import { ensureStarted, play, stopAll } from "@/lib/audio"
 import { useInstrumentFlash, useInstrumentKeyboard } from "@/lib/instrument"
 
