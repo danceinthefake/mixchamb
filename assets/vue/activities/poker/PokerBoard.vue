@@ -72,6 +72,11 @@ function reveal() {
   live.pushEvent("poker_reveal", {})
 }
 
+function revote() {
+  if (!props.is_host) return
+  live.pushEvent("poker_revote", {})
+}
+
 function nextRound(story?: string) {
   if (!props.is_host) return
   live.pushEvent("poker_next_round", story != null ? { story } : {})
@@ -125,6 +130,7 @@ function setDeck(deck: DeckId) {
       :deck="session.deck"
       :has_votes="session.voted_user_ids.length > 0"
       @reveal="reveal"
+      @revote="revote"
       @next-round="nextRound()"
       @change-deck="setDeck"
     />

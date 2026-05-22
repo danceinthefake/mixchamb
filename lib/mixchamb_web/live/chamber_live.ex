@@ -398,6 +398,14 @@ defmodule MixchambWeb.ChamberLive do
     {:noreply, socket}
   end
 
+  def handle_event("poker_revote", _params, socket) do
+    if socket.assigns.is_host do
+      Mixchamb.Chambers.Server.poker_revote(socket.assigns.chamber_slug)
+    end
+
+    {:noreply, socket}
+  end
+
   def handle_event("poker_next_round", params, socket) do
     if socket.assigns.is_host do
       story = Map.get(params, "story")

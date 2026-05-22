@@ -183,7 +183,7 @@ order I'd recommend:
 5. ✅ **`PokerBoard.vue` + 5 sub-components** — six files. The
    tightest bottleneck of the build. (~1.5 days for a polished
    first pass.)
-6. **Host controls + deck dropdown gating** — reveal / re-vote
+6. ✅ **Host controls + deck dropdown gating** — reveal / re-vote
    / next-round / inline story edit / deck dropdown
    (disabled when `votes != %{}`). (Half-day.)
 7. **Smoke test** — open three browsers, vote, reveal, re-vote,
