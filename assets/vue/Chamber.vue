@@ -57,6 +57,11 @@ const props = defineProps<{
   // to "music" so legacy chambers without the column behave
   // identically to v3.
   activity: "music" | "poker"
+  // How many people are presently in the chamber. Used by music
+  // mode to render the "Quiet here — start a chord…" hint when
+  // the user is alone, mirroring the poker board's
+  // "Waiting for the team" empty state.
+  presence_count?: number
   // Poker-specific props. `poker_session` is `null` for music
   // chambers; PokerBoard.vue renders an empty state in that case.
   // The LV derives `poker_session` per-user (filters vote values
@@ -384,10 +389,10 @@ live.handleEvent("play_remote_note", async (payload: RemoteNote) => {
        lose audio for whatever happened before the local user
        tapped anything themselves. -->
   <Transition
-    enter-active-class="transition-opacity duration-200"
-    leave-active-class="transition-opacity duration-300"
-    enter-from-class="opacity-0"
-    leave-to-class="opacity-0"
+    enter-active-class="transition-all duration-300 ease-out"
+    leave-active-class="transition-all duration-300 ease-in"
+    enter-from-class="opacity-0 scale-95"
+    leave-to-class="opacity-0 scale-95"
   >
     <div
       v-if="props.activity === 'music' && !audioReady"
@@ -395,13 +400,28 @@ live.handleEvent("play_remote_note", async (payload: RemoteNote) => {
       class="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-md bg-background/80 cursor-pointer select-none"
     >
       <div class="flex flex-col items-center gap-6 text-center px-4">
-        <img src="/images/logo.svg" alt="" class="size-20 motion-safe:animate-pulse" />
+        <!-- Logo with the brand-coloured halo behind it, same
+             treatment the landing hero uses. The mark itself
+             carries no filter (per UI.md "Logo › Don'ts"); the
+             halo sits on a lower stacking layer. -->
+        <div class="relative">
+          <div
+            aria-hidden="true"
+            class="absolute inset-0 -m-8 rounded-full blur-2xl opacity-60 brand-glow"
+          >
+          </div>
+          <img src="/images/logo.svg" alt="" class="relative size-20" />
+        </div>
         <div class="space-y-1">
-          <h2 class="text-2xl font-bold tracking-tight font-display">Tap to start jamming</h2>
-          <p class="text-sm text-muted-foreground">Browsers need a gesture before audio can play</p>
+          <h2 class="text-3xl font-bold tracking-tight font-display brand-gradient-text">
+            Tap to start jamming
+          </h2>
+          <p class="text-sm text-muted-foreground">
+            Browsers need a gesture before audio can play
+          </p>
         </div>
         <button
-          class="rounded-lg border bg-card hover:bg-accent px-6 py-2.5 text-sm font-medium transition-colors"
+          class="px-6 py-2.5 text-sm rounded-md bg-primary text-primary-foreground hover:bg-primary/90 hover:-translate-y-px hover:shadow-md transition-all cursor-pointer font-medium"
         >
           Enter chamber
         </button>
@@ -464,6 +484,18 @@ live.handleEvent("play_remote_note", async (payload: RemoteNote) => {
         </span>
       </div>
     </div>
+
+    <!-- Inline empty-state hint when the player is alone in the
+         chamber. Mirrors the poker board's "Waiting for the team"
+         hint; copy matches the UI.md voice "Empty / error states"
+         entry verbatim. Drops itself the moment a second person
+         joins. -->
+    <p
+      v-if="(props.presence_count ?? 0) <= 1"
+      class="text-sm text-muted-foreground italic text-center"
+    >
+      Quiet here — start a chord and someone'll join.
+    </p>
 
     <DrumPad v-if="current_instrument === 'drums'" :remote-hit="lastRemoteHit" />
     <KeyboardPad v-else-if="current_instrument === 'keyboard'" :remote-hit="lastRemoteHit" />
