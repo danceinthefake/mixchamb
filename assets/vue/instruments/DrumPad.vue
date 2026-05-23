@@ -300,7 +300,10 @@ onUnmounted(() => stopAll("drums", style.value))
           // Guard against null === null: the throne has drum: null
           // and would otherwise match remoteFlashing's idle value
           // (also null), painting the orange ring permanently.
-          remoteFlashing && remoteFlashing === p.drum && flashing !== p.id && 'ring-4 ring-orange-400',
+          remoteFlashing &&
+            remoteFlashing === p.drum &&
+            flashing !== p.id &&
+            'ring-4 ring-orange-400',
         ]"
       >
         <div class="text-xs font-medium">{{ p.label }}</div>

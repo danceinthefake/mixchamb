@@ -180,10 +180,7 @@ const copyLabel = computed(() => {
 </script>
 
 <template>
-  <details
-    v-if="history.length > 0"
-    class="rounded-xl border bg-card/60 backdrop-blur-sm group"
-  >
+  <details v-if="history.length > 0" class="rounded-xl border bg-card/60 backdrop-blur-sm group">
     <summary
       class="cursor-pointer list-none px-4 py-3 flex items-center justify-between gap-3 hover:bg-accent/30 transition-colors rounded-xl group-open:rounded-b-none"
     >
@@ -193,21 +190,14 @@ const copyLabel = computed(() => {
       <span class="flex items-center gap-2 text-xs text-muted-foreground">
         <span class="tabular-nums">{{ history.length }}</span>
         <!-- Native disclosure caret. Rotates via group-open: utility. -->
-        <span
-          aria-hidden="true"
-          class="transition-transform group-open:rotate-180 select-none"
-        >
+        <span aria-hidden="true" class="transition-transform group-open:rotate-180 select-none">
           ▾
         </span>
       </span>
     </summary>
 
     <ul class="divide-y border-t">
-      <li
-        v-for="row in rows"
-        :key="row.round"
-        class="px-4 py-2 flex items-center gap-3 text-sm"
-      >
+      <li v-for="row in rows" :key="row.round" class="px-4 py-2 flex items-center gap-3 text-sm">
         <span class="text-xs text-muted-foreground tabular-nums w-10 shrink-0 font-mono">
           R{{ row.round }}
         </span>

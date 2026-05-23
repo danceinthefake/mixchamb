@@ -244,6 +244,7 @@ defmodule Mixchamb.Chambers.PokerSessionTest do
   describe "set_story/2" do
     test "updates the story line" do
       s = PokerSession.new()
+
       assert {:ok, %{story: "Estimate the migration"}} =
                PokerSession.set_story(s, "Estimate the migration")
     end

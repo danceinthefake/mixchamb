@@ -5,7 +5,13 @@ defmodule Mixchamb.Chambers.ChamberTest do
 
   describe "creation_changeset/2" do
     test "rejects an invalid activity" do
-      cs = Chamber.creation_changeset(%Chamber{}, %{slug: "abc", creator_user_id: Ecto.UUID.generate(), activity: "icebreaker"})
+      cs =
+        Chamber.creation_changeset(%Chamber{}, %{
+          slug: "abc",
+          creator_user_id: Ecto.UUID.generate(),
+          activity: "icebreaker"
+        })
+
       refute cs.valid?
       assert {"is invalid", _} = cs.errors[:activity]
     end

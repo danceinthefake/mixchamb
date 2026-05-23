@@ -105,37 +105,32 @@ describe("RoundHistory", () => {
       vi.useRealTimers()
     })
 
-    it("clicking 'Copy as text' invokes navigator.clipboard.writeText with a chronological dump",
-      async () => {
-        const wrapper = mount(RoundHistory, {
-          props: { history: [discussEntry, closeEntry, consensusEntry] },
-        })
-
-        // history is newest-first; export reverses to oldest-first.
-        await wrapper.find("details").trigger("toggle")
-        const copyBtn = wrapper
-          .findAll("button")
-          .find((b) => b.text().includes("Copy as text"))!
-        await copyBtn.trigger("click")
-
-        // The promise inside handleCopy needs a flush.
-        await Promise.resolve()
-        await Promise.resolve()
-
-        expect(writeText).toHaveBeenCalledOnce()
-        const payload = writeText.mock.calls[0][0] as string
-        const lines = payload.split("\n")
-        expect(lines[0]).toBe("Round 1 — Add dark mode — 5")
-        expect(lines[1]).toBe("Round 2 — Migrate auth — 5 or 8 (close call)")
-        expect(lines[2]).toBe("Round 3 — Untitled — needs discussion")
+    it("clicking 'Copy as text' invokes navigator.clipboard.writeText with a chronological dump", async () => {
+      const wrapper = mount(RoundHistory, {
+        props: { history: [discussEntry, closeEntry, consensusEntry] },
       })
+
+      // history is newest-first; export reverses to oldest-first.
+      await wrapper.find("details").trigger("toggle")
+      const copyBtn = wrapper.findAll("button").find((b) => b.text().includes("Copy as text"))!
+      await copyBtn.trigger("click")
+
+      // The promise inside handleCopy needs a flush.
+      await Promise.resolve()
+      await Promise.resolve()
+
+      expect(writeText).toHaveBeenCalledOnce()
+      const payload = writeText.mock.calls[0][0] as string
+      const lines = payload.split("\n")
+      expect(lines[0]).toBe("Round 1 — Add dark mode — 5")
+      expect(lines[1]).toBe("Round 2 — Migrate auth — 5 or 8 (close call)")
+      expect(lines[2]).toBe("Round 3 — Untitled — needs discussion")
+    })
 
     it("button label cycles to 'Copied!' after success", async () => {
       vi.useFakeTimers()
       const wrapper = mount(RoundHistory, { props: { history: [consensusEntry] } })
-      const copyBtn = wrapper
-        .findAll("button")
-        .find((b) => b.text().includes("Copy as text"))!
+      const copyBtn = wrapper.findAll("button").find((b) => b.text().includes("Copy as text"))!
 
       await copyBtn.trigger("click")
       await Promise.resolve()

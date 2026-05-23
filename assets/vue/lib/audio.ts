@@ -494,7 +494,7 @@ export async function playReveal(): Promise<void> {
   const start = toneNow()
   voice.triggerAttackRelease("C5", "16n", start)
   voice.triggerAttackRelease("E5", "16n", start + 0.15)
-  voice.triggerAttackRelease("G5", "16n", start + 0.30)
+  voice.triggerAttackRelease("G5", "16n", start + 0.3)
   voice.triggerAttackRelease("C6", "8n", start + 0.45)
   // Hang around long enough for the release tail to ring out, then
   // free the voice. setTimeout (not Tone's transport) since this is
