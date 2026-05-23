@@ -10,8 +10,9 @@
 // PokerBoard re-renders within ~50 ms of any other participant's
 // click.
 
-import { computed } from "vue"
+import { computed, ref, watch } from "vue"
 import { useLiveVue } from "live_vue"
+import { playReveal } from "../../lib/audio"
 import StoryHeader from "./StoryHeader.vue"
 import CardDeck from "./CardDeck.vue"
 import ParticipantsRow from "./ParticipantsRow.vue"
@@ -54,6 +55,42 @@ const live = useLiveVue()
 // non-poker chamber by mistake. Render a clear empty state so we
 // don't crash sub-components dereferencing `session.deck`.
 const session = computed(() => props.poker_session)
+
+// Card flip is staged from `session.status` by ~800ms so the
+// reveal lands as a moment, not an instant truth-bomb. The cards
+// hold face-down during the suspense window while the chime
+// arpeggio plays (last note times with the flip). RevealPanel
+// renders on the same beat so the verdict appears in sync with
+// the cards turning. Late joiners and post-reload mounts skip the
+// suspense — they missed the chime, and showing them face-down
+// cards for 800ms would just look broken.
+const REVEAL_SUSPENSE_MS = 800
+const flipped = ref(false)
+const reducedMotion =
+  typeof window !== "undefined" &&
+  typeof window.matchMedia === "function" &&
+  window.matchMedia("(prefers-reduced-motion: reduce)").matches
+
+watch(
+  () => session.value?.status,
+  (next, prev) => {
+    if (next === "revealed" && prev === "voting") {
+      if (reducedMotion) {
+        flipped.value = true
+        return
+      }
+      void playReveal()
+      window.setTimeout(() => {
+        flipped.value = true
+      }, REVEAL_SUSPENSE_MS)
+    } else if (next === "revealed") {
+      flipped.value = true
+    } else if (next === "voting") {
+      flipped.value = false
+    }
+  },
+  { immediate: true },
+)
 
 // True when the chamber is fresh and lonely — the host is alone,
 // no votes have been cast, no story set. Renders an inline hint
@@ -123,6 +160,7 @@ function setDeck(deck: DeckId) {
     <ParticipantsRow
       :participants="poker_participants"
       :status="session.status"
+      :flipped="flipped"
       :voted_user_ids="session.voted_user_ids"
       :votes="session.votes"
       :current_user_id="current_user_id"
@@ -146,12 +184,15 @@ function setDeck(deck: DeckId) {
       @pick="castVote"
     />
 
-    <RevealPanel
-      v-else
-      :deck="session.deck"
-      :votes="session.votes"
-      :participants="poker_participants"
-    />
+    <Transition name="reveal-panel">
+      <RevealPanel
+        v-if="session.status === 'revealed' && flipped"
+        :deck="session.deck"
+        :cards="session.cards"
+        :votes="session.votes"
+        :participants="poker_participants"
+      />
+    </Transition>
 
     <HostControls
       v-if="is_host"
@@ -169,3 +210,35 @@ function setDeck(deck: DeckId) {
     Poker session not ready yet.
   </div>
 </template>
+
+<style scoped>
+/* Reveal panel fades in alongside the card flip. The 100ms delay
+   lets the cards begin their rotateY before the verdict text
+   resolves, so the eye reads "cards turning → answer arrives" as
+   one beat rather than two competing animations. */
+.reveal-panel-enter-active {
+  transition:
+    opacity 300ms ease-out 100ms,
+    transform 300ms ease-out 100ms;
+}
+.reveal-panel-enter-from {
+  opacity: 0;
+  transform: translateY(8px);
+}
+.reveal-panel-enter-to {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Reduced motion: drop both delay and slide; the verdict still
+   appears in sync with the (instant) card swap. */
+@media (prefers-reduced-motion: reduce) {
+  .reveal-panel-enter-active {
+    transition: none;
+  }
+  .reveal-panel-enter-from,
+  .reveal-panel-enter-to {
+    transform: none;
+  }
+}
+</style>

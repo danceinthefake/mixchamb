@@ -472,6 +472,36 @@ export function applyStrumPhase(
   })
 }
 
+// ── Planning-poker reveal cue ──────────────────────────────────────
+// Short ascending arpeggio (C5 E5 G5 C6) timed to land its last
+// note around the card-flip moment in PokerBoard.vue. Standalone
+// from the per-instrument engines because poker has no instrument
+// to register against. The AudioContext is gated by the same gesture
+// requirement as music — fail silently if a remote-broadcast reveal
+// arrives at a client that hasn't started anything yet (the visual
+// suspense still reads as a moment without the chime).
+export async function playReveal(): Promise<void> {
+  try {
+    await ensureStarted()
+  } catch {
+    return
+  }
+  const voice = new Synth({
+    oscillator: { type: "sine" },
+    envelope: { attack: 0.005, decay: 0.12, sustain: 0.2, release: 0.5 },
+    volume: -14,
+  }).toDestination()
+  const start = toneNow()
+  voice.triggerAttackRelease("C5", "16n", start)
+  voice.triggerAttackRelease("E5", "16n", start + 0.15)
+  voice.triggerAttackRelease("G5", "16n", start + 0.30)
+  voice.triggerAttackRelease("C6", "8n", start + 0.45)
+  // Hang around long enough for the release tail to ring out, then
+  // free the voice. setTimeout (not Tone's transport) since this is
+  // a one-shot independent of any musical clock.
+  setTimeout(() => voice.dispose(), 2500)
+}
+
 // Drum-kit voicing: the wire format only carries these strings,
 // shared between the engine in `lib/audio/drums.ts` and the
 // UI pad definitions in `assets/vue/instruments/DrumPad.vue`.

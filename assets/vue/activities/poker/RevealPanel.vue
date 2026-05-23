@@ -9,9 +9,58 @@ import type { DeckId, Participant } from "./PokerBoard.vue"
 
 const props = defineProps<{
   deck: DeckId
+  cards: string[]
   votes: Record<string, string>
   participants: Participant[]
 }>()
+
+const QUESTION_CARD = "?"
+const COFFEE_CARD = "☕"
+
+// Top-of-panel verdict — the one-glance answer to "what did the
+// team land on?" before the eye has to parse the distribution
+// bars. `?` and `☕` are stripped from the spread check because
+// they're meta-votes (I don't know / I need a break), not grades;
+// we still surface them in the labels for the "everyone …" cases.
+type Verdict =
+  | { kind: "none" }
+  | { kind: "single"; value: string }
+  | { kind: "consensus"; value: string }
+  | { kind: "close"; low: string; high: string }
+  | { kind: "discuss" }
+  | { kind: "all_question" }
+  | { kind: "all_coffee" }
+
+const verdict = computed<Verdict>(() => {
+  const values = Object.values(props.votes)
+  if (values.length === 0) return { kind: "none" }
+  if (values.length === 1) return { kind: "single", value: values[0] }
+
+  if (values.every((v) => v === values[0])) {
+    if (values[0] === QUESTION_CARD) return { kind: "all_question" }
+    if (values[0] === COFFEE_CARD) return { kind: "all_coffee" }
+    return { kind: "consensus", value: values[0] }
+  }
+
+  const grading = values.filter((v) => v !== QUESTION_CARD && v !== COFFEE_CARD)
+  if (grading.length === 0) return { kind: "discuss" }
+
+  const uniq = [...new Set(grading)]
+  if (uniq.length === 1) return { kind: "consensus", value: uniq[0] }
+
+  const indices = uniq
+    .map((v) => props.cards.indexOf(v))
+    .filter((i) => i >= 0)
+    .sort((a, b) => a - b)
+  if (indices.length >= 2 && indices[indices.length - 1] - indices[0] <= 1) {
+    return {
+      kind: "close",
+      low: props.cards[indices[0]],
+      high: props.cards[indices[indices.length - 1]],
+    }
+  }
+  return { kind: "discuss" }
+})
 
 const numericDecks: DeckId[] = ["fibonacci", "modified_fibonacci", "pow2"]
 
@@ -75,6 +124,48 @@ const totalVotes = computed(() => Object.keys(props.votes).length)
     </div>
 
     <div v-else class="space-y-4">
+      <!-- Verdict headline. Cheap one-liner that turns the
+           distribution bars into an actionable read: did we agree,
+           are we close enough, or do we need to talk about it.
+           Colour-codes by outcome (success / foreground / primary)
+           so the eye latches before parsing the numbers. -->
+      <p
+        v-if="verdict.kind === 'consensus'"
+        class="text-center text-2xl font-bold font-display text-success"
+      >
+        Consensus: {{ verdict.value }}
+      </p>
+      <p
+        v-else-if="verdict.kind === 'close'"
+        class="text-center text-2xl font-bold font-display text-foreground"
+      >
+        Close call — {{ verdict.low }} or {{ verdict.high }}
+      </p>
+      <p
+        v-else-if="verdict.kind === 'discuss'"
+        class="text-center text-2xl font-bold font-display text-primary"
+      >
+        Wide range — discuss
+      </p>
+      <p
+        v-else-if="verdict.kind === 'single'"
+        class="text-center text-base font-bold font-display text-foreground"
+      >
+        One vote in: {{ verdict.value }}
+      </p>
+      <p
+        v-else-if="verdict.kind === 'all_question'"
+        class="text-center text-base font-bold font-display text-muted-foreground"
+      >
+        Everyone wants clarification
+      </p>
+      <p
+        v-else-if="verdict.kind === 'all_coffee'"
+        class="text-center text-base font-bold font-display text-muted-foreground"
+      >
+        Time for a break ☕
+      </p>
+
       <!-- Distribution: each value with a bar showing its share. -->
       <ul class="space-y-1.5">
         <li
