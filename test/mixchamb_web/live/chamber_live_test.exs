@@ -83,7 +83,7 @@ defmodule MixchambWeb.ChamberLiveTest do
 
       # Submit the alias form.
       view
-      |> element("#alias-editor")
+      |> element("#desktop-alias-editor")
       |> render_submit(%{"alias" => "Bob"})
 
       # DB row updated.
@@ -102,7 +102,7 @@ defmodule MixchambWeb.ChamberLiveTest do
       {:ok, view, _html} = live(conn, ~p"/chamber/#{chamber.slug}")
 
       view
-      |> element("#alias-editor")
+      |> element("#desktop-alias-editor")
       |> render_submit(%{"alias" => ""})
 
       assert %{alias: nil} = Accounts.get_anonymous_user(user.id)
