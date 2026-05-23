@@ -116,6 +116,11 @@ defmodule MixchambWeb.ChamberLive do
      # {:expire_hit, ref} send_after; also capped at 5 so a drum roll
      # can't run away with the panel.
      |> assign(:recent_hits, [])
+     # Mobile-only sheet that surfaces the presence panel's controls
+     # (alias editor, host badges, promote / demote / step-down) on
+     # phones where the floating aside is `hidden lg:block`. Triggered
+     # by tapping the dock's presence pill; default closed.
+     |> assign(:presence_sheet_open, false)
      |> assign(:poker_session, load_poker_session(chamber))
      |> assign_hosts(chamber, user)}
   end
@@ -495,6 +500,13 @@ defmodule MixchambWeb.ChamberLive do
     )
 
     {:noreply, socket}
+  end
+
+  # Mobile presence sheet open/close. The desktop aside stays
+  # always-visible at `lg:` and up; this flag only drives the
+  # `lg:hidden` overlay that mirrors the same content for phones.
+  def handle_event("toggle_presence_sheet", _params, socket) do
+    {:noreply, update(socket, :presence_sheet_open, &(not &1))}
   end
 
   # Host-only activity switch (music ↔ poker). Chaos chamber stays
@@ -1303,173 +1315,66 @@ defmodule MixchambWeb.ChamberLive do
               {map_size(@presences)}
             </span>
           </div>
-          <%!-- Inline alias editor for the current user. Submits on
-               Enter or blur; empty input clears the alias. Sits at
-               the top so "your identity" is the first thing in the
-               panel; the user list below shows everyone else
-               relative to that. --%>
-          <form
-            phx-submit="set_alias"
-            phx-change="set_alias"
-            class="border-b p-2"
-            id="alias-editor"
-            phx-update="ignore"
-          >
-            <label class="block text-[10px] uppercase tracking-wider text-muted-foreground mb-1 px-1">
-              Your alias
-            </label>
-            <input
-              type="text"
-              name="alias"
-              value={@current_user.alias || ""}
-              maxlength="32"
-              placeholder="Set a nickname…"
-              phx-debounce="600"
-              class="w-full bg-transparent border border-input rounded-md px-2 py-1 text-xs outline-none focus:border-primary/60"
-            />
-            <p class="text-[10px] text-muted-foreground mt-1 px-1">
-              Shown above {@current_user.display_name}. Empty to clear.
-            </p>
-          </form>
-          <ul class="max-h-[60vh] overflow-y-auto py-1">
-            <li
-              :for={{user_id, %{metas: [meta | _]}} <- @presences}
-              class={[
-                "flex items-start gap-2 px-3 py-1.5 text-sm",
-                user_id == @current_user.id && "bg-primary/5"
-              ]}
-            >
-              <span
-                aria-hidden="true"
-                class="size-2 rounded-full shrink-0 mt-2"
-                style={"background-color: " <> presence_dot_color(@chamber.activity, meta)}
-              >
-              </span>
-              <div class="flex-1 min-w-0">
-                <%!-- Primary line: the alias if set, else the
-                     auto-generated noun-adj-NN name. The host
-                     badge sits inline so the role is visible at
-                     the same glance as the name; "Creator" is a
-                     special-cased badge for the original creator
-                     (can't be demoted, can promote others), plain
-                     "Host" for co-hosts. --%>
-                <div class={[
-                  "flex items-baseline gap-1.5 leading-tight",
-                  user_id == @current_user.id && "font-semibold text-foreground",
-                  user_id != @current_user.id && "text-foreground"
-                ]}>
-                  <span class="truncate min-w-0">{primary_name(meta)}</span>
-                  <span :if={user_id == @current_user.id} class="text-muted-foreground font-normal shrink-0">
-                    (you)
-                  </span>
-                  <span
-                    :if={user_id == @chamber.creator_user_id}
-                    class="shrink-0 text-[9px] uppercase tracking-wider font-mono font-semibold px-1 rounded bg-primary/15 text-primary"
-                  >
-                    Creator
-                  </span>
-                  <span
-                    :if={user_id != @chamber.creator_user_id and MapSet.member?(@hosts, user_id)}
-                    class="shrink-0 text-[9px] uppercase tracking-wider font-mono font-semibold px-1 rounded bg-accent-poker/15 text-accent-poker"
-                  >
-                    Host
-                  </span>
-                </div>
-                <%!-- Secondary line: the anon name whenever an
-                     alias is present (so the auto-generated
-                     identifier never disappears), with the
-                     instrument label trailing. --%>
-                <div
-                  :if={@chamber.activity == "music" or alias_set?(meta)}
-                  class="text-[11px] text-muted-foreground leading-tight truncate font-mono"
-                >
-                  <span :if={alias_set?(meta)}>{meta.display_name}</span><span :if={alias_set?(meta) and @chamber.activity == "music"}> · </span><span :if={@chamber.activity == "music"}>{instrument_label(meta.instrument)}</span>
-                </div>
-                <%!-- Host management controls. Three exclusive
-                     cases: creator viewing someone else
-                     (Promote / Demote depending on host state),
-                     a co-host viewing themselves (Step down),
-                     and nobody else (no controls). Buttons stay
-                     out of the row's first line so the name +
-                     badge read cleanly above. --%>
-                <div
-                  :if={creator?(@chamber, @current_user) and user_id != @chamber.creator_user_id}
-                  class="mt-1"
-                >
-                  <button
-                    :if={MapSet.member?(@hosts, user_id)}
-                    type="button"
-                    phx-click="demote_host"
-                    phx-value-user_id={user_id}
-                    class="text-[10px] text-muted-foreground hover:text-foreground underline-offset-2 hover:underline cursor-pointer"
-                  >
-                    Demote
-                  </button>
-                  <button
-                    :if={not MapSet.member?(@hosts, user_id)}
-                    type="button"
-                    phx-click="promote_host"
-                    phx-value-user_id={user_id}
-                    class="text-[10px] text-muted-foreground hover:text-foreground underline-offset-2 hover:underline cursor-pointer"
-                    title="Make this player a co-host. They can reveal / advance / set queue / switch activity."
-                  >
-                    Promote to host
-                  </button>
-                </div>
-                <div
-                  :if={
-                    user_id == @current_user.id and
-                      MapSet.member?(@hosts, user_id) and
-                      user_id != @chamber.creator_user_id
-                  }
-                  class="mt-1"
-                >
-                  <button
-                    type="button"
-                    phx-click="demote_host"
-                    phx-value-user_id={user_id}
-                    class="text-[10px] text-muted-foreground hover:text-foreground underline-offset-2 hover:underline cursor-pointer"
-                  >
-                    Step down as host
-                  </button>
-                </div>
-              </div>
-            </li>
-          </ul>
-          <%!-- Recent-hits feed. Each row shows who played what,
-               fades out via the `hit-life` keyframe in app.css, then
-               server-side pruning removes it on the same timer.
-               Music-only — poker activity has no hits to show. --%>
-          <div
-            :if={@chamber.activity == "music" and @recent_hits != []}
-            class="border-t px-2 py-1.5 space-y-0.5"
-            aria-live="polite"
-            aria-label="Recent plays"
-          >
-            <div
-              :for={hit <- @recent_hits}
-              id={"hit-#{hit.ref}"}
-              class="recent-hit flex items-center gap-1.5 text-[11px] leading-tight px-1 py-0.5 rounded font-mono"
-            >
-              <span
-                aria-hidden="true"
-                class="size-1.5 rounded-full shrink-0"
-                style={"background-color: " <> accent_var(hit.instrument)}
-              >
-              </span>
-              <span class={[
-                "truncate min-w-0",
-                hit.is_self && "text-foreground font-semibold",
-                !hit.is_self && "text-muted-foreground"
-              ]}>
-                {hit.user_name}
-              </span>
-              <span class="text-muted-foreground shrink-0">·</span>
-              <span class="truncate min-w-0 text-foreground">{hit.label}</span>
-            </div>
-          </div>
+          <.presence_panel_body
+            id_prefix="desktop"
+            current_user={@current_user}
+            chamber={@chamber}
+            presences={@presences}
+            hosts={@hosts}
+            recent_hits={@recent_hits}
+          />
         </div>
       </aside>
+
+      <%!-- Mobile presence sheet. Mirrors the desktop aside's
+           content (alias editor + user list with host management)
+           on a screen the aside can't reach. Triggered by tapping
+           the dock's presence pill; `lg:hidden` keeps it out of the
+           way on desktops where the aside is already visible.
+           Recent-hits feed is suppressed in the sheet — host
+           management is the priority on mobile, and the feed has
+           plenty of room on desktop. --%>
+      <div
+        :if={@presence_sheet_open}
+        class="lg:hidden fixed inset-0 z-50 flex flex-col p-4 pt-16"
+        role="dialog"
+        aria-label="Players panel"
+      >
+        <button
+          type="button"
+          phx-click="toggle_presence_sheet"
+          aria-label="Close players panel"
+          class="absolute inset-0 -z-10 backdrop-blur-md bg-background/80 cursor-pointer"
+        >
+        </button>
+        <div class="relative mx-auto w-full max-w-md rounded-xl border bg-card shadow-2xl flex flex-col overflow-hidden">
+          <div class="flex items-center justify-between px-3 py-2 border-b shrink-0">
+            <span class="text-xs font-semibold uppercase tracking-wider font-display">
+              {presence_heading(@chamber.activity)}
+              <span class="ml-1 text-muted-foreground tabular-nums">
+                {map_size(@presences)}
+              </span>
+            </span>
+            <button
+              type="button"
+              phx-click="toggle_presence_sheet"
+              class="text-muted-foreground hover:text-foreground cursor-pointer text-lg leading-none px-2 py-1 -mr-1"
+              aria-label="Close"
+            >
+              ×
+            </button>
+          </div>
+          <div class="flex-1 overflow-y-auto">
+            <.presence_panel_body
+              id_prefix="mobile"
+              current_user={@current_user}
+              chamber={@chamber}
+              presences={@presences}
+              hosts={@hosts}
+            />
+          </div>
+        </div>
+      </div>
         </div>
       </div>
 
@@ -1538,8 +1443,20 @@ defmodule MixchambWeb.ChamberLive do
             >
             </div>
 
-            <%!-- Presence summary: avatar stack + count --%>
-            <div class="flex items-center gap-2 pr-2 pl-1 shrink-0">
+            <%!-- Presence summary: avatar stack + count. Becomes
+                 a button on mobile to surface the host-management
+                 sheet (the floating aside is `hidden lg:block`,
+                 so without this affordance there's no way to
+                 promote / demote / step down from a phone).
+                 On lg+ the click still flips `presence_sheet_open`
+                 but the sheet itself is `lg:hidden`, so no visible
+                 effect — desktop already has the aside open. --%>
+            <button
+              type="button"
+              phx-click="toggle_presence_sheet"
+              aria-label="Show players panel"
+              class="flex items-center gap-2 pr-2 pl-1 shrink-0 rounded-md transition-colors lg:hover:bg-transparent hover:bg-accent/40 lg:cursor-default cursor-pointer"
+            >
               <div class="flex -space-x-1.5">
                 <span
                   :for={{user_id, %{metas: [meta | _]}} <- Enum.take(@presences, 4)}
@@ -1560,11 +1477,188 @@ defmodule MixchambWeb.ChamberLive do
               <span class="text-xs text-muted-foreground tabular-nums whitespace-nowrap">
                 {map_size(@presences)}<span class="hidden sm:inline">{" " <> presence_label(@chamber.activity)}</span>
               </span>
-            </div>
+            </button>
           </div>
         </div>
       </div>
     </Layouts.app>
+    """
+  end
+
+  # Inner body of the presence panel — alias editor, user list with
+  # badges + promote/demote controls, recent-hits feed (music only).
+  # Shared between the desktop floating aside and the mobile sheet
+  # so host management stays at parity across viewports. Caller
+  # passes a unique `id_prefix` for the alias editor's form id;
+  # without it both surfaces would mount a `#alias-editor` and
+  # collide. `recent_hits` defaults to `[]` so a caller can suppress
+  # the feed (the mobile sheet does, to keep the sheet focused on
+  # host management — the feed lives on desktop where there's room).
+  attr :id_prefix, :string, required: true
+  attr :current_user, :map, required: true
+  attr :chamber, :map, required: true
+  attr :presences, :map, required: true
+  attr :hosts, :any, required: true
+  attr :recent_hits, :list, default: []
+
+  defp presence_panel_body(assigns) do
+    ~H"""
+    <%!-- Inline alias editor for the current user. Submits on
+         Enter or blur; empty input clears the alias. Sits at
+         the top so "your identity" is the first thing in the
+         panel; the user list below shows everyone else
+         relative to that. --%>
+    <form
+      phx-submit="set_alias"
+      phx-change="set_alias"
+      class="border-b p-2"
+      id={@id_prefix <> "-alias-editor"}
+      phx-update="ignore"
+    >
+      <label class="block text-[10px] uppercase tracking-wider text-muted-foreground mb-1 px-1">
+        Your alias
+      </label>
+      <input
+        type="text"
+        name="alias"
+        value={@current_user.alias || ""}
+        maxlength="32"
+        placeholder="Set a nickname…"
+        phx-debounce="600"
+        class="w-full bg-transparent border border-input rounded-md px-2 py-1 text-xs outline-none focus:border-primary/60"
+      />
+      <p class="text-[10px] text-muted-foreground mt-1 px-1">
+        Shown above {@current_user.display_name}. Empty to clear.
+      </p>
+    </form>
+    <ul class="max-h-[60vh] overflow-y-auto py-1">
+      <li
+        :for={{user_id, %{metas: [meta | _]}} <- @presences}
+        class={[
+          "flex items-start gap-2 px-3 py-1.5 text-sm",
+          user_id == @current_user.id && "bg-primary/5"
+        ]}
+      >
+        <span
+          aria-hidden="true"
+          class="size-2 rounded-full shrink-0 mt-2"
+          style={"background-color: " <> presence_dot_color(@chamber.activity, meta)}
+        >
+        </span>
+        <div class="flex-1 min-w-0">
+          <%!-- Primary line: the alias if set, else the
+               auto-generated noun-adj-NN name. Host badge sits
+               inline so the role is visible at the same glance
+               as the name. --%>
+          <div class={[
+            "flex items-baseline gap-1.5 leading-tight",
+            user_id == @current_user.id && "font-semibold text-foreground",
+            user_id != @current_user.id && "text-foreground"
+          ]}>
+            <span class="truncate min-w-0">{primary_name(meta)}</span>
+            <span :if={user_id == @current_user.id} class="text-muted-foreground font-normal shrink-0">
+              (you)
+            </span>
+            <span
+              :if={user_id == @chamber.creator_user_id}
+              class="shrink-0 text-[9px] uppercase tracking-wider font-mono font-semibold px-1 rounded bg-primary/15 text-primary"
+            >
+              Creator
+            </span>
+            <span
+              :if={user_id != @chamber.creator_user_id and MapSet.member?(@hosts, user_id)}
+              class="shrink-0 text-[9px] uppercase tracking-wider font-mono font-semibold px-1 rounded bg-accent-poker/15 text-accent-poker"
+            >
+              Host
+            </span>
+          </div>
+          <%!-- Secondary line: the anon name whenever an alias
+               is present (so the auto-generated identifier never
+               disappears), with the instrument label trailing. --%>
+          <div
+            :if={@chamber.activity == "music" or alias_set?(meta)}
+            class="text-[11px] text-muted-foreground leading-tight truncate font-mono"
+          >
+            <span :if={alias_set?(meta)}>{meta.display_name}</span><span :if={alias_set?(meta) and @chamber.activity == "music"}> · </span><span :if={@chamber.activity == "music"}>{instrument_label(meta.instrument)}</span>
+          </div>
+          <%!-- Host management. Creator viewing someone else
+               gets Promote / Demote; a co-host viewing themselves
+               gets Step down; everyone else sees nothing. --%>
+          <div
+            :if={creator?(@chamber, @current_user) and user_id != @chamber.creator_user_id}
+            class="mt-1"
+          >
+            <button
+              :if={MapSet.member?(@hosts, user_id)}
+              type="button"
+              phx-click="demote_host"
+              phx-value-user_id={user_id}
+              class="text-[10px] text-muted-foreground hover:text-foreground underline-offset-2 hover:underline cursor-pointer"
+            >
+              Demote
+            </button>
+            <button
+              :if={not MapSet.member?(@hosts, user_id)}
+              type="button"
+              phx-click="promote_host"
+              phx-value-user_id={user_id}
+              class="text-[10px] text-muted-foreground hover:text-foreground underline-offset-2 hover:underline cursor-pointer"
+              title="Make this player a co-host. They can reveal / advance / set queue / switch activity."
+            >
+              Promote to host
+            </button>
+          </div>
+          <div
+            :if={
+              user_id == @current_user.id and
+                MapSet.member?(@hosts, user_id) and
+                user_id != @chamber.creator_user_id
+            }
+            class="mt-1"
+          >
+            <button
+              type="button"
+              phx-click="demote_host"
+              phx-value-user_id={user_id}
+              class="text-[10px] text-muted-foreground hover:text-foreground underline-offset-2 hover:underline cursor-pointer"
+            >
+              Step down as host
+            </button>
+          </div>
+        </div>
+      </li>
+    </ul>
+    <%!-- Recent-hits feed (music-only). Caller passes [] to
+         suppress (the mobile sheet does — keeps it focused on
+         host management; the desktop aside has the room). --%>
+    <div
+      :if={@chamber.activity == "music" and @recent_hits != []}
+      class="border-t px-2 py-1.5 space-y-0.5"
+      aria-live="polite"
+      aria-label="Recent plays"
+    >
+      <div
+        :for={hit <- @recent_hits}
+        id={"hit-#{@id_prefix}-#{hit.ref}"}
+        class="recent-hit flex items-center gap-1.5 text-[11px] leading-tight px-1 py-0.5 rounded font-mono"
+      >
+        <span
+          aria-hidden="true"
+          class="size-1.5 rounded-full shrink-0"
+          style={"background-color: " <> accent_var(hit.instrument)}
+        >
+        </span>
+        <span class={[
+          "truncate min-w-0",
+          hit.is_self && "text-foreground font-semibold",
+          !hit.is_self && "text-muted-foreground"
+        ]}>
+          {hit.user_name}
+        </span>
+        <span class="text-muted-foreground shrink-0">·</span>
+        <span class="truncate min-w-0 text-foreground">{hit.label}</span>
+      </div>
+    </div>
     """
   end
 end

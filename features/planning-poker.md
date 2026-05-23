@@ -336,6 +336,23 @@ what's in beyond the MVP without trawling git log.
   presence aside (`Creator` pink, `Host` cyan) plus inline
   promote/demote links per row.
 
+- **Mobile host management.** The desktop floating aside is
+  `hidden lg:block`, so promote / demote / alias editing was
+  unreachable from a phone. Solution: extract the panel body
+  into a `presence_panel_body/1` function component (alias
+  editor + user list with badges + host controls) and render
+  it in two surfaces — the existing floating aside on lg+,
+  and a new `lg:hidden` full-screen sheet triggered by tapping
+  the dock's presence pill. The dock pill is now a `<button>`
+  with `phx-click="toggle_presence_sheet"`; on lg+ the click
+  still toggles `@presence_sheet_open` but the sheet itself is
+  `lg:hidden`, so no visible effect — desktop already has the
+  aside open. Sheet has × button + backdrop tap to dismiss.
+  The shared component takes an `id_prefix` so the alias-editor
+  form gets a unique id per surface (`#desktop-alias-editor` /
+  `#mobile-alias-editor`); recent-hits feed is suppressed in
+  the sheet to keep mobile focused on host management.
+
 - **Pre-loaded story queue.** `PokerSession.queue: [String.t()]`
   holds a backlog the host loads via a textarea in HostControls
   (one story per line). `next_round/2` consumes the queue head
