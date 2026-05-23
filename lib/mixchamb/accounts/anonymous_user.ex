@@ -17,6 +17,12 @@ defmodule Mixchamb.Accounts.AnonymousUser do
     # with the anon name beneath. nil means "no alias set."
     field :alias, :string
     field :last_active_at, :utc_datetime
+    # Last instrument the user picked in a music chamber.
+    # Persisted so coming back to (or joining) a music chamber
+    # doesn't reset everyone to drums. Stored as the same atom
+    # string the wire uses (`"drums"`, `"keyboard"`, …); the LV
+    # normalises against the @instruments allow-list on read.
+    field :last_instrument, :string
 
     timestamps(type: :utc_datetime, updated_at: false)
   end
@@ -62,6 +68,19 @@ defmodule Mixchamb.Accounts.AnonymousUser do
       %{alias: value} -> %{attrs | alias: blank_to_nil(value)}
       _ -> attrs
     end
+  end
+
+  @doc """
+  Records the user's most-recently-picked instrument. Persisted
+  so a return visit to a music chamber lands them on their last
+  pick rather than the default drums. Caller passes the atom-as-
+  string (e.g. `"keyboard"`); the LV's allow-list normalisation
+  happens on read.
+  """
+  def last_instrument_changeset(user, attrs) do
+    user
+    |> cast(attrs, [:last_instrument])
+    |> validate_length(:last_instrument, max: 32)
   end
 
   defp blank_to_nil(nil), do: nil

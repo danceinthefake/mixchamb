@@ -99,7 +99,13 @@ defmodule MixchambWeb.ChamberLive do
      |> assign(:og_description, chamber_og_description(chamber))
      |> assign(:og_url, url(~p"/chamber/#{slug}"))
      |> assign(:instruments, @instruments)
-     |> assign(:current_instrument, :drums)
+     # Default to the user's last-played instrument so a return
+     # visit doesn't always dump them on drums. Falls back to
+     # :drums when no preference is stored or the stored value
+     # is stale (no longer in @instruments). Music-only meaningful
+     # but the assign sticks around for non-music chambers too —
+     # it's just unused there.
+     |> assign(:current_instrument, last_instrument_for(user))
      |> assign(:recorded_count, Chambers.recorded_event_count(chamber.id))
      # True between Stop Recording and either Download or Reset.
      # Drives a confirm dialog on Start Recording so the user
@@ -124,6 +130,23 @@ defmodule MixchambWeb.ChamberLive do
      |> assign(:poker_session, load_poker_session(chamber))
      |> assign_hosts(chamber, user)}
   end
+
+  # Reads the user's stored last_instrument and normalises it back
+  # to an atom against the @instruments allow-list. Returns :drums
+  # when the field is nil, blank, or holds a stale value that's no
+  # longer in the list (e.g. an instrument we removed in a later
+  # release). String.to_existing_atom would crash on truly unknown
+  # strings, so we route through it with a try/rescue.
+  defp last_instrument_for(%{last_instrument: name}) when is_binary(name) and name != "" do
+    try do
+      atom = String.to_existing_atom(name)
+      if atom in @instruments, do: atom, else: :drums
+    rescue
+      ArgumentError -> :drums
+    end
+  end
+
+  defp last_instrument_for(_user), do: :drums
 
   # Compute the host set + is_host flag from the chamber server's
   # ephemeral state. Falls back to creator-only if the server hasn't
@@ -388,8 +411,20 @@ defmodule MixchambWeb.ChamberLive do
           %{meta | instrument: instrument}
         end)
 
+        # Remember the pick so the next chamber the user enters
+        # opens on this instrument instead of the default drums.
+        # `set_last_instrument` is a no-op when the value didn't
+        # change, so coming back to the same pad doesn't burn
+        # a DB write per switch.
+        updated_user =
+          case Mixchamb.Accounts.set_last_instrument(user, Atom.to_string(instrument)) do
+            {:ok, u} -> u
+            {:error, _} -> user
+          end
+
         {:noreply,
          socket
+         |> assign(:current_user, updated_user)
          |> assign(:current_instrument, instrument)
          |> assign(:last_switch_at, now)}
     end

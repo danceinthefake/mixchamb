@@ -86,6 +86,24 @@ defmodule Mixchamb.Accounts do
   end
 
   @doc """
+  Records the user's most-recently-picked instrument so the next
+  music chamber they enter defaults to it instead of drums.
+  No-op when the value is identical to the stored one (saves a
+  DB write per identical switch — quite common during a session
+  if the user keeps coming back to the same pad).
+  """
+  def set_last_instrument(%AnonymousUser{last_instrument: same} = user, value)
+      when same == value,
+      do: {:ok, user}
+
+  def set_last_instrument(%AnonymousUser{} = user, value)
+      when is_binary(value) or is_nil(value) do
+    user
+    |> AnonymousUser.last_instrument_changeset(%{"last_instrument" => value})
+    |> Repo.update()
+  end
+
+  @doc """
   Deletes anonymous users idle for more than `hours` hours. Returns
   the number of rows deleted. Cascade FK constraints take care of
   songs + comments.
