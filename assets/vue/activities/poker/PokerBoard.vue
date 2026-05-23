@@ -10,9 +10,10 @@
 // PokerBoard re-renders within ~50 ms of any other participant's
 // click.
 
-import { computed, ref, watch } from "vue"
+import { computed, onMounted, onUnmounted, ref, watch } from "vue"
 import { useLiveVue } from "live_vue"
 import { playReveal } from "../../lib/audio"
+import { isTypingInForm } from "../../lib/utils"
 import StoryHeader from "./StoryHeader.vue"
 import CardDeck from "./CardDeck.vue"
 import ParticipantsRow from "./ParticipantsRow.vue"
@@ -144,6 +145,69 @@ function setDeck(deck: DeckId) {
   if (!props.is_host) return
   live.pushEvent("poker_set_deck", { deck })
 }
+
+// ── Keyboard shortcuts ──────────────────────────────────────────────
+// Number keys 1-9 vote the card at that deck index (decks longer
+// than 9 fall through — `100` / `?` / `☕` in modified_fibonacci
+// are mouse-only since `?` and `☕` aren't impulsive votes anyway).
+// Esc withdraws an already-cast vote. R / N / E drive the host-only
+// reveal / next-round / re-vote flow so a power user can keep both
+// hands on the keyboard during a long estimation session.
+//
+// Skips: events while typing in the story editor or alias input
+// (handled by `isTypingInForm`), keys held with Ctrl/Cmd/Alt (so
+// we don't steal browser shortcuts), and auto-repeat (no rapid-fire
+// votes from a stuck key).
+function handleKeyDown(event: KeyboardEvent) {
+  if (event.repeat) return
+  if (event.ctrlKey || event.metaKey || event.altKey) return
+  if (isTypingInForm(event)) return
+  if (!session.value) return
+
+  const key = event.key
+
+  // 1-9 → vote by deck index. Only during :voting.
+  if (session.value.status === "voting" && /^[1-9]$/.test(key)) {
+    const card = session.value.cards[Number(key) - 1]
+    if (card !== undefined) {
+      event.preventDefault()
+      castVote(card)
+      return
+    }
+  }
+
+  // Esc → withdraw vote, if there's one to withdraw.
+  if (key === "Escape") {
+    if (session.value.status === "voting" && session.value.my_vote) {
+      event.preventDefault()
+      live.pushEvent("poker_withdraw_vote", {})
+    }
+    return
+  }
+
+  // Host-only actions below.
+  if (!props.is_host) return
+  const lower = key.toLowerCase()
+  if (lower === "r" && session.value.status === "voting") {
+    event.preventDefault()
+    reveal()
+  } else if (lower === "n" && session.value.status === "revealed") {
+    event.preventDefault()
+    nextRound()
+  } else if (lower === "e" && session.value.status === "revealed") {
+    event.preventDefault()
+    revote()
+  }
+}
+
+let keyController: AbortController | null = null
+onMounted(() => {
+  keyController = new AbortController()
+  window.addEventListener("keydown", handleKeyDown, { signal: keyController.signal })
+})
+onUnmounted(() => {
+  keyController?.abort()
+})
 </script>
 
 <template>

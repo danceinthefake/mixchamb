@@ -25,19 +25,32 @@ defineEmits<{ pick: [card: string] }>()
          label + the silhouettes row above. -->
     <div class="flex flex-wrap gap-2 justify-center">
       <button
-        v-for="card in cards"
+        v-for="(card, i) in cards"
         :key="card"
         type="button"
         @click="$emit('pick', card)"
         :aria-pressed="card === selected"
         :class="[
-          'pad-touch touch-manipulation w-14 h-20 rounded-md text-xl font-bold font-display border flex items-center justify-center transition-all cursor-pointer',
+          'pad-touch touch-manipulation relative w-14 h-20 rounded-md text-xl font-bold font-display border flex items-center justify-center transition-all cursor-pointer',
           card === selected
             ? 'bg-primary text-primary-foreground border-primary shadow-md scale-105 -translate-y-0.5'
             : 'bg-card hover:bg-accent text-foreground border-border',
         ]"
       >
         {{ card }}
+        <!-- Keybind chip: number keys 1-9 vote the card at that
+             index (PokerBoard.vue owns the listener). Hidden past
+             index 8 since we only bind nine keys; rare cards stay
+             mouse-only. Hidden on small viewports — the chip is
+             ~10px tall and we don't want it stealing space on a
+             56x80 card on mobile. -->
+        <kbd
+          v-if="i < 9"
+          aria-hidden="true"
+          class="hidden sm:inline-block absolute bottom-1 right-1 text-[9px] px-1 rounded bg-background/70 text-muted-foreground font-mono font-normal leading-tight"
+        >
+          {{ i + 1 }}
+        </kbd>
       </button>
     </div>
     <p v-if="selected" class="text-xs text-muted-foreground text-center">
