@@ -12,6 +12,7 @@ defmodule MixchambWeb.Admin.ChambersLive do
   alias Mixchamb.RestartWatcher
   alias MixchambWeb.Admin.Layouts, as: AdminLayouts
   alias MixchambWeb.Presence
+  import MixchambWeb.Admin.Format, only: [time_ago: 1]
 
   # Kept in sync with the keyframe in app.css.
   @flash_duration_ms 1_500
@@ -25,7 +26,10 @@ defmodule MixchambWeb.Admin.ChambersLive do
       :timer.send_interval(2_000, :tick)
     end
 
-    {:ok, assign(socket, :chambers, load())}
+    {:ok,
+     socket
+     |> assign(:search, "")
+     |> assign(:chambers, load())}
   end
 
   @impl true
@@ -35,6 +39,11 @@ defmodule MixchambWeb.Admin.ChambersLive do
 
   def handle_info(:restarts_changed, socket) do
     {:noreply, assign(socket, :chambers, load())}
+  end
+
+  @impl true
+  def handle_event("search", %{"q" => query}, socket) do
+    {:noreply, assign(socket, :search, query)}
   end
 
   @impl true
@@ -106,21 +115,23 @@ defmodule MixchambWeb.Admin.ChambersLive do
     Presence.list("chamber:#{slug}:presence") |> map_size()
   end
 
-  defp time_ago(nil), do: "—"
+  # Case-insensitive substring filter on slug + title. Blank query
+  # returns the full list unchanged so the user pays nothing when
+  # they haven't typed anything. Title is nullable; fall through
+  # to just the slug in that case.
+  defp filter_chambers(chambers, ""), do: chambers
 
-  defp time_ago(%DateTime{} = dt) do
-    seconds = DateTime.diff(DateTime.utc_now(), dt, :second)
+  defp filter_chambers(chambers, query) do
+    q = query |> String.trim() |> String.downcase()
 
-    cond do
-      seconds < 60 -> "#{seconds}s ago"
-      seconds < 3_600 -> "#{div(seconds, 60)}m ago"
-      seconds < 86_400 -> "#{div(seconds, 3_600)}h ago"
-      true -> "#{div(seconds, 86_400)}d ago"
+    if q == "" do
+      chambers
+    else
+      Enum.filter(chambers, fn c ->
+        String.contains?(String.downcase(c.slug), q) or
+          (c.title && String.contains?(String.downcase(c.title), q))
+      end)
     end
-  end
-
-  defp time_ago(%NaiveDateTime{} = ndt) do
-    ndt |> DateTime.from_naive!("Etc/UTC") |> time_ago()
   end
 
   @impl true
@@ -142,6 +153,30 @@ defmodule MixchambWeb.Admin.ChambersLive do
         </:subtitle>
       </.header>
 
+      <%!-- Search bar. phx-debounce keeps the change handler from
+           firing on every keystroke; 200 ms is the standard fast-
+           feedback latency. The filter is purely client-side
+           against the already-loaded list (so a stale tick won't
+           overwrite the search), and a blank query is a free
+           no-op in `filter_chambers/2`. --%>
+      <form
+        :if={@chambers != []}
+        phx-change="search"
+        class="flex items-center gap-2"
+      >
+        <input
+          type="text"
+          name="q"
+          value={@search}
+          phx-debounce="200"
+          placeholder="Filter by slug or title…"
+          class="flex-1 bg-card border border-input rounded-md px-3 py-1.5 text-sm outline-none focus:border-primary/60"
+        />
+        <span class="text-xs text-muted-foreground tabular-nums whitespace-nowrap">
+          {length(filter_chambers(@chambers, @search))} / {length(@chambers)}
+        </span>
+      </form>
+
       <div
         :if={@chambers == []}
         class="rounded-lg border border-dashed bg-card/50 p-8 text-center text-sm text-muted-foreground"
@@ -149,7 +184,17 @@ defmodule MixchambWeb.Admin.ChambersLive do
         No chambers in the database yet.
       </div>
 
-      <div :if={@chambers != []} class="rounded-lg border bg-card overflow-hidden overflow-x-auto">
+      <div
+        :if={@chambers != [] and filter_chambers(@chambers, @search) == []}
+        class="rounded-lg border border-dashed bg-card/50 p-8 text-center text-sm text-muted-foreground"
+      >
+        No chambers match <span class="font-mono">"{@search}"</span>.
+      </div>
+
+      <div
+        :if={filter_chambers(@chambers, @search) != []}
+        class="rounded-lg border bg-card overflow-hidden overflow-x-auto"
+      >
         <table class="w-full text-sm">
           <thead class="bg-muted/40 text-xs uppercase tracking-wider text-muted-foreground">
             <tr class="text-left">
@@ -163,7 +208,10 @@ defmodule MixchambWeb.Admin.ChambersLive do
             </tr>
           </thead>
           <tbody class="divide-y">
-            <tr :for={c <- @chambers} class={["align-top", c.flashing? && "kill-flash"]}>
+            <tr
+              :for={c <- filter_chambers(@chambers, @search)}
+              class={["align-top", c.flashing? && "kill-flash"]}
+            >
               <td class="px-4 py-3">
                 <div class="flex items-center gap-2">
                   <%!-- Slug now links to the admin drill-down. The

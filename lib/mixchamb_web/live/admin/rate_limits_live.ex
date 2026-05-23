@@ -20,6 +20,7 @@ defmodule MixchambWeb.Admin.RateLimitsLive do
   alias Mixchamb.{Accounts, RateLimiter}
   alias Mixchamb.Telemetry.RateLimitDrops
   alias MixchambWeb.Admin.Layouts, as: AdminLayouts
+  import MixchambWeb.Admin.Format, only: [time_ago_ms: 1]
 
   # Mirrors ChamberLive's @note_rate_max + @note_rate_window_ms.
   # Worth keeping in sync if those change.
@@ -91,19 +92,6 @@ defmodule MixchambWeb.Admin.RateLimitsLive do
   end
 
   ## Render helpers
-
-  defp time_ago_ms(nil), do: "—"
-
-  defp time_ago_ms(t) when is_integer(t) do
-    seconds = div(System.monotonic_time(:millisecond) - t, 1000)
-
-    cond do
-      seconds < 5 -> "just now"
-      seconds < 60 -> "#{seconds}s ago"
-      seconds < 3600 -> "#{div(seconds, 60)}m ago"
-      true -> "#{div(seconds, 3600)}h ago"
-    end
-  end
 
   defp user_label(%{alias: a, display_name: name}) when is_binary(a) and a != "" do
     "#{a} (#{name})"

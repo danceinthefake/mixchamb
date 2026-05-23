@@ -95,7 +95,13 @@ defmodule MixchambWeb.Admin.ActivityLive do
           <.button variant="outline" phx-click="toggle_pause">
             {if @paused, do: "Resume", else: "Pause"}
           </.button>
-          <.button variant="outline" phx-click="clear">Clear</.button>
+          <.button
+            variant="outline"
+            phx-click="clear"
+            data-confirm="Clear the activity buffer? This drops every event currently on screen — the stream keeps flowing afterwards but the past few minutes of context are gone."
+          >
+            Clear
+          </.button>
         </:actions>
       </.header>
 

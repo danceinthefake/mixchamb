@@ -51,6 +51,42 @@ defmodule MixchambWeb.Admin.AdminLiveTest do
       {:ok, _view, html} = live(conn, ~p"/admin/chambers")
       assert html =~ chamber.slug
     end
+
+    test "search filter hides non-matching rows but keeps the table mounted", %{conn: conn} do
+      {:ok, user} = Accounts.create_anonymous_user()
+      {:ok, c1} = Chambers.create_chamber(user.id)
+      {:ok, c2} = Chambers.create_chamber(user.id)
+
+      {:ok, view, _html} = live(conn, ~p"/admin/chambers")
+
+      # Type a query that should only match c1.
+      html =
+        view
+        |> form("form", %{q: c1.slug})
+        |> render_change()
+
+      assert html =~ c1.slug
+      refute html =~ c2.slug
+
+      # Clear filter — both come back.
+      html = view |> form("form", %{q: ""}) |> render_change()
+      assert html =~ c1.slug
+      assert html =~ c2.slug
+    end
+
+    test "search with no matches shows the 'no matches' empty state", %{conn: conn} do
+      {:ok, user} = Accounts.create_anonymous_user()
+      {:ok, _chamber} = Chambers.create_chamber(user.id)
+
+      {:ok, view, _html} = live(conn, ~p"/admin/chambers")
+
+      html =
+        view
+        |> form("form", %{q: "zzz-no-chamber-matches-this"})
+        |> render_change()
+
+      assert html =~ "No chambers match"
+    end
   end
 
   describe "Users" do
