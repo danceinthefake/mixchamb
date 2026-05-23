@@ -18,6 +18,7 @@ import CardDeck from "./CardDeck.vue"
 import ParticipantsRow from "./ParticipantsRow.vue"
 import RevealPanel from "./RevealPanel.vue"
 import HostControls from "./HostControls.vue"
+import RoundHistory, { type HistoryEntry } from "./RoundHistory.vue"
 
 export type PokerStatus = "voting" | "revealed"
 export type DeckId = "fibonacci" | "modified_fibonacci" | "tshirt" | "pow2"
@@ -31,6 +32,7 @@ export type PokerSession = {
   my_vote: string | null
   voted_user_ids: string[]
   votes: Record<string, string>
+  history: HistoryEntry[]
 }
 
 export type Participant = {
@@ -204,6 +206,8 @@ function setDeck(deck: DeckId) {
       @next-round="nextRound()"
       @change-deck="setDeck"
     />
+
+    <RoundHistory :history="session.history" />
   </section>
 
   <div v-else class="rounded-xl border bg-card/60 p-8 text-center text-muted-foreground">
