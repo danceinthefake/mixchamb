@@ -61,7 +61,7 @@ export default defineConfig({
         "vue/__tests__/**",
         "vue/components/ui/**"
       ],
-      reporter: ["text", "html"]
+      reporter: ["text", "html", "json-summary"]
     }
   }
 });
