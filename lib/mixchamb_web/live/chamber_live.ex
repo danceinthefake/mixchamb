@@ -1098,6 +1098,7 @@ defmodule MixchambWeb.ChamberLive do
             chamber_title={@chamber.title}
             chamber_slug={@chamber.slug}
             activity={@chamber.activity}
+            presence_count={map_size(@presences)}
             poker_session={poker_view(@poker_session, @current_user.id)}
             poker_participants={poker_participants(@presences)}
             current_user_id={@current_user.id}
