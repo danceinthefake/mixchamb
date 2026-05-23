@@ -478,7 +478,13 @@ live.handleEvent("play_remote_note", async (payload: RemoteNote) => {
         <div class="w-px h-5 bg-border"></div>
 
         <span class="text-xs uppercase tracking-wider text-muted-foreground">Vol</span>
-        <input v-model.number="volume" type="range" min="0" max="100" class="w-28 accent-primary" />
+        <input
+          v-model.number="volume"
+          type="range"
+          min="0"
+          max="100"
+          class="brand-gradient-slider w-28"
+        />
         <span class="text-xs tabular-nums font-mono text-muted-foreground w-9 text-right">
           {{ volume }}%
         </span>
@@ -497,13 +503,19 @@ live.handleEvent("play_remote_note", async (payload: RemoteNote) => {
       Quiet here — start a chord and someone'll join.
     </p>
 
-    <DrumPad v-if="current_instrument === 'drums'" :remote-hit="lastRemoteHit" />
-    <KeyboardPad v-else-if="current_instrument === 'keyboard'" :remote-hit="lastRemoteHit" />
-    <GuitarPad v-else-if="current_instrument === 'guitar'" :remote-hit="lastRemoteHit" />
-    <BassPad v-else-if="current_instrument === 'bass'" :remote-hit="lastRemoteHit" />
-    <SynthPad v-else-if="current_instrument === 'pad'" :remote-hit="lastRemoteHit" />
-    <SulingPad v-else-if="current_instrument === 'suling'" :remote-hit="lastRemoteHit" />
-    <KendangPad v-else-if="current_instrument === 'kendang'" :remote-hit="lastRemoteHit" />
+    <!-- Per-instrument scope wrapper overrides --ring so the
+         keyboard-focus outline on whichever pad is active picks
+         up the matching instrument accent (see app.css
+         pad-scope-* utilities). -->
+    <div :class="`pad-scope-${current_instrument}`">
+      <DrumPad v-if="current_instrument === 'drums'" :remote-hit="lastRemoteHit" />
+      <KeyboardPad v-else-if="current_instrument === 'keyboard'" :remote-hit="lastRemoteHit" />
+      <GuitarPad v-else-if="current_instrument === 'guitar'" :remote-hit="lastRemoteHit" />
+      <BassPad v-else-if="current_instrument === 'bass'" :remote-hit="lastRemoteHit" />
+      <SynthPad v-else-if="current_instrument === 'pad'" :remote-hit="lastRemoteHit" />
+      <SulingPad v-else-if="current_instrument === 'suling'" :remote-hit="lastRemoteHit" />
+      <KendangPad v-else-if="current_instrument === 'kendang'" :remote-hit="lastRemoteHit" />
+    </div>
   </div>
 
   <PokerBoard

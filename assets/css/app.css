@@ -318,6 +318,57 @@
     -webkit-text-fill-color: transparent;
   }
 
+  /* Range slider with a brand-gradient track. Used by the music
+     chamber's master volume. Native range styling varies between
+     WebKit and Firefox; both vendor-prefixed pseudo-elements
+     stay in lockstep here so the slider reads the same in either.
+     The thumb keeps the brand pink (--primary) so the "you-have-
+     control" affordance matches the rest of the chamber's
+     primary surfaces. */
+  .brand-gradient-slider {
+    -webkit-appearance: none;
+    appearance: none;
+    background: transparent;
+    height: 1.25rem;
+    cursor: pointer;
+  }
+  .brand-gradient-slider::-webkit-slider-runnable-track {
+    height: 4px;
+    border-radius: 9999px;
+    background-image: linear-gradient(
+      to right, #e94886 0%, #56d2e6 50%, #b5e651 100%
+    );
+  }
+  .brand-gradient-slider::-moz-range-track {
+    height: 4px;
+    border-radius: 9999px;
+    background-image: linear-gradient(
+      to right, #e94886 0%, #56d2e6 50%, #b5e651 100%
+    );
+  }
+  .brand-gradient-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 14px;
+    height: 14px;
+    border-radius: 9999px;
+    background: var(--primary);
+    border: 2px solid var(--background);
+    margin-top: -5px;
+    cursor: grab;
+  }
+  .brand-gradient-slider::-webkit-slider-thumb:active {
+    cursor: grabbing;
+  }
+  .brand-gradient-slider::-moz-range-thumb {
+    width: 14px;
+    height: 14px;
+    border-radius: 9999px;
+    background: var(--primary);
+    border: 2px solid var(--background);
+    cursor: grab;
+  }
+
   /* Supervisor LV: when a chamber's GenServer restarts, the row gets
      this class for ~1.5s as visual proof of the chaos kill. Driven
      by the chamber's uptime + restart count — no client-side state.
@@ -363,6 +414,22 @@
     outline: 2px solid var(--ring);
     outline-offset: 2px;
   }
+
+  /* Per-instrument scope: override --ring so the keyboard-focus
+     ring on a pad takes the instrument's accent colour instead of
+     the global brand pink. The override is scoped to whichever
+     pad subtree it sits on — flipping instruments swaps the
+     focus colour along with the pad, no JS or per-pad CSS edits.
+     Add `pad-scope-<instrument>` to a wrapper around the pad
+     component; the `.pad-touch:focus-visible` rule above reads
+     from the scoped --ring automatically. */
+  .pad-scope-drums    { --ring: var(--accent-drums); }
+  .pad-scope-keyboard { --ring: var(--accent-keyboard); }
+  .pad-scope-guitar   { --ring: var(--accent-guitar); }
+  .pad-scope-bass     { --ring: var(--accent-bass); }
+  .pad-scope-pad      { --ring: var(--accent-pad); }
+  .pad-scope-suling   { --ring: var(--accent-suling); }
+  .pad-scope-kendang  { --ring: var(--accent-kendang); }
 }
 
 /* Respect prefers-reduced-motion. Browser / OS setting translates
