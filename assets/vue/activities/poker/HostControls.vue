@@ -39,26 +39,45 @@ const deckLabels: Record<DeckId, string> = {
           v-if="status === 'voting'"
           type="button"
           @click="$emit('reveal')"
-          class="px-3 py-1.5 text-sm rounded-md bg-primary text-primary-foreground hover:bg-primary/90 hover:-translate-y-px hover:shadow-md transition-all cursor-pointer font-medium"
+          class="px-3 py-1.5 text-sm rounded-md bg-primary text-primary-foreground hover:bg-primary/90 hover:-translate-y-px hover:shadow-md transition-all cursor-pointer font-medium inline-flex items-center gap-1.5"
+          title="Flip everyone's cards. Keyboard: R"
         >
           Reveal
+          <kbd
+            aria-hidden="true"
+            class="hidden sm:inline-block text-[10px] px-1 rounded bg-background/30 text-primary-foreground/80 font-mono font-normal"
+          >
+            R
+          </kbd>
         </button>
         <template v-else>
           <button
             type="button"
             @click="$emit('revote')"
-            class="px-3 py-1.5 text-sm rounded-md border bg-card hover:bg-accent text-foreground cursor-pointer font-medium transition-colors"
-            title="Clear votes and let the team vote again on this same story"
+            class="px-3 py-1.5 text-sm rounded-md border bg-card hover:bg-accent text-foreground cursor-pointer font-medium transition-colors inline-flex items-center gap-1.5"
+            title="Clear votes and let the team vote again on this same story. Keyboard: E"
           >
             Re-vote
+            <kbd
+              aria-hidden="true"
+              class="hidden sm:inline-block text-[10px] px-1 rounded bg-muted text-muted-foreground font-mono font-normal"
+            >
+              E
+            </kbd>
           </button>
           <button
             type="button"
             @click="$emit('next-round')"
-            class="px-3 py-1.5 text-sm rounded-md bg-primary text-primary-foreground hover:bg-primary/90 hover:-translate-y-px hover:shadow-md transition-all cursor-pointer font-medium"
-            title="Move on to the next story (round number advances)"
+            class="px-3 py-1.5 text-sm rounded-md bg-primary text-primary-foreground hover:bg-primary/90 hover:-translate-y-px hover:shadow-md transition-all cursor-pointer font-medium inline-flex items-center gap-1.5"
+            title="Move on to the next story (round number advances). Keyboard: N"
           >
             Next round
+            <kbd
+              aria-hidden="true"
+              class="hidden sm:inline-block text-[10px] px-1 rounded bg-background/30 text-primary-foreground/80 font-mono font-normal"
+            >
+              N
+            </kbd>
           </button>
         </template>
       </div>
