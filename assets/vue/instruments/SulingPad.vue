@@ -117,10 +117,10 @@ onUnmounted(() => stopAll("suling", style.value))
     <div class="relative -mx-2">
       <!-- Scroll edge fades on small screens, like KeyboardPad. -->
       <div
-        class="pointer-events-none absolute inset-y-0 left-0 w-6 z-10 bg-gradient-to-r from-background to-transparent sm:hidden"
+        class="pointer-events-none absolute inset-y-0 left-0 w-6 z-10 bg-gradient-to-r from-background to-transparent md:hidden"
       ></div>
       <div
-        class="pointer-events-none absolute inset-y-0 right-0 w-6 z-10 bg-gradient-to-l from-background to-transparent sm:hidden"
+        class="pointer-events-none absolute inset-y-0 right-0 w-6 z-10 bg-gradient-to-l from-background to-transparent md:hidden"
       ></div>
 
       <div class="overflow-x-auto px-2">
@@ -131,7 +131,7 @@ onUnmounted(() => stopAll("suling", style.value))
             @pointerdown.prevent="hit(n.note)"
             :aria-label="`${n.label}${n.key ? ' (press ' + n.key + ')' : ''}`"
             :class="[
-              'pad-touch touch-manipulation rounded-md border bg-card flex flex-col items-center justify-center gap-1 py-6 transition-all active:scale-95 hover:bg-accent',
+              'pad-touch touch-manipulation rounded-lg border bg-card flex flex-col items-center justify-center gap-1 py-6 transition-all active:scale-95 hover:bg-accent',
               n.label.includes('#') && 'bg-muted',
               flashing === n.note && 'ring-2 ring-accent-suling scale-95 glow-suling',
               remoteFlashing === n.note && flashing !== n.note && 'ring-2 ring-orange-400',

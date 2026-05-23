@@ -152,7 +152,7 @@ onUnmounted(() => stopAll("pad", style.value))
         @pointerdown.prevent="trigger(c.name)"
         :aria-label="`${c.name} chord${c.key ? ' (press ' + c.key + ')' : ''}`"
         :class="[
-          'pad-touch touch-manipulation rounded-md border bg-card flex flex-col items-center justify-center gap-2 py-6 transition-all active:scale-95 hover:bg-accent',
+          'pad-touch touch-manipulation rounded-lg border bg-card flex flex-col items-center justify-center gap-2 py-6 transition-all active:scale-95 hover:bg-accent',
           flashing === c.name && 'ring-2 ring-accent-pad scale-95 glow-pad',
           remoteFlashing === c.name && flashing !== c.name && 'ring-2 ring-orange-400',
         ]"

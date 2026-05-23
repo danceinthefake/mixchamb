@@ -1010,23 +1010,27 @@ defmodule MixchambWeb.ChamberLive do
             <%!-- Play recording — anyone. Shown only when there's
                  something to replay and recording is currently off
                  (so we don't double-stack a live jam with a replay
-                 of the same jam). --%>
+                 of the same jam). Icon-only chip so it doesn't
+                 compete with the REC text button next to it; full
+                 label lives in the title for hover + AT users. --%>
             <button
               :if={@recorded_count > 0 and not @chamber.is_recording}
               phx-click="play_recording"
               type="button"
-              class="inline-flex items-center gap-1.5 px-3 py-1 text-xs rounded-md border bg-card hover:bg-accent text-foreground border-input cursor-pointer transition-colors"
+              aria-label={"Play recording (#{@recorded_count} notes)"}
+              class="inline-flex items-center gap-1.5 px-2 py-1 text-xs rounded-md border bg-card hover:bg-accent text-foreground border-border cursor-pointer transition-colors"
               title={"Replay all #{@recorded_count} recorded notes"}
             >
-              <.icon name="hero-play-mini" class="size-3.5" /> Play recording
-              <span class="text-muted-foreground tabular-nums">· {@recorded_count}</span>
+              <.icon name="hero-play-mini" class="size-3.5" />
+              <span class="text-muted-foreground tabular-nums">{@recorded_count}</span>
             </button>
 
             <%!-- Reset recording — creator-only. Wipes the persisted
                  events for this chamber and tells the client to
                  drop its captured audio blob. Disabled while
                  recording is on (would race with the GenServer's
-                 batched flush). --%>
+                 batched flush). Icon-only for the same reason as
+                 Play — keeps the REC toggle the visible primary. --%>
             <button
               :if={
                 creator?(@chamber, @current_user) and @recorded_count > 0 and
@@ -1035,10 +1039,11 @@ defmodule MixchambWeb.ChamberLive do
               phx-click="reset_recording"
               data-confirm="Delete the saved recording for this chamber? This can't be undone."
               type="button"
-              class="inline-flex items-center gap-1.5 px-3 py-1 text-xs rounded-md border bg-card hover:bg-destructive/10 hover:text-destructive hover:border-destructive/40 text-muted-foreground border-input cursor-pointer transition-colors"
+              aria-label="Reset recording"
+              class="inline-flex items-center justify-center size-7 rounded-md border bg-card hover:bg-destructive/10 hover:text-destructive hover:border-destructive/40 text-muted-foreground border-border cursor-pointer transition-colors"
               title="Delete this chamber's recorded events"
             >
-              <.icon name="hero-trash-mini" class="size-3.5" /> Reset recording
+              <.icon name="hero-trash-mini" class="size-3.5" />
             </button>
           </div>
 

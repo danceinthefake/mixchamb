@@ -140,14 +140,15 @@ defmodule MixchambWeb.ChamberLiveTest do
 
       {:ok, view, _html} = live(conn, ~p"/chamber/#{chamber.slug}")
 
-      # Refresh count assign — happens on mount but is_recording
-      # toggled outside the LV so the chamber row here was just
-      # built fresh; assert button is visible.
-      assert render(view) =~ "Play recording"
+      # Play + Reset became icon-only chips when the row was
+      # de-cluttered; assert via the phx-click attribute instead
+      # of visible text. The replay-count badge is still visible
+      # text, so we keep one text check on that.
+      assert render(view) =~ "play_recording"
 
       assert view
-             |> element("button", "Play recording")
-             |> render_click() =~ "Play recording"
+             |> element(~s|button[phx-click="play_recording"]|)
+             |> render_click() =~ "play_recording"
     end
 
     test "non-creator does not see the REC toggle but sees the live badge while on",
@@ -176,11 +177,11 @@ defmodule MixchambWeb.ChamberLiveTest do
       assert Chambers.recorded_event_count(chamber.id) == 2
 
       {:ok, view, _html} = live(conn, ~p"/chamber/#{chamber.slug}")
-      view |> element("button", "Reset recording") |> render_click()
+      view |> element(~s|button[phx-click="reset_recording"]|) |> render_click()
 
       assert Chambers.recorded_event_count(chamber.id) == 0
       # Button hides once there's nothing left to reset.
-      refute render(view) =~ "Reset recording"
+      refute render(view) =~ ~s|phx-click="reset_recording"|
     end
   end
 
