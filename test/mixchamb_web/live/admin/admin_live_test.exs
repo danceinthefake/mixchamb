@@ -299,6 +299,7 @@ defmodule MixchambWeb.Admin.AdminLiveTest do
       {:ok, admin} = Mixchamb.Admins.create_admin(%{username: "dropme", password: "Sec1passw"})
 
       {:ok, view, _html} = live(conn, ~p"/admin/ops")
+
       html =
         view
         |> element("button[phx-click='delete_admin'][phx-value-id='#{admin.id}']")

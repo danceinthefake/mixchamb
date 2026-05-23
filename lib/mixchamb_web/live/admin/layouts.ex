@@ -30,7 +30,12 @@ defmodule MixchambWeb.Admin.Layouts do
       view: MixchambWeb.Admin.ChambersLive,
       icon: "hero-cube"
     },
-    %{label: "Users", path: "/admin/users", view: MixchambWeb.Admin.UsersLive, icon: "hero-users"},
+    %{
+      label: "Users",
+      path: "/admin/users",
+      view: MixchambWeb.Admin.UsersLive,
+      icon: "hero-users"
+    },
     %{
       label: "Activity",
       path: "/admin/activity",

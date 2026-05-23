@@ -61,9 +61,7 @@ describe("PokerBoard", () => {
     it("clicking a card pushes poker_vote with the card", async () => {
       const wrapper = mount(PokerBoard, { props: baseProps })
 
-      const cardButtons = wrapper
-        .findAll("button")
-        .filter((b) => /^[0-9?☕]/.test(b.text().trim()))
+      const cardButtons = wrapper.findAll("button").filter((b) => /^[0-9?☕]/.test(b.text().trim()))
       await cardButtons[0].trigger("click")
 
       expect(pushEventMock).toHaveBeenCalledWith("poker_vote", { card: "1" })
@@ -88,9 +86,7 @@ describe("PokerBoard", () => {
         },
       })
       // CardDeck isn't rendered during revealed — no cards to click.
-      const cardButtons = wrapper
-        .findAll("button")
-        .filter((b) => /^[0-9?☕]/.test(b.text().trim()))
+      const cardButtons = wrapper.findAll("button").filter((b) => /^[0-9?☕]/.test(b.text().trim()))
       expect(cardButtons).toHaveLength(0)
     })
   })
@@ -156,32 +152,31 @@ describe("PokerBoard", () => {
       expect(playRevealMock).not.toHaveBeenCalled()
     })
 
-    it("plays the chime + lags the flip when status transitions voting → revealed",
-      async () => {
-        vi.useFakeTimers()
-        const wrapper = mount(PokerBoard, { props: baseProps })
+    it("plays the chime + lags the flip when status transitions voting → revealed", async () => {
+      vi.useFakeTimers()
+      const wrapper = mount(PokerBoard, { props: baseProps })
 
-        // Transition to revealed.
-        await wrapper.setProps({
-          poker_session: {
-            ...baseSession,
-            status: "revealed",
-            voted_user_ids: ["u1"],
-            votes: { u1: "5" },
-          },
-        })
-
-        // Chime fires immediately, flip is still pending.
-        expect(playRevealMock).toHaveBeenCalledOnce()
-        expect(wrapper.findAll(".is-revealed")).toHaveLength(0)
-
-        // Advance past the suspense.
-        vi.advanceTimersByTime(900)
-        await wrapper.vm.$nextTick()
-        expect(wrapper.findAll(".is-revealed")).toHaveLength(1)
-
-        vi.useRealTimers()
+      // Transition to revealed.
+      await wrapper.setProps({
+        poker_session: {
+          ...baseSession,
+          status: "revealed",
+          voted_user_ids: ["u1"],
+          votes: { u1: "5" },
+        },
       })
+
+      // Chime fires immediately, flip is still pending.
+      expect(playRevealMock).toHaveBeenCalledOnce()
+      expect(wrapper.findAll(".is-revealed")).toHaveLength(0)
+
+      // Advance past the suspense.
+      vi.advanceTimersByTime(900)
+      await wrapper.vm.$nextTick()
+      expect(wrapper.findAll(".is-revealed")).toHaveLength(1)
+
+      vi.useRealTimers()
+    })
 
     it("resets flipped when status transitions back to :voting", async () => {
       const wrapper = mount(PokerBoard, {

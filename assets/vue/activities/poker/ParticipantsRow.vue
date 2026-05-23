@@ -45,9 +45,7 @@ const waitingHint = computed<string | null>(() => {
   const nonVoters = props.participants.filter((p) => !hasVoted(p.user_id))
   if (nonVoters.length === 0) return null
 
-  const names = nonVoters.map((p) =>
-    p.user_id === props.current_user_id ? "you" : displayName(p),
-  )
+  const names = nonVoters.map((p) => (p.user_id === props.current_user_id ? "you" : displayName(p)))
   if (names.length === 1) return `Waiting on ${names[0]}`
   if (names.length === 2) return `Waiting on ${names[0]} and ${names[1]}`
   if (names.length === 3) return `Waiting on ${names[0]}, ${names[1]}, and ${names[2]}`
@@ -61,11 +59,7 @@ const waitingHint = computed<string | null>(() => {
 // when nobody's voted) and during :revealed (the conversation
 // has moved on).
 function isOverdue(userId: string): boolean {
-  return (
-    props.status === "voting" &&
-    votedCount.value > 0 &&
-    !hasVoted(userId)
-  )
+  return props.status === "voting" && votedCount.value > 0 && !hasVoted(userId)
 }
 </script>
 
@@ -76,9 +70,7 @@ function isOverdue(userId: string): boolean {
          edges; centered stack puts the label at the head of a
          centered column with the silhouettes below. -->
     <div class="text-center space-y-0.5">
-      <p class="text-xs uppercase tracking-wider text-muted-foreground font-display">
-        Players
-      </p>
+      <p class="text-xs uppercase tracking-wider text-muted-foreground font-display">Players</p>
       <p class="text-xs text-muted-foreground tabular-nums">
         {{ votedCount }} / {{ participants.length }} voted
       </p>
@@ -86,10 +78,7 @@ function isOverdue(userId: string): boolean {
            least one teammate hasn't. Stays a small italic hint
            rather than a banner — it's a gentle pointer, not a
            call-out. -->
-      <p
-        v-if="waitingHint"
-        class="text-xs italic text-muted-foreground/90 pt-0.5"
-      >
+      <p v-if="waitingHint" class="text-xs italic text-muted-foreground/90 pt-0.5">
         {{ waitingHint }}
       </p>
     </div>
@@ -124,14 +113,9 @@ function isOverdue(userId: string): boolean {
             </span>
           </div>
         </div>
-        <span
-          class="text-sm text-foreground truncate max-w-24 text-center"
-          :title="displayName(p)"
-        >
+        <span class="text-sm text-foreground truncate max-w-24 text-center" :title="displayName(p)">
           {{ displayName(p) }}
-          <span v-if="p.user_id === current_user_id" class="text-muted-foreground">
-            (you)
-          </span>
+          <span v-if="p.user_id === current_user_id" class="text-muted-foreground"> (you) </span>
         </span>
       </li>
     </ul>
@@ -208,12 +192,7 @@ function isOverdue(userId: string): boolean {
   /* Brand gradient (pink -> cyan -> green) matching the logo's
      horizontal stops, applied diagonally on the card so all three
      colours read along the card's longest axis. */
-  background: linear-gradient(
-    135deg,
-    #e94886 0%,
-    #56d2e6 50%,
-    #b5e651 100%
-  );
+  background: linear-gradient(135deg, #e94886 0%, #56d2e6 50%, #b5e651 100%);
 }
 
 .card-front {

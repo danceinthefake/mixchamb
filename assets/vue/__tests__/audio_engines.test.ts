@@ -31,7 +31,9 @@ describe("audio.ts utilities", () => {
     const { register, play } = await import("../lib/audio")
     const calls: string[] = []
     register("drums", "test-style", {
-      play: (note: string) => { calls.push(note) },
+      play: (note: string) => {
+        calls.push(note)
+      },
       stopAll: () => {},
     })
 

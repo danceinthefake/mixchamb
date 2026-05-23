@@ -419,17 +419,14 @@ live.handleEvent("play_remote_note", async (payload: RemoteNote) => {
           <div
             aria-hidden="true"
             class="absolute inset-0 -m-8 rounded-full blur-2xl opacity-60 brand-glow"
-          >
-          </div>
+          ></div>
           <img src="/images/logo.svg" alt="" class="relative size-20" />
         </div>
         <div class="space-y-1">
           <h2 class="text-3xl font-bold tracking-tight font-display brand-gradient-text">
             {{ gateHeading }}
           </h2>
-          <p class="text-sm text-muted-foreground">
-            Browsers need a gesture before audio can play
-          </p>
+          <p class="text-sm text-muted-foreground">Browsers need a gesture before audio can play</p>
         </div>
         <button
           class="px-6 py-2.5 text-sm rounded-md bg-primary text-primary-foreground hover:bg-primary/90 hover:-translate-y-px hover:shadow-md transition-all cursor-pointer font-medium"
@@ -478,10 +475,7 @@ live.handleEvent("play_remote_note", async (payload: RemoteNote) => {
         <!-- Pulsing red dot while a recordable replay is captured.
              Lets the user know audio is being grabbed without
              cluttering the bar with extra copy. -->
-        <span
-          v-if="isCapturing"
-          class="inline-flex items-center gap-1.5 px-2 text-xs text-red-500"
-        >
+        <span v-if="isCapturing" class="inline-flex items-center gap-1.5 px-2 text-xs text-red-500">
           <span class="size-2 rounded-full bg-red-500 animate-pulse"></span>
           Capturing…
         </span>

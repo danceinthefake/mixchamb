@@ -54,8 +54,8 @@ defineEmits<{ pick: [card: string] }>()
       </button>
     </div>
     <p v-if="selected" class="text-xs text-muted-foreground text-center">
-      Voted <span class="font-mono font-bold text-foreground">{{ selected }}</span> ·
-      tap again to withdraw.
+      Voted <span class="font-mono font-bold text-foreground">{{ selected }}</span> · tap again to
+      withdraw.
     </p>
   </div>
 </template>

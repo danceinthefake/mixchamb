@@ -612,8 +612,7 @@ defmodule MixchambWeb.ChamberLive do
   # and avoids having to track per-event diffs against a stale local
   # copy.
   def handle_info({:poker, _evt, _payload}, socket) do
-    {:noreply,
-     assign(socket, :poker_session, load_poker_session(socket.assigns.chamber))}
+    {:noreply, assign(socket, :poker_session, load_poker_session(socket.assigns.chamber))}
   end
 
   # Co-host promotion / demotion fans out to everyone in the chamber.
@@ -631,8 +630,7 @@ defmodule MixchambWeb.ChamberLive do
   end
 
   def handle_info({:poker, _evt, _a, _b, _c}, socket) do
-    {:noreply,
-     assign(socket, :poker_session, load_poker_session(socket.assigns.chamber))}
+    {:noreply, assign(socket, :poker_session, load_poker_session(socket.assigns.chamber))}
   end
 
   # Activity flipped by the host. Re-pull the chamber row so the
@@ -1039,48 +1037,48 @@ defmodule MixchambWeb.ChamberLive do
              clamps the chamber to max-w-3xl. --%>
         <div class="mx-auto max-w-5xl">
           <div class="space-y-4">
-          <%!-- Leave-chamber back link. Small + subtle so it
+            <%!-- Leave-chamber back link. Small + subtle so it
                doesn't compete with the controls; navigates back
                to the landing page. --%>
-          <div>
-            <.link
-              navigate={~p"/"}
-              class="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
-            >
-              <.icon name="hero-arrow-left-mini" class="size-3.5" /> Leave chamber
-            </.link>
-          </div>
+            <div>
+              <.link
+                navigate={~p"/"}
+                class="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+              >
+                <.icon name="hero-arrow-left-mini" class="size-3.5" /> Leave chamber
+              </.link>
+            </div>
 
-          <%!-- Title heading. The creator gets an inline form that
+            <%!-- Title heading. The creator gets an inline form that
                renames the chamber on submit (Enter / blur); other
                users see a static heading. The fallback when no
                title is set shows the slug so the placeholder still
                feels chamber-specific. --%>
-          <div>
-            <%= if creator?(@chamber, @current_user) do %>
-              <form phx-submit="save_title" class="flex items-baseline gap-2">
-                <input
-                  type="text"
-                  name="title"
-                  value={@chamber.title || ""}
-                  maxlength="80"
-                  placeholder="Untitled chamber"
-                  class="flex-1 bg-transparent border-none outline-none text-2xl font-bold tracking-tight font-display text-foreground placeholder:text-muted-foreground/50"
-                />
-                <%!-- The hint is just clutter on mobile, where on-screen
+            <div>
+              <%= if creator?(@chamber, @current_user) do %>
+                <form phx-submit="save_title" class="flex items-baseline gap-2">
+                  <input
+                    type="text"
+                    name="title"
+                    value={@chamber.title || ""}
+                    maxlength="80"
+                    placeholder="Untitled chamber"
+                    class="flex-1 bg-transparent border-none outline-none text-2xl font-bold tracking-tight font-display text-foreground placeholder:text-muted-foreground/50"
+                  />
+                  <%!-- The hint is just clutter on mobile, where on-screen
                      keyboards already show their own submit affordance. --%>
-                <span class="hidden sm:inline text-[10px] uppercase tracking-wider text-muted-foreground/60">
-                  Press enter to save
-                </span>
-              </form>
-            <% else %>
-              <h1 class="text-2xl font-bold tracking-tight font-display">
-                {display_title(@chamber)}
-              </h1>
-            <% end %>
-          </div>
+                  <span class="hidden sm:inline text-[10px] uppercase tracking-wider text-muted-foreground/60">
+                    Press enter to save
+                  </span>
+                </form>
+              <% else %>
+                <h1 class="text-2xl font-bold tracking-tight font-display">
+                  {display_title(@chamber)}
+                </h1>
+              <% end %>
+            </div>
 
-          <%!-- Activity switcher. Host-only chip-strip to flip
+            <%!-- Activity switcher. Host-only chip-strip to flip
                between music and poker mid-session. Hidden on the
                singleton chaos chamber (it's music-locked by design;
                its creator_user_id is NULL so @is_host is already
@@ -1088,187 +1086,187 @@ defmodule MixchambWeb.ChamberLive do
                music and allocates a fresh one on poker, then
                broadcasts :activity_changed for every connected
                client. --%>
-          <div :if={@is_host} class="flex flex-wrap items-center gap-2">
-            <span class="text-xs uppercase tracking-wider text-muted-foreground mr-1">
-              Activity
-            </span>
-            <button
-              :for={a <- Mixchamb.Chambers.Chamber.activities()}
-              phx-click="set_activity"
-              phx-value-activity={a}
-              data-confirm={
-                if a != @chamber.activity and a == "music" and @poker_session != nil and
-                     map_size(@poker_session.votes) > 0,
-                   do: "Switching to music will drop the current poker votes. Continue?"
-              }
-              class={[
-                "px-3 py-1 text-xs rounded-md border transition-colors cursor-pointer",
-                @chamber.activity == a && activity_chip_active_class(a),
-                @chamber.activity != a &&
-                  "bg-card hover:bg-accent text-foreground border-border"
-              ]}
-            >
-              {activity_label(a)}
-            </button>
-          </div>
+            <div :if={@is_host} class="flex flex-wrap items-center gap-2">
+              <span class="text-xs uppercase tracking-wider text-muted-foreground mr-1">
+                Activity
+              </span>
+              <button
+                :for={a <- Mixchamb.Chambers.Chamber.activities()}
+                phx-click="set_activity"
+                phx-value-activity={a}
+                data-confirm={
+                  if a != @chamber.activity and a == "music" and @poker_session != nil and
+                       map_size(@poker_session.votes) > 0,
+                     do: "Switching to music will drop the current poker votes. Continue?"
+                }
+                class={[
+                  "px-3 py-1 text-xs rounded-md border transition-colors cursor-pointer",
+                  @chamber.activity == a && activity_chip_active_class(a),
+                  @chamber.activity != a &&
+                    "bg-card hover:bg-accent text-foreground border-border"
+                ]}
+              >
+                {activity_label(a)}
+              </button>
+            </div>
 
-          <%!-- Chamber kind. Creator gets a chip-strip to switch
+            <%!-- Chamber kind. Creator gets a chip-strip to switch
                between presets; everyone else sees a single chip
                showing what's active. Changes ripple via the
                :chamber_updated broadcast so the FX bus on every
                client retunes within ~100 ms. Music-only — kind is
                the audio reverb preset and is meaningless outside
                music chambers. --%>
-          <div
-            :if={@chamber.activity == "music"}
-            class="flex flex-wrap items-center gap-2"
-          >
-            <span class="text-xs uppercase tracking-wider text-muted-foreground mr-1">
-              Kind
-            </span>
-            <%= if can_change_kind?(@chamber, @current_user, @current_admin) do %>
-              <button
-                :for={kind <- chamber_kinds()}
-                phx-click="set_kind"
-                phx-value-kind={kind}
-                title={chamber_kind_blurb(kind)}
-                class={[
-                  "px-3 py-1 text-xs rounded-md border transition-colors cursor-pointer",
-                  @chamber.kind == kind &&
-                    "bg-primary/15 text-primary border-primary/40",
-                  @chamber.kind != kind &&
-                    "bg-card hover:bg-accent text-foreground border-border"
-                ]}
-              >
-                {chamber_kind_label(kind)}
-              </button>
-            <% else %>
-              <span
-                class="inline-flex items-center gap-1 px-3 py-1 text-xs rounded-md border bg-card text-foreground"
-                title={chamber_kind_blurb(@chamber.kind)}
-              >
-                {chamber_kind_label(@chamber.kind)}
-                <span class="text-muted-foreground">
-                  · {chamber_kind_blurb(@chamber.kind)}
-                </span>
+            <div
+              :if={@chamber.activity == "music"}
+              class="flex flex-wrap items-center gap-2"
+            >
+              <span class="text-xs uppercase tracking-wider text-muted-foreground mr-1">
+                Kind
               </span>
-            <% end %>
-          </div>
+              <%= if can_change_kind?(@chamber, @current_user, @current_admin) do %>
+                <button
+                  :for={kind <- chamber_kinds()}
+                  phx-click="set_kind"
+                  phx-value-kind={kind}
+                  title={chamber_kind_blurb(kind)}
+                  class={[
+                    "px-3 py-1 text-xs rounded-md border transition-colors cursor-pointer",
+                    @chamber.kind == kind &&
+                      "bg-primary/15 text-primary border-primary/40",
+                    @chamber.kind != kind &&
+                      "bg-card hover:bg-accent text-foreground border-border"
+                  ]}
+                >
+                  {chamber_kind_label(kind)}
+                </button>
+              <% else %>
+                <span
+                  class="inline-flex items-center gap-1 px-3 py-1 text-xs rounded-md border bg-card text-foreground"
+                  title={chamber_kind_blurb(@chamber.kind)}
+                >
+                  {chamber_kind_label(@chamber.kind)}
+                  <span class="text-muted-foreground">
+                    · {chamber_kind_blurb(@chamber.kind)}
+                  </span>
+                </span>
+              <% end %>
+            </div>
 
-          <%!-- Recording controls. Creator gets a REC toggle.
+            <%!-- Recording controls. Creator gets a REC toggle.
                Everyone sees the live REC badge while recording is
                on, and a "Play recording" button once there's at
                least one persisted event. Music-only — only audio
                events are captured / replayed. --%>
-          <div
-            :if={@chamber.activity == "music"}
-            class="flex flex-wrap items-center gap-2"
-          >
-            <span class="text-xs uppercase tracking-wider text-muted-foreground mr-1">
-              Recording
-            </span>
-
-            <button
-              :if={creator?(@chamber, @current_user)}
-              phx-click="toggle_recording"
-              data-confirm={
-                if not @chamber.is_recording and @has_pending_audio,
-                  do:
-                    "Starting a new recording will replace the current audio file (it hasn't been downloaded). Continue?"
-              }
-              type="button"
-              aria-pressed={to_string(@chamber.is_recording)}
-              aria-label={
-                if @chamber.is_recording,
-                  do: "Stop recording",
-                  else: "Start recording"
-              }
-              class={[
-                "inline-flex items-center gap-1.5 px-3 py-1 text-xs rounded-md border transition-colors cursor-pointer",
-                @chamber.is_recording &&
-                  "bg-red-500/15 text-red-500 border-red-500/40 hover:bg-red-500/20",
-                !@chamber.is_recording &&
-                  "bg-card hover:bg-accent text-foreground border-border"
-              ]}
-              title={
-                if @chamber.is_recording,
-                  do: "Click to stop recording",
-                  else: "Click to start recording"
-              }
+            <div
+              :if={@chamber.activity == "music"}
+              class="flex flex-wrap items-center gap-2"
             >
-              <span
-                aria-hidden="true"
-                class={[
-                  "size-2 rounded-full",
-                  @chamber.is_recording && "bg-red-500 animate-pulse",
-                  !@chamber.is_recording && "bg-muted-foreground/40"
-                ]}
-              >
+              <span class="text-xs uppercase tracking-wider text-muted-foreground mr-1">
+                Recording
               </span>
-              {if @chamber.is_recording, do: "REC · click to stop", else: "Start recording"}
-            </button>
 
-            <%!-- Screen-reader-only live region. The button label
+              <button
+                :if={creator?(@chamber, @current_user)}
+                phx-click="toggle_recording"
+                data-confirm={
+                  if not @chamber.is_recording and @has_pending_audio,
+                    do:
+                      "Starting a new recording will replace the current audio file (it hasn't been downloaded). Continue?"
+                }
+                type="button"
+                aria-pressed={to_string(@chamber.is_recording)}
+                aria-label={
+                  if @chamber.is_recording,
+                    do: "Stop recording",
+                    else: "Start recording"
+                }
+                class={[
+                  "inline-flex items-center gap-1.5 px-3 py-1 text-xs rounded-md border transition-colors cursor-pointer",
+                  @chamber.is_recording &&
+                    "bg-red-500/15 text-red-500 border-red-500/40 hover:bg-red-500/20",
+                  !@chamber.is_recording &&
+                    "bg-card hover:bg-accent text-foreground border-border"
+                ]}
+                title={
+                  if @chamber.is_recording,
+                    do: "Click to stop recording",
+                    else: "Click to start recording"
+                }
+              >
+                <span
+                  aria-hidden="true"
+                  class={[
+                    "size-2 rounded-full",
+                    @chamber.is_recording && "bg-red-500 animate-pulse",
+                    !@chamber.is_recording && "bg-muted-foreground/40"
+                  ]}
+                >
+                </span>
+                {if @chamber.is_recording, do: "REC · click to stop", else: "Start recording"}
+              </button>
+
+              <%!-- Screen-reader-only live region. The button label
                  already changes between "Start recording" /
                  "Stop recording" on toggle, but a polite live
                  region also announces the state transition itself
                  so AT users hear "Recording started" without
                  needing to re-focus the button. --%>
-            <div role="status" aria-live="polite" aria-atomic="true" class="sr-only">
-              {if @chamber.is_recording, do: "Recording started", else: "Recording stopped"}
-            </div>
+              <div role="status" aria-live="polite" aria-atomic="true" class="sr-only">
+                {if @chamber.is_recording, do: "Recording started", else: "Recording stopped"}
+              </div>
 
-            <%!-- Non-creator live badge — visible only while
+              <%!-- Non-creator live badge — visible only while
                  recording is on. Mirrors the creator's button
                  style minus the click affordance. --%>
-            <span
-              :if={!creator?(@chamber, @current_user) and @chamber.is_recording}
-              class="inline-flex items-center gap-1.5 px-3 py-1 text-xs rounded-md border bg-red-500/15 text-red-500 border-red-500/40"
-            >
-              <span class="size-2 rounded-full bg-red-500 animate-pulse"></span> REC
-            </span>
+              <span
+                :if={!creator?(@chamber, @current_user) and @chamber.is_recording}
+                class="inline-flex items-center gap-1.5 px-3 py-1 text-xs rounded-md border bg-red-500/15 text-red-500 border-red-500/40"
+              >
+                <span class="size-2 rounded-full bg-red-500 animate-pulse"></span> REC
+              </span>
 
-            <%!-- Play recording — anyone. Shown only when there's
+              <%!-- Play recording — anyone. Shown only when there's
                  something to replay and recording is currently off
                  (so we don't double-stack a live jam with a replay
                  of the same jam). Icon-only chip so it doesn't
                  compete with the REC text button next to it; full
                  label lives in the title for hover + AT users. --%>
-            <button
-              :if={@recorded_count > 0 and not @chamber.is_recording}
-              phx-click="play_recording"
-              type="button"
-              aria-label={"Play recording (#{@recorded_count} notes)"}
-              class="inline-flex items-center gap-1.5 px-2 py-1 text-xs rounded-md border bg-card hover:bg-accent text-foreground border-border cursor-pointer transition-colors"
-              title={"Replay all #{@recorded_count} recorded notes"}
-            >
-              <.icon name="hero-play-mini" class="size-3.5" />
-              <span class="text-muted-foreground tabular-nums">{@recorded_count}</span>
-            </button>
+              <button
+                :if={@recorded_count > 0 and not @chamber.is_recording}
+                phx-click="play_recording"
+                type="button"
+                aria-label={"Play recording (#{@recorded_count} notes)"}
+                class="inline-flex items-center gap-1.5 px-2 py-1 text-xs rounded-md border bg-card hover:bg-accent text-foreground border-border cursor-pointer transition-colors"
+                title={"Replay all #{@recorded_count} recorded notes"}
+              >
+                <.icon name="hero-play-mini" class="size-3.5" />
+                <span class="text-muted-foreground tabular-nums">{@recorded_count}</span>
+              </button>
 
-            <%!-- Reset recording — creator-only. Wipes the persisted
+              <%!-- Reset recording — creator-only. Wipes the persisted
                  events for this chamber and tells the client to
                  drop its captured audio blob. Disabled while
                  recording is on (would race with the GenServer's
                  batched flush). Icon-only for the same reason as
                  Play — keeps the REC toggle the visible primary. --%>
-            <button
-              :if={
-                creator?(@chamber, @current_user) and @recorded_count > 0 and
-                  not @chamber.is_recording
-              }
-              phx-click="reset_recording"
-              data-confirm="Delete the saved recording for this chamber? This can't be undone."
-              type="button"
-              aria-label="Reset recording"
-              class="inline-flex items-center justify-center size-7 rounded-md border bg-card hover:bg-destructive/10 hover:text-destructive hover:border-destructive/40 text-muted-foreground border-border cursor-pointer transition-colors"
-              title="Delete this chamber's recorded events"
-            >
-              <.icon name="hero-trash-mini" class="size-3.5" />
-            </button>
-          </div>
+              <button
+                :if={
+                  creator?(@chamber, @current_user) and @recorded_count > 0 and
+                    not @chamber.is_recording
+                }
+                phx-click="reset_recording"
+                data-confirm="Delete the saved recording for this chamber? This can't be undone."
+                type="button"
+                aria-label="Reset recording"
+                class="inline-flex items-center justify-center size-7 rounded-md border bg-card hover:bg-destructive/10 hover:text-destructive hover:border-destructive/40 text-muted-foreground border-border cursor-pointer transition-colors"
+                title="Delete this chamber's recorded events"
+              >
+                <.icon name="hero-trash-mini" class="size-3.5" />
+              </button>
+            </div>
 
-          <%!-- Creator-only invite banner. Shows the chamber's
+            <%!-- Creator-only invite banner. Shows the chamber's
                shareable URL with a copy button while the chamber
                is still in its 30-minute grace window — disappears
                the moment somebody else joins (chamber.activated_at
@@ -1279,60 +1277,60 @@ defmodule MixchambWeb.ChamberLive do
                the chamber chrome stays calm while the host is
                still setting things up; one click on the header row
                expands to reveal the URL + copy button. --%>
-          <details
-            :if={show_invite_banner?(@chamber, @current_user)}
-            class="group rounded-xl border bg-card/80 backdrop-blur-sm"
-          >
-            <summary class="flex items-center gap-3 p-4 sm:p-6 cursor-pointer list-none [&::-webkit-details-marker]:hidden focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 rounded-xl">
-              <.icon name="hero-link-mini" class="size-5 text-muted-foreground" />
-              <h3 class="flex-1 text-sm font-semibold tracking-tight font-display">
-                Share this chamber
-              </h3>
-              <.icon
-                name="hero-chevron-down-mini"
-                class="size-4 text-muted-foreground transition-transform group-open:rotate-180"
-              />
-            </summary>
-            <div class="px-4 sm:px-6 pb-4 sm:pb-6 space-y-3">
-              <p class="text-xs text-muted-foreground">
-                Anyone with the link can join. The chamber closes on its own if nobody else shows up within 30 minutes.
-              </p>
-              <div class="flex items-center gap-2">
-                <code class="flex-1 truncate rounded-md bg-muted px-3 py-2 text-xs font-mono text-foreground">
-                  {chamber_url(@chamber)}
-                </code>
-                <button
-                  type="button"
-                  id="chamber-copy-link"
-                  phx-hook="CopyToClipboard"
-                  phx-update="ignore"
-                  data-copy-url={chamber_url(@chamber)}
-                  class="rounded-md border bg-card hover:bg-accent px-3 py-2 text-xs font-medium transition-colors cursor-pointer whitespace-nowrap"
-                >
-                  Copy link
-                </button>
+            <details
+              :if={show_invite_banner?(@chamber, @current_user)}
+              class="group rounded-xl border bg-card/80 backdrop-blur-sm"
+            >
+              <summary class="flex items-center gap-3 p-4 sm:p-6 cursor-pointer list-none [&::-webkit-details-marker]:hidden focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 rounded-xl">
+                <.icon name="hero-link-mini" class="size-5 text-muted-foreground" />
+                <h3 class="flex-1 text-sm font-semibold tracking-tight font-display">
+                  Share this chamber
+                </h3>
+                <.icon
+                  name="hero-chevron-down-mini"
+                  class="size-4 text-muted-foreground transition-transform group-open:rotate-180"
+                />
+              </summary>
+              <div class="px-4 sm:px-6 pb-4 sm:pb-6 space-y-3">
+                <p class="text-xs text-muted-foreground">
+                  Anyone with the link can join. The chamber closes on its own if nobody else shows up within 30 minutes.
+                </p>
+                <div class="flex items-center gap-2">
+                  <code class="flex-1 truncate rounded-md bg-muted px-3 py-2 text-xs font-mono text-foreground">
+                    {chamber_url(@chamber)}
+                  </code>
+                  <button
+                    type="button"
+                    id="chamber-copy-link"
+                    phx-hook="CopyToClipboard"
+                    phx-update="ignore"
+                    data-copy-url={chamber_url(@chamber)}
+                    class="rounded-md border bg-card hover:bg-accent px-3 py-2 text-xs font-medium transition-colors cursor-pointer whitespace-nowrap"
+                  >
+                    Copy link
+                  </button>
+                </div>
               </div>
-            </div>
-          </details>
+            </details>
 
-          <%!-- One live_vue island for the whole chamber. Vue handles
+            <%!-- One live_vue island for the whole chamber. Vue handles
                the v-if swap between pads internally — see Chamber.vue
                for why we don't use three separate islands. --%>
-          <.Chamber
-            current_instrument={Atom.to_string(@current_instrument)}
-            chamber_kind={@chamber.kind}
-            chamber_title={@chamber.title}
-            chamber_slug={@chamber.slug}
-            activity={@chamber.activity}
-            presence_count={map_size(@presences)}
-            poker_session={poker_view(@poker_session, @current_user.id)}
-            poker_participants={poker_participants(@presences)}
-            current_user_id={@current_user.id}
-            is_host={@is_host}
-          />
+            <.Chamber
+              current_instrument={Atom.to_string(@current_instrument)}
+              chamber_kind={@chamber.kind}
+              chamber_title={@chamber.title}
+              chamber_slug={@chamber.slug}
+              activity={@chamber.activity}
+              presence_count={map_size(@presences)}
+              poker_session={poker_view(@poker_session, @current_user.id)}
+              poker_participants={poker_participants(@presences)}
+              current_user_id={@current_user.id}
+              is_host={@is_host}
+            />
           </div>
 
-      <%!-- Floating, user-positionable presence panel. Starts at
+          <%!-- Floating, user-positionable presence panel. Starts at
            top-right (lg:fixed + lg:top-24 + lg:right-4) but the
            `phx-hook="DraggablePanel"` lets the user grab the header
            row and drag it anywhere; position is persisted to
@@ -1340,37 +1338,37 @@ defmodule MixchambWeb.ChamberLive do
            Hidden below lg because the chamber pads need the
            horizontal room on tablet / mobile; the dock's presence
            summary at the bottom is the fallback there. --%>
-      <aside
-        id="chamber-presence-panel"
-        phx-hook="DraggablePanel"
-        data-storage-key="mixchamb:chamber-presence-panel"
-        class="hidden lg:block lg:fixed lg:top-24 lg:right-4 w-56 z-30"
-      >
-        <div class="rounded-xl border bg-card/80 backdrop-blur-md shadow-lg">
-          <div
-            data-drag-handle
-            class="flex items-center justify-between px-3 py-2 border-b cursor-grab select-none touch-none [&.is-dragging]:cursor-grabbing"
-            title="Drag to reposition"
+          <aside
+            id="chamber-presence-panel"
+            phx-hook="DraggablePanel"
+            data-storage-key="mixchamb:chamber-presence-panel"
+            class="hidden lg:block lg:fixed lg:top-24 lg:right-4 w-56 z-30"
           >
-            <span class="text-xs font-semibold uppercase tracking-wider font-display">
-              {presence_heading(@chamber.activity)}
-            </span>
-            <span class="text-xs text-muted-foreground tabular-nums">
-              {map_size(@presences)}
-            </span>
-          </div>
-          <.presence_panel_body
-            id_prefix="desktop"
-            current_user={@current_user}
-            chamber={@chamber}
-            presences={@presences}
-            hosts={@hosts}
-            recent_hits={@recent_hits}
-          />
-        </div>
-      </aside>
+            <div class="rounded-xl border bg-card/80 backdrop-blur-md shadow-lg">
+              <div
+                data-drag-handle
+                class="flex items-center justify-between px-3 py-2 border-b cursor-grab select-none touch-none [&.is-dragging]:cursor-grabbing"
+                title="Drag to reposition"
+              >
+                <span class="text-xs font-semibold uppercase tracking-wider font-display">
+                  {presence_heading(@chamber.activity)}
+                </span>
+                <span class="text-xs text-muted-foreground tabular-nums">
+                  {map_size(@presences)}
+                </span>
+              </div>
+              <.presence_panel_body
+                id_prefix="desktop"
+                current_user={@current_user}
+                chamber={@chamber}
+                presences={@presences}
+                hosts={@hosts}
+                recent_hits={@recent_hits}
+              />
+            </div>
+          </aside>
 
-      <%!-- Mobile presence sheet. Mirrors the desktop aside's
+          <%!-- Mobile presence sheet. Mirrors the desktop aside's
            content (alias editor + user list with host management)
            on a screen the aside can't reach. Triggered by tapping
            the dock's presence pill; `lg:hidden` keeps it out of the
@@ -1378,47 +1376,47 @@ defmodule MixchambWeb.ChamberLive do
            Recent-hits feed is suppressed in the sheet — host
            management is the priority on mobile, and the feed has
            plenty of room on desktop. --%>
-      <div
-        :if={@presence_sheet_open}
-        class="lg:hidden fixed inset-0 z-50 flex flex-col p-4 pt-16"
-        role="dialog"
-        aria-label="Players panel"
-      >
-        <button
-          type="button"
-          phx-click="toggle_presence_sheet"
-          aria-label="Close players panel"
-          class="absolute inset-0 -z-10 backdrop-blur-md bg-background/80 cursor-pointer"
-        >
-        </button>
-        <div class="relative mx-auto w-full max-w-md rounded-xl border bg-card shadow-2xl flex flex-col overflow-hidden">
-          <div class="flex items-center justify-between px-3 py-2 border-b shrink-0">
-            <span class="text-xs font-semibold uppercase tracking-wider font-display">
-              {presence_heading(@chamber.activity)}
-              <span class="ml-1 text-muted-foreground tabular-nums">
-                {map_size(@presences)}
-              </span>
-            </span>
+          <div
+            :if={@presence_sheet_open}
+            class="lg:hidden fixed inset-0 z-50 flex flex-col p-4 pt-16"
+            role="dialog"
+            aria-label="Players panel"
+          >
             <button
               type="button"
               phx-click="toggle_presence_sheet"
-              class="text-muted-foreground hover:text-foreground cursor-pointer text-lg leading-none px-2 py-1 -mr-1"
-              aria-label="Close"
+              aria-label="Close players panel"
+              class="absolute inset-0 -z-10 backdrop-blur-md bg-background/80 cursor-pointer"
             >
-              ×
             </button>
+            <div class="relative mx-auto w-full max-w-md rounded-xl border bg-card shadow-2xl flex flex-col overflow-hidden">
+              <div class="flex items-center justify-between px-3 py-2 border-b shrink-0">
+                <span class="text-xs font-semibold uppercase tracking-wider font-display">
+                  {presence_heading(@chamber.activity)}
+                  <span class="ml-1 text-muted-foreground tabular-nums">
+                    {map_size(@presences)}
+                  </span>
+                </span>
+                <button
+                  type="button"
+                  phx-click="toggle_presence_sheet"
+                  class="text-muted-foreground hover:text-foreground cursor-pointer text-lg leading-none px-2 py-1 -mr-1"
+                  aria-label="Close"
+                >
+                  ×
+                </button>
+              </div>
+              <div class="flex-1 overflow-y-auto">
+                <.presence_panel_body
+                  id_prefix="mobile"
+                  current_user={@current_user}
+                  chamber={@chamber}
+                  presences={@presences}
+                  hosts={@hosts}
+                />
+              </div>
+            </div>
           </div>
-          <div class="flex-1 overflow-y-auto">
-            <.presence_panel_body
-              id_prefix="mobile"
-              current_user={@current_user}
-              chamber={@chamber}
-              presences={@presences}
-              hosts={@hosts}
-            />
-          </div>
-        </div>
-      </div>
         </div>
       </div>
 
@@ -1623,7 +1621,9 @@ defmodule MixchambWeb.ChamberLive do
             :if={@chamber.activity == "music" or alias_set?(meta)}
             class="text-[11px] text-muted-foreground leading-tight truncate font-mono"
           >
-            <span :if={alias_set?(meta)}>{meta.display_name}</span><span :if={alias_set?(meta) and @chamber.activity == "music"}> · </span><span :if={@chamber.activity == "music"}>{instrument_label(meta.instrument)}</span>
+            <span :if={alias_set?(meta)}>{meta.display_name}</span><span :if={
+              alias_set?(meta) and @chamber.activity == "music"
+            }> · </span><span :if={@chamber.activity == "music"}>{instrument_label(meta.instrument)}</span>
           </div>
           <%!-- Host management. Creator viewing someone else
                gets Promote / Demote; a co-host viewing themselves
