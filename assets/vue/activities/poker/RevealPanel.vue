@@ -6,6 +6,7 @@
 
 import { computed } from "vue"
 import type { DeckId, Participant } from "./PokerBoard.vue"
+import { computeVerdict } from "./verdict"
 
 const props = defineProps<{
   deck: DeckId
@@ -14,53 +15,11 @@ const props = defineProps<{
   participants: Participant[]
 }>()
 
-const QUESTION_CARD = "?"
-const COFFEE_CARD = "☕"
-
 // Top-of-panel verdict — the one-glance answer to "what did the
 // team land on?" before the eye has to parse the distribution
-// bars. `?` and `☕` are stripped from the spread check because
-// they're meta-votes (I don't know / I need a break), not grades;
-// we still surface them in the labels for the "everyone …" cases.
-type Verdict =
-  | { kind: "none" }
-  | { kind: "single"; value: string }
-  | { kind: "consensus"; value: string }
-  | { kind: "close"; low: string; high: string }
-  | { kind: "discuss" }
-  | { kind: "all_question" }
-  | { kind: "all_coffee" }
-
-const verdict = computed<Verdict>(() => {
-  const values = Object.values(props.votes)
-  if (values.length === 0) return { kind: "none" }
-  if (values.length === 1) return { kind: "single", value: values[0] }
-
-  if (values.every((v) => v === values[0])) {
-    if (values[0] === QUESTION_CARD) return { kind: "all_question" }
-    if (values[0] === COFFEE_CARD) return { kind: "all_coffee" }
-    return { kind: "consensus", value: values[0] }
-  }
-
-  const grading = values.filter((v) => v !== QUESTION_CARD && v !== COFFEE_CARD)
-  if (grading.length === 0) return { kind: "discuss" }
-
-  const uniq = [...new Set(grading)]
-  if (uniq.length === 1) return { kind: "consensus", value: uniq[0] }
-
-  const indices = uniq
-    .map((v) => props.cards.indexOf(v))
-    .filter((i) => i >= 0)
-    .sort((a, b) => a - b)
-  if (indices.length >= 2 && indices[indices.length - 1] - indices[0] <= 1) {
-    return {
-      kind: "close",
-      low: props.cards[indices[0]],
-      high: props.cards[indices[indices.length - 1]],
-    }
-  }
-  return { kind: "discuss" }
-})
+// bars. Logic lives in ./verdict.ts so RoundHistory can render
+// the same kind labels for past rounds.
+const verdict = computed(() => computeVerdict(Object.values(props.votes), props.cards))
 
 const numericDecks: DeckId[] = ["fibonacci", "modified_fibonacci", "pow2"]
 

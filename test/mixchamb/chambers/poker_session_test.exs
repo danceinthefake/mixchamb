@@ -144,6 +144,46 @@ defmodule Mixchamb.Chambers.PokerSessionTest do
       s = %{PokerSession.new() | story: "Old"}
       assert {:ok, %{story: "New"}} = PokerSession.next_round(s, story: "New")
     end
+
+    test "pushes the finished round onto history, newest-first" do
+      s = %{
+        PokerSession.new()
+        | status: :revealed,
+          votes: %{"alice" => "5", "bob" => "8"},
+          round: 1,
+          story: "Add dark mode"
+      }
+
+      assert {:ok, after_first} = PokerSession.next_round(s, story: "Migration")
+      assert [entry] = after_first.history
+      assert entry.round == 1
+      assert entry.story == "Add dark mode"
+      assert entry.deck == :fibonacci
+      assert entry.votes == %{"alice" => "5", "bob" => "8"}
+
+      # Second next_round prepends — newest first.
+      after_second =
+        elem(
+          PokerSession.next_round(%{after_first | votes: %{"alice" => "13"}, status: :revealed}),
+          1
+        )
+
+      assert [%{round: 2, story: "Migration"}, %{round: 1, story: "Add dark mode"}] =
+               after_second.history
+    end
+
+    test "skips history when the round had no votes and no story" do
+      # Host clicks Next Round on an empty placeholder — nothing to remember.
+      s = PokerSession.new()
+      assert {:ok, updated} = PokerSession.next_round(s)
+      assert updated.history == []
+    end
+
+    test "keeps the round in history when the host set a story but no votes came in" do
+      s = %{PokerSession.new() | story: "Discussed offline", round: 2}
+      assert {:ok, updated} = PokerSession.next_round(s)
+      assert [%{round: 2, story: "Discussed offline", votes: %{}}] = updated.history
+    end
   end
 
   describe "set_story/2" do

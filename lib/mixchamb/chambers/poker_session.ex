@@ -33,14 +33,29 @@ defmodule Mixchamb.Chambers.PokerSession do
             deck: :fibonacci,
             story: nil,
             votes: %{},
-            round: 1
+            round: 1,
+            # Completed rounds, newest-first. Pushed on `next_round`
+            # (not `revote` — re-vote means "redo this round, don't
+            # remember the previous attempt"). Each entry snapshots
+            # the deck so the verdict computation on the client side
+            # still has the right card ordering even if the deck
+            # was swapped between rounds.
+            history: []
+
+  @type history_entry :: %{
+          round: pos_integer(),
+          story: String.t() | nil,
+          deck: atom(),
+          votes: %{optional(String.t()) => String.t()}
+        }
 
   @type t :: %__MODULE__{
           status: :voting | :revealed,
           deck: atom(),
           story: String.t() | nil,
           votes: %{optional(String.t()) => String.t()},
-          round: pos_integer()
+          round: pos_integer(),
+          history: [history_entry()]
         }
 
   @doc "Fresh session at round 1 with the given deck."
@@ -95,7 +110,27 @@ defmodule Mixchamb.Chambers.PokerSession do
   """
   def next_round(%__MODULE__{round: r} = s, opts \\ []) do
     new_story = Keyword.get(opts, :story, s.story)
-    {:ok, %{s | status: :voting, votes: %{}, round: r + 1, story: new_story}}
+    # Push the just-finished round into history *only* if the team
+    # actually engaged with it — at least one vote or a non-nil
+    # story. A host who clicks Next Round on an empty placeholder
+    # round shouldn't leave "R3 — Untitled" debris in the timeline.
+    history =
+      if s.votes == %{} and is_nil(s.story) do
+        s.history
+      else
+        entry = %{round: s.round, story: s.story, deck: s.deck, votes: s.votes}
+        [entry | s.history]
+      end
+
+    {:ok,
+     %{
+       s
+       | status: :voting,
+         votes: %{},
+         round: r + 1,
+         story: new_story,
+         history: history
+     }}
   end
 
   @doc """
