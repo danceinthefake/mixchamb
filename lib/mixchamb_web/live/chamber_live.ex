@@ -768,7 +768,24 @@ defmodule MixchambWeb.ChamberLive do
       round: session.round,
       my_vote: my_vote,
       voted_user_ids: voted_user_ids,
-      votes: if(session.status == :revealed, do: session.votes, else: %{})
+      votes: if(session.status == :revealed, do: session.votes, else: %{}),
+      history: Enum.map(session.history, &history_view/1)
+    }
+  end
+
+  # Shape history entries for the wire. Strip user_ids — the
+  # RoundHistory panel only renders the verdict + count, not a
+  # per-user breakdown (that's RevealPanel's job, and only for
+  # the live round). Snapshot the deck's card order so the
+  # client can compute the "close" verdict correctly even if
+  # the deck was switched between rounds.
+  defp history_view(entry) do
+    %{
+      round: entry.round,
+      story: entry.story,
+      deck: Atom.to_string(entry.deck),
+      cards: Mixchamb.Chambers.PokerSession.cards_for(entry.deck),
+      values: Map.values(entry.votes)
     }
   end
 
