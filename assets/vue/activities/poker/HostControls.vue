@@ -158,14 +158,15 @@ const deckLabels: Record<DeckId, string> = {
         </span>
         <span class="flex items-center gap-2 text-[11px] text-muted-foreground">
           <span class="italic">{{ queueSummary }}</span>
-          <span aria-hidden="true" class="transition-transform group-open:rotate-180 select-none">▾</span>
+          <span aria-hidden="true" class="transition-transform group-open:rotate-180 select-none"
+            >▾</span
+          >
         </span>
       </summary>
       <div class="border-t px-3 py-3 space-y-2">
         <label for="poker-queue-textarea" class="block text-[11px] text-muted-foreground">
-          One story per line. Save replaces the queue; the next
-          line drops in as the current story each time you click
-          Next round.
+          One story per line. Save replaces the queue; the next line drops in as the current story
+          each time you click Next round.
         </label>
         <textarea
           id="poker-queue-textarea"

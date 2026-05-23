@@ -217,11 +217,7 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <section
-    v-if="session"
-    aria-label="Planning poker board"
-    class="space-y-6"
-  >
+  <section v-if="session" aria-label="Planning poker board" class="space-y-6">
     <StoryHeader
       :story="session.story"
       :round="session.round"
@@ -244,10 +240,7 @@ onUnmounted(() => {
          alone in a fresh chamber so it doesn't compete with a board
          that already has players or votes in it. Drops itself as
          soon as the team arrives. -->
-    <p
-      v-if="isWaitingForTeam"
-      class="text-sm text-muted-foreground italic text-center"
-    >
+    <p v-if="isWaitingForTeam" class="text-sm text-muted-foreground italic text-center">
       Waiting for the team. Share the link to start.
     </p>
 

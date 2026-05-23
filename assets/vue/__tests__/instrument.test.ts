@@ -32,7 +32,11 @@ describe("useInstrumentFlash", () => {
   it("flash() sets local + clears after the duration", async () => {
     const remoteHit = ref<RemoteHit>(null)
     const wrapper = mount(makeFlashHost(remoteHit))
-    const vm = wrapper.vm as unknown as { local: string | null; remote: string | null; flash: (k: string) => void }
+    const vm = wrapper.vm as unknown as {
+      local: string | null
+      remote: string | null
+      flash: (k: string) => void
+    }
 
     vm.flash("kick" as never)
     expect(vm.local).toBe("kick")
@@ -45,7 +49,11 @@ describe("useInstrumentFlash", () => {
   it("remoteHit prop triggers a remote flash on the matching instrument", async () => {
     const remoteHit = ref<RemoteHit>(null)
     const wrapper = mount(makeFlashHost(remoteHit))
-    const vm = wrapper.vm as unknown as { local: string | null; remote: string | null; flash: (k: string) => void }
+    const vm = wrapper.vm as unknown as {
+      local: string | null
+      remote: string | null
+      flash: (k: string) => void
+    }
 
     remoteHit.value = { instrument: "drums", note: "snare", t: 1 }
     await wrapper.vm.$nextTick()
@@ -55,7 +63,11 @@ describe("useInstrumentFlash", () => {
   it("ignores remote hits from a different instrument", async () => {
     const remoteHit = ref<RemoteHit>(null)
     const wrapper = mount(makeFlashHost(remoteHit))
-    const vm = wrapper.vm as unknown as { local: string | null; remote: string | null; flash: (k: string) => void }
+    const vm = wrapper.vm as unknown as {
+      local: string | null
+      remote: string | null
+      flash: (k: string) => void
+    }
 
     remoteHit.value = { instrument: "keyboard", note: "C4", t: 1 }
     await wrapper.vm.$nextTick()
@@ -76,7 +88,11 @@ describe("useInstrumentFlash", () => {
       render: () => h("div"),
     })
     const wrapper = mount(host)
-    const vm = wrapper.vm as unknown as { local: string | null; remote: string | null; flash: (k: string) => void }
+    const vm = wrapper.vm as unknown as {
+      local: string | null
+      remote: string | null
+      flash: (k: string) => void
+    }
 
     remoteHit.value = { instrument: "drums", note: "ride", t: 1 }
     await wrapper.vm.$nextTick()

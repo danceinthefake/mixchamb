@@ -55,9 +55,14 @@ defmodule MixchambWeb.Admin.ChambersLive do
       %{slug: slug} = chamber ->
         Logger.warning("[admin/chambers] force-delete: slug=#{slug} id=#{id}")
 
-        Mixchamb.Audit.log_as(socket.assigns.current_admin, "delete_chamber", "chamber:#{slug}", %{
-          id: id
-        })
+        Mixchamb.Audit.log_as(
+          socket.assigns.current_admin,
+          "delete_chamber",
+          "chamber:#{slug}",
+          %{
+            id: id
+          }
+        )
 
         Chambers.delete(chamber)
 

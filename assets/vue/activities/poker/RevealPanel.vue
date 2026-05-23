@@ -74,9 +74,7 @@ const totalVotes = computed(() => Object.keys(props.votes).length)
 
 <template>
   <div class="space-y-3">
-    <p class="text-xs uppercase tracking-wider text-muted-foreground font-display">
-      Reveal
-    </p>
+    <p class="text-xs uppercase tracking-wider text-muted-foreground font-display">Reveal</p>
 
     <div v-if="totalVotes === 0" class="text-sm text-muted-foreground italic">
       No votes were cast in this round.
@@ -127,11 +125,7 @@ const totalVotes = computed(() => Object.keys(props.votes).length)
 
       <!-- Distribution: each value with a bar showing its share. -->
       <ul class="space-y-1.5">
-        <li
-          v-for="[value, count] in distribution"
-          :key="value"
-          class="flex items-center gap-3"
-        >
+        <li v-for="[value, count] in distribution" :key="value" class="flex items-center gap-3">
           <span class="w-10 font-mono font-bold text-base tabular-nums text-right">
             {{ value }}
           </span>

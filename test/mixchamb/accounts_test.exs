@@ -144,6 +144,7 @@ defmodule Mixchamb.AccountsTest do
   describe "set_last_instrument/2" do
     test "persists the chosen instrument string" do
       {:ok, user} = Accounts.create_anonymous_user()
+
       assert {:ok, %{last_instrument: "keyboard"}} =
                Accounts.set_last_instrument(user, "keyboard")
     end

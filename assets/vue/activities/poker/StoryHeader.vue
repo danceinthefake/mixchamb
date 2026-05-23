@@ -74,7 +74,8 @@ function cancel() {
         @click="startEdit"
         :class="[
           'text-2xl font-bold tracking-tight font-display',
-          is_host && 'cursor-text hover:bg-accent/50 rounded -mx-1 px-1 transition-colors inline-block',
+          is_host &&
+            'cursor-text hover:bg-accent/50 rounded -mx-1 px-1 transition-colors inline-block',
           !story && 'text-muted-foreground',
         ]"
         :title="is_host ? 'Click to edit' : undefined"
@@ -87,10 +88,7 @@ function cancel() {
          the page calm for chambers using the free-form workflow.
          Visible to everyone (not host-only): non-hosts benefit
          from knowing the pace too. -->
-    <p
-      v-if="queue_length > 0 && next_in_queue"
-      class="text-xs text-muted-foreground"
-    >
+    <p v-if="queue_length > 0 && next_in_queue" class="text-xs text-muted-foreground">
       Up next:
       <span class="text-foreground">{{ next_in_queue }}</span>
       <span v-if="queue_length > 1" class="text-muted-foreground/80">

@@ -249,7 +249,6 @@ defmodule MixchambWeb.ChamberLiveTest do
       # User row's last_instrument now reflects the new pick.
       assert %{last_instrument: "keyboard"} = Mixchamb.Accounts.get_anonymous_user(user.id)
     end
-
   end
 
   describe "set_activity" do
@@ -320,7 +319,11 @@ defmodule MixchambWeb.ChamberLiveTest do
       %{conn: conn, chamber: chamber, user: user}
     end
 
-    test "poker_vote casts the vote via the GenServer", %{conn: conn, chamber: chamber, user: user} do
+    test "poker_vote casts the vote via the GenServer", %{
+      conn: conn,
+      chamber: chamber,
+      user: user
+    } do
       {:ok, view, _html} = live(conn, ~p"/chamber/#{chamber.slug}")
 
       render_hook(view, "poker_vote", %{"card" => "5"})
@@ -496,5 +499,4 @@ defmodule MixchambWeb.ChamberLiveTest do
       refute render(view) =~ "no-feed-row"
     end
   end
-
 end
