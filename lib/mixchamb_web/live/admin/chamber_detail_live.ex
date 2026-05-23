@@ -18,6 +18,7 @@ defmodule MixchambWeb.Admin.ChamberDetailLive do
   alias Mixchamb.Chambers.Server, as: ChamberServer
   alias MixchambWeb.Admin.Layouts, as: AdminLayouts
   alias MixchambWeb.Presence
+  import MixchambWeb.Admin.Format, only: [time_ago: 1]
 
   @recent_notes_max 20
 
@@ -134,23 +135,6 @@ defmodule MixchambWeb.Admin.ChamberDetailLive do
   defp presence_topic(slug), do: "chamber:#{slug}:presence"
 
   ## Render helpers
-
-  defp time_ago(nil), do: "—"
-
-  defp time_ago(%DateTime{} = dt) do
-    seconds = DateTime.diff(DateTime.utc_now(), dt, :second)
-
-    cond do
-      seconds < 5 -> "just now"
-      seconds < 60 -> "#{seconds}s ago"
-      seconds < 3_600 -> "#{div(seconds, 60)}m ago"
-      seconds < 86_400 -> "#{div(seconds, 3_600)}h ago"
-      true -> "#{div(seconds, 86_400)}d ago"
-    end
-  end
-
-  defp time_ago(%NaiveDateTime{} = ndt),
-    do: ndt |> DateTime.from_naive!("Etc/UTC") |> time_ago()
 
   defp format_uptime(nil), do: "—"
 

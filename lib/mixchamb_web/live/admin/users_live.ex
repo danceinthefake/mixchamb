@@ -10,6 +10,7 @@ defmodule MixchambWeb.Admin.UsersLive do
   alias Mixchamb.Accounts
   alias MixchambWeb.Admin.Layouts, as: AdminLayouts
   alias MixchambWeb.Presence
+  import MixchambWeb.Admin.Format, only: [time_ago: 1]
 
   @online_topic "users:online"
 
@@ -63,23 +64,6 @@ defmodule MixchambWeb.Admin.UsersLive do
       {:error, _} ->
         {:noreply, put_flash(socket, :error, "User not found or could not be deleted.")}
     end
-  end
-
-  defp time_ago(nil), do: "—"
-
-  defp time_ago(%DateTime{} = dt) do
-    seconds = DateTime.diff(DateTime.utc_now(), dt, :second)
-
-    cond do
-      seconds < 60 -> "#{seconds}s ago"
-      seconds < 3_600 -> "#{div(seconds, 60)}m ago"
-      seconds < 86_400 -> "#{div(seconds, 3_600)}h ago"
-      true -> "#{div(seconds, 86_400)}d ago"
-    end
-  end
-
-  defp time_ago(%NaiveDateTime{} = ndt) do
-    ndt |> DateTime.from_naive!("Etc/UTC") |> time_ago()
   end
 
   @impl true

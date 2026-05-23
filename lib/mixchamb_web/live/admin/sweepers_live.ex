@@ -11,6 +11,7 @@ defmodule MixchambWeb.Admin.SweepersLive do
   alias Mixchamb.Accounts.Sweeper, as: AccountsSweeper
   alias Mixchamb.Chambers.Sweeper, as: ChambersSweeper
   alias MixchambWeb.Admin.Layouts, as: AdminLayouts
+  import MixchambWeb.Admin.Format, only: [time_ago: 2]
 
   @sweepers [
     %{
@@ -73,19 +74,6 @@ defmodule MixchambWeb.Admin.SweepersLive do
     end)
   end
 
-  defp time_ago(nil), do: "never"
-
-  defp time_ago(%DateTime{} = dt) do
-    seconds = DateTime.diff(DateTime.utc_now(), dt, :second)
-
-    cond do
-      seconds < 60 -> "#{seconds}s ago"
-      seconds < 3_600 -> "#{div(seconds, 60)}m ago"
-      seconds < 86_400 -> "#{div(seconds, 3_600)}h ago"
-      true -> "#{div(seconds, 86_400)}d ago"
-    end
-  end
-
   defp format_interval(ms) when ms < 60_000, do: "#{div(ms, 1_000)}s"
   defp format_interval(ms) when ms < 3_600_000, do: "every #{div(ms, 60_000)}m"
   defp format_interval(ms), do: "every #{div(ms, 3_600_000)}h"
@@ -122,7 +110,7 @@ defmodule MixchambWeb.Admin.SweepersLive do
 
           <dl :if={row.info} class="mt-4 grid grid-cols-2 gap-y-2 text-sm">
             <dt class="text-xs uppercase tracking-wider text-muted-foreground">Last run</dt>
-            <dd class="text-right tabular-nums">{time_ago(row.info.last_run_at)}</dd>
+            <dd class="text-right tabular-nums">{time_ago(row.info.last_run_at, "never")}</dd>
 
             <dt class="text-xs uppercase tracking-wider text-muted-foreground">Last deleted</dt>
             <dd class="text-right tabular-nums">{row.info.last_deleted}</dd>
