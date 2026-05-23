@@ -9,6 +9,11 @@ import type { Participant, PokerStatus } from "./PokerBoard.vue"
 const props = defineProps<{
   participants: Participant[]
   status: PokerStatus
+  // Drives the card-flip transform. PokerBoard lags this behind
+  // `status === "revealed"` by ~800ms so the chime + suspense moment
+  // land before the cards turn. Late joiners see flipped=true
+  // immediately, no suspense, since they missed the moment anyway.
+  flipped: boolean
   voted_user_ids: string[]
   votes: Record<string, string>
   current_user_id: string
@@ -56,12 +61,12 @@ const votedCount = computed(() => props.voted_user_ids.length)
           :class="[
             'card-silhouette',
             hasVoted(p.user_id) ? 'is-voted' : 'is-empty',
-            status === 'revealed' && hasVoted(p.user_id) && 'is-revealed',
+            flipped && hasVoted(p.user_id) && 'is-revealed',
           ]"
           :aria-label="
             !hasVoted(p.user_id)
               ? `${displayName(p)} hasn't voted`
-              : status === 'revealed'
+              : flipped
                 ? `${displayName(p)} voted ${voteValue(p.user_id)}`
                 : `${displayName(p)} has voted`
           "
