@@ -260,10 +260,10 @@ onUnmounted(() => stopAll("keyboard", style.value))
            intercept taps on the keys underneath. Hidden on lg+
            where the whole keyboard usually fits without scroll. -->
       <div
-        class="pointer-events-none absolute inset-y-0 left-0 w-6 z-10 bg-gradient-to-r from-background to-transparent lg:hidden"
+        class="pointer-events-none absolute inset-y-0 left-0 w-6 z-10 bg-gradient-to-r from-background to-transparent"
       ></div>
       <div
-        class="pointer-events-none absolute inset-y-0 right-0 w-6 z-10 bg-gradient-to-l from-background to-transparent lg:hidden"
+        class="pointer-events-none absolute inset-y-0 right-0 w-6 z-10 bg-gradient-to-l from-background to-transparent"
       ></div>
 
       <div class="overflow-x-auto px-2">
