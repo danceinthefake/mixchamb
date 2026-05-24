@@ -26,6 +26,23 @@ const COLUMN_HEADER_DOTS = [
   "bg-accent-keyboard",
   "bg-accent-bass",
 ]
+// Closed-card placeholder uses the same accent as the column —
+// "hidden card in this lane" reads as "lane colour, dimmed."
+// /40 background + /60 border lands between the column-body
+// /10 tint and a fully-saturated chip; reads as a physical
+// card sitting in the column, not a glowing button.
+const COLUMN_CLOSED_CARD_BG = [
+  "bg-accent-pad/40",
+  "bg-accent-drums/40",
+  "bg-accent-keyboard/40",
+  "bg-accent-bass/40",
+]
+const COLUMN_CLOSED_CARD_BORDER = [
+  "border-accent-pad/60",
+  "border-accent-drums/60",
+  "border-accent-keyboard/60",
+  "border-accent-bass/60",
+]
 
 const props = defineProps<{
   column: RetroColumnT
@@ -55,6 +72,12 @@ const tintClass = computed(
 )
 const dotClass = computed(
   () => COLUMN_HEADER_DOTS[props.column.position] ?? "bg-muted-foreground",
+)
+const closedCardBgClass = computed(
+  () => COLUMN_CLOSED_CARD_BG[props.column.position] ?? "bg-muted",
+)
+const closedCardBorderClass = computed(
+  () => COLUMN_CLOSED_CARD_BORDER[props.column.position] ?? "border-input",
 )
 
 function submit() {
@@ -103,14 +126,13 @@ function submit() {
 
       <!-- Face-down "card-back" placeholders for cards others
            have written but you can't see until :reveal. One per
-           hidden card. Brand gradient matches the poker
-           card-back silhouette (assets/vue/activities/poker/
-           ParticipantsRow.vue) so the visual language for
-           "hidden until reveal" is consistent across activities. -->
+           hidden card. Background colour matches the column's
+           accent so each lane's hidden cards stay visually
+           anchored to that column. -->
       <div
         v-for="n in hidden_count"
         :key="`hidden-${n}`"
-        class="retro-card-back"
+        :class="['retro-card-back border', closedCardBgClass, closedCardBorderClass]"
         role="presentation"
         aria-label="Hidden card from another participant — reveals together"
         title="Someone added a card here — content reveals to everyone at the same time"
@@ -156,19 +178,20 @@ function submit() {
 </template>
 
 <style scoped>
-/* Brand gradient back, matching poker's card-back (pink → cyan →
-   green diagonal). Sized to match a real RetroCard's typical
-   single-line content height so the layout barely shifts when
-   placeholders flip to real content at :reveal. The diagonal
-   angle is the same 135deg as the poker silhouette for visual
-   continuity across activities. */
+/* Sized to match a real RetroCard's typical single-line content
+   height so the layout barely shifts when placeholders flip to
+   real content at :reveal. Background + border colour come from
+   Tailwind classes bound in the template (one accent per
+   column position) so each lane keeps a consistent identity.
+   Drop-shadow + inset shadow give the placeholder physical card
+   depth — sitting on the column surface rather than painted in. */
 .retro-card-back {
   border-radius: 0.5rem;
   height: 4.5rem;
-  background: linear-gradient(135deg, #e94886 0%, #56d2e6 50%, #b5e651 100%);
-  border: 1px solid var(--primary);
-  /* A subtle inset shadow keeps the gradient from reading as a
-     flat sticker — feels like a physical card lying face-down. */
-  box-shadow: inset 0 -1px 2px rgba(0, 0, 0, 0.15);
+  box-shadow:
+    0 1px 3px rgba(0, 0, 0, 0.35),
+    0 1px 2px rgba(0, 0, 0, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    inset 0 -2px 4px rgba(0, 0, 0, 0.18);
 }
 </style>
