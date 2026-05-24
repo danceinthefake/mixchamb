@@ -1,0 +1,106 @@
+# mixchamb stack — app + Postgres + Cloudflare Tunnel, all
+# containers. Run on any Linux host with Docker 24+ and the
+# `docker compose` plugin.
+#
+# Bring up: docker compose --env-file .env up -d --build
+# Logs:     docker compose logs -f
+# Down:     docker compose down
+#
+# Postgres data lives in the named volume `pgdata` — survives
+# container recreate. Don't `docker compose down -v` unless you
+# want to nuke the DB.
+
+name: mixchamb
+
+services:
+  app:
+    build:
+      context: ../..        # build from repo root so Dockerfile sees mix.exs/lib/assets
+      dockerfile: deployments/docker-compose/Dockerfile
+    image: mixchamb:local
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: ecto://mixchamb:${POSTGRES_PASSWORD}@postgres/mixchamb_prod
+      SECRET_KEY_BASE: ${SECRET_KEY_BASE}
+      PHX_HOST: ${PHX_HOST}
+      PORT: "4000"
+      ADMIN_USER: ${ADMIN_USER}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD}
+      SENTRY_DSN: ${SENTRY_DSN}
+    # No published ports — cloudflared reaches it via the
+    # default `mixchamb_default` bridge network. The internet
+    # never sees app:4000 directly.
+    expose:
+      - "4000"
+    # Run migrations on container start, then exec the server.
+    # Wraps the release's `bin/server` so it's a single command.
+    command:
+      - sh
+      - -c
+      - |
+        /app/bin/mixchamb eval "Mixchamb.Release.migrate"
+        exec /app/bin/server
+
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: mixchamb
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: mixchamb_prod
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U mixchamb -d mixchamb_prod"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    restart: unless-stopped
+    depends_on:
+      - app
+    # Token-mode tunnel: create the tunnel in the Cloudflare
+    # dashboard, route hostname → http://app:4000, paste the
+    # generated token into CLOUDFLARE_TUNNEL_TOKEN in .env.
+    command: tunnel --no-autoupdate run --token ${CLOUDFLARE_TUNNEL_TOKEN}
+
+  # Optional: daily Postgres dump → Backblaze B2.
+  # Uses ofelia for in-stack cron (no host crontab needed).
+  # Comment out if you handle backups elsewhere.
+  backup:
+    image: alpine:3.20
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      B2_BUCKET: ${B2_BUCKET}
+      B2_APPLICATION_KEY_ID: ${B2_APPLICATION_KEY_ID}
+      B2_APPLICATION_KEY: ${B2_APPLICATION_KEY}
+      HEALTHCHECKS_BACKUP_URL: ${HEALTHCHECKS_BACKUP_URL}
+    volumes:
+      - ./backup.sh:/usr/local/bin/backup.sh:ro
+    entrypoint:
+      - sh
+      - -c
+      - |
+        apk add --no-cache postgresql16-client curl py3-pip ca-certificates
+        pip install --break-system-packages b2
+        # Run once at 03:00 UTC daily via a tiny loop.
+        while true; do
+          NOW=$$(date -u +%H%M)
+          if [ "$$NOW" = "0300" ]; then
+            /usr/local/bin/backup.sh || true
+            sleep 60
+          fi
+          sleep 30
+        done
+
+volumes:
+  pgdata:

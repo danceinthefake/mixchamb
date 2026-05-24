@@ -1,0 +1,7 @@
+[Unit]
+Description=Telegram notification for %i failure
+
+[Service]
+Type=oneshot
+EnvironmentFile=/etc/mixchamb-env-cron
+ExecStart=/usr/local/bin/notify-telegram "%i"

@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+# Weekly disk-usage check — pings Telegram if /var crosses 80%.
+# Catches the slow growth from journald + release tarballs +
+# Postgres that otherwise creeps up silently between deploys.
+#
+# Install at /etc/cron.weekly/disk-check (chmod 755, root:root).
+
+set -euo pipefail
+
+# shellcheck source=/dev/null
+source /etc/mixchamb-env-cron
+
+PCT=$(df --output=pcent /var | tail -1 | tr -dc '0-9')
+if [ "$PCT" -gt 80 ]; then
+  curl -sf -m 10 \
+    "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
+    --data-urlencode "chat_id=${TELEGRAM_CHAT_ID}" \
+    --data-urlencode "text=DISK $(hostname --short): /var at ${PCT}%"
+fi

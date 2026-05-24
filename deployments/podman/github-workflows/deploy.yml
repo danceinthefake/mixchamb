@@ -1,0 +1,105 @@
+# Podman + Quadlet deploy workflow.
+#
+# Copy (or symlink) to .github/workflows/deploy.yml — GitHub
+# only discovers workflows under that path.
+#
+# Same flow as docker-compose: build the image in CI, push to
+# GitHub Container Registry, then SSH and ask Podman to pull +
+# restart. Quadlet's `PullPolicy=always` (set on the .container
+# file) means the restart pulls the new image automatically.
+#
+# Required GitHub Actions secrets:
+#   DEPLOY_SSH_KEY        ed25519 private key for the deploy user
+#   DEPLOY_HOST           hostname or IP of the production host
+#   PUBLIC_URL            public domain for the smoke test (no scheme)
+#   TELEGRAM_BOT_TOKEN    bot token from @BotFather
+#   TELEGRAM_CHAT_ID      numeric chat ID of the private group
+
+name: Deploy
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write          # push to ghcr.io
+
+concurrency:
+  group: deploy-prod
+  cancel-in-progress: false
+
+env:
+  IMAGE: ghcr.io/${{ github.repository }}
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # Reuse the docker-compose Dockerfile — the image is
+      # identical for both methods. Keep the dockerfile path
+      # here pointing at the one source of truth.
+      - name: Build + push image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: deployments/docker-compose/Dockerfile
+          push: true
+          tags: |
+            ${{ env.IMAGE }}:${{ github.ref_name }}
+            ${{ env.IMAGE }}:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-24.04
+    environment: production
+    steps:
+      - name: Install SSH key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.DEPLOY_SSH_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -H "${{ secrets.DEPLOY_HOST }}" >> ~/.ssh/known_hosts
+
+      - name: Pull + restart on host
+        run: |
+          # PullPolicy=always on the .container file means restart
+          # pulls the new :latest image. The explicit `podman pull`
+          # is here so a network failure surfaces *before* we tear
+          # down the running container.
+          ssh -i ~/.ssh/id_ed25519 deploy@${{ secrets.DEPLOY_HOST }} \
+            "podman pull ${{ env.IMAGE }}:latest && \
+             sudo /usr/bin/systemctl restart mixchamb.service"
+
+      - name: Smoke test
+        run: |
+          for i in {1..10}; do
+            STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
+              "https://${{ secrets.PUBLIC_URL }}/")
+            if [ "$STATUS" = "200" ]; then exit 0; fi
+            sleep 3
+          done
+          echo "Smoke test failed: last status $STATUS"
+          exit 1
+
+      - name: Notify Telegram
+        if: always()
+        run: |
+          STATUS="${{ job.status }}"
+          curl -sf \
+            "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
+            --data-urlencode "chat_id=${{ secrets.TELEGRAM_CHAT_ID }}" \
+            --data-urlencode "text=mixchamb deploy ${STATUS} — ${GITHUB_REF_NAME} (${GITHUB_SHA::7})"

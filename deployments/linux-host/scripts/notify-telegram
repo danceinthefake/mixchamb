@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+# Usage: notify-telegram <unit-name>
+#
+# Called by systemd OnFailure= handlers. Posts a one-line alert
+# to the configured Telegram bot/chat.
+#
+# Install at /usr/local/bin/notify-telegram (chmod 755, root:root).
+# Required env (from /etc/mixchamb-env-cron, loaded by the systemd
+# template unit): TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID.
+
+set -euo pipefail
+
+UNIT="${1:?usage: notify-telegram <unit-name>}"
+HOST=$(hostname --short)
+TEXT="ALERT ${HOST}: ${UNIT} failed at $(date -u +%H:%MZ)"
+
+curl -sf -m 10 \
+  "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
+  --data-urlencode "chat_id=${TELEGRAM_CHAT_ID}" \
+  --data-urlencode "text=${TEXT}"

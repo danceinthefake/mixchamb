@@ -1,0 +1,28 @@
+# Cloudflare Tunnel as a container. Install at
+# /etc/containers/systemd/cloudflared.container then
+# `systemctl daemon-reload && systemctl enable --now cloudflared.service`.
+#
+# Token-mode: create the tunnel in the Cloudflare Zero Trust
+# dashboard, route the public hostname → http://mixchamb:4000
+# (the in-network alias for the app container), paste the token
+# into /etc/mixchamb-podman.env as CLOUDFLARE_TUNNEL_TOKEN.
+
+[Unit]
+Description=Cloudflare Tunnel (Podman)
+After=network-online.target mixchamb.service
+Wants=network-online.target
+
+[Container]
+Image=docker.io/cloudflare/cloudflared:latest
+ContainerName=cloudflared
+Network=mixchamb.network
+EnvironmentFile=/etc/mixchamb-podman.env
+Exec=tunnel --no-autoupdate run --token ${CLOUDFLARE_TUNNEL_TOKEN}
+
+[Service]
+Restart=on-failure
+RestartSec=5
+OnFailure=notify-telegram@%n.service
+
+[Install]
+WantedBy=multi-user.target default.target

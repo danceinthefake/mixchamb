@@ -1,0 +1,14 @@
+# Ops env — install at /etc/mixchamb-env-cron (chmod 600,
+# owned root:root). Sourced by systemd OnFailure handlers and
+# cron jobs running as root.
+#
+# Separate from /etc/mixchamb.env so the app user (mixchamb)
+# can't read these — Telegram bot token, healthchecks URL, and
+# B2 credentials don't need to be in the BEAM's environment.
+
+TELEGRAM_BOT_TOKEN=REPLACE_WITH_BOTFATHER_TOKEN
+TELEGRAM_CHAT_ID=REPLACE_WITH_NEGATIVE_GROUP_CHAT_ID
+HEALTHCHECKS_BACKUP_URL=https://hc-ping.com/REPLACE_WITH_UUID
+B2_BUCKET=mixchamb-backups
+B2_APPLICATION_KEY_ID=REPLACE_WITH_B2_KEY_ID
+B2_APPLICATION_KEY=REPLACE_WITH_B2_APPLICATION_KEY

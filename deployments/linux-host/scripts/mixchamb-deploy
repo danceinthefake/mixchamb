@@ -1,0 +1,50 @@
+#!/usr/bin/env bash
+# Usage: mixchamb-deploy <tarball-name>
+#
+# Called by the GH Action over SSH as the `deploy` user. Extracts
+# the uploaded tarball, runs migrations, swaps the /opt/mixchamb
+# symlink, restarts the service, prunes old releases.
+#
+# Install at /usr/local/bin/mixchamb-deploy (chmod 755, root:root).
+
+set -euo pipefail
+
+TARBALL="${1:?usage: mixchamb-deploy <tarball-name>}"
+cd /opt/mixchamb-releases
+
+# Extract into a SHA-named directory so multiple releases live
+# side-by-side for instant rollback.
+REL_DIR="${TARBALL%.tar.gz}"
+if [ -d "$REL_DIR" ]; then
+  echo "Release $REL_DIR already exists; refusing to overwrite."
+  exit 2
+fi
+tar -xzf "$TARBALL"
+mv mixchamb "$REL_DIR"
+rm "$TARBALL"
+
+# Migrate BEFORE swapping — old code is still serving traffic, new
+# code isn't loaded yet. Migrations must be backwards-compatible
+# with the old code for the swap window (a few seconds).
+"$REL_DIR/bin/mixchamb" eval "Mixchamb.Release.migrate"
+
+# Swap symlink + restart.
+ln -sfn "/opt/mixchamb-releases/$REL_DIR" /opt/mixchamb
+sudo /usr/bin/systemctl restart mixchamb
+
+# Wait up to 30s for the unit to come back active before exiting.
+# The GH Action then does an end-to-end HTTP check.
+for _ in {1..30}; do
+  if sudo /usr/bin/systemctl status mixchamb --no-pager \
+     | grep -q "active (running)"; then
+    echo "mixchamb active"
+    break
+  fi
+  sleep 1
+done
+
+# Cleanup — keep the 5 most recent release dirs, drop older.
+ls -1tr /opt/mixchamb-releases/ \
+  | grep -E '^mixchamb-[0-9a-f]+$' \
+  | head -n -5 \
+  | xargs -r -I{} rm -rf "/opt/mixchamb-releases/{}"

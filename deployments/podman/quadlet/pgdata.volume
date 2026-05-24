@@ -1,0 +1,9 @@
+# Named volume for Postgres data. Survives container recreate.
+# Install at /etc/containers/systemd/pgdata.volume then
+# `systemctl daemon-reload`.
+
+[Unit]
+Description=Mixchamb Postgres data volume
+
+[Volume]
+VolumeName=pgdata

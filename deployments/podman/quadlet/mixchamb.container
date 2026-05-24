@@ -1,0 +1,40 @@
+# Mixchamb Phoenix app. Install at
+# /etc/containers/systemd/mixchamb.container then
+# `systemctl daemon-reload && systemctl enable --now mixchamb.service`.
+#
+# Image is pulled from GitHub Container Registry; the deploy
+# workflow pushes :latest + :vX.Y.Z on each tag. Pin to a
+# specific tag here if you want strict version control instead
+# of pull-latest-on-restart.
+
+[Unit]
+Description=Mixchamb Phoenix app (Podman)
+After=network-online.target postgres.service cloudflared.service
+Wants=network-online.target
+Requires=postgres.service
+
+[Container]
+Image=ghcr.io/REPLACE_WITH_OWNER/mixchamb:latest
+ContainerName=mixchamb
+Network=mixchamb.network
+EnvironmentFile=/etc/mixchamb.env
+Exec=sh -c "/app/bin/mixchamb eval 'Mixchamb.Release.migrate' && exec /app/bin/server"
+HealthCmd=curl -fsS http://localhost:4000/
+HealthInterval=30s
+HealthStartPeriod=20s
+
+# Hardening — Podman picks these up and applies them via the
+# generated systemd service.
+NoNewPrivileges=true
+
+# Auto-pull on container start so `systemctl restart mixchamb`
+# after a CI push is enough to roll forward.
+PullPolicy=always
+
+[Service]
+Restart=on-failure
+RestartSec=5
+OnFailure=notify-telegram@%n.service
+
+[Install]
+WantedBy=multi-user.target default.target

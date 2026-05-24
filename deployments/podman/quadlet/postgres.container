@@ -1,0 +1,28 @@
+# Postgres 16. Install at /etc/containers/systemd/postgres.container
+# then `systemctl daemon-reload && systemctl enable --now postgres.service`.
+# Quadlet generates the postgres.service unit from this file.
+
+[Unit]
+Description=Mixchamb Postgres 16
+After=network-online.target
+Wants=network-online.target
+
+[Container]
+Image=docker.io/postgres:16-alpine
+ContainerName=postgres
+Network=mixchamb.network
+Volume=pgdata.volume:/var/lib/postgresql/data:Z
+Environment=POSTGRES_USER=mixchamb
+Environment=POSTGRES_DB=mixchamb_prod
+EnvironmentFile=/etc/mixchamb-podman.env
+HealthCmd=pg_isready -U mixchamb -d mixchamb_prod
+HealthInterval=10s
+HealthRetries=5
+
+[Service]
+Restart=on-failure
+RestartSec=5
+OnFailure=notify-telegram@%n.service
+
+[Install]
+WantedBy=multi-user.target default.target

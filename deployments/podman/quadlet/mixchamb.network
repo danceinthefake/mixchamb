@@ -1,0 +1,10 @@
+# Bridge network shared by mixchamb, postgres, and cloudflared
+# containers. Install at /etc/containers/systemd/mixchamb.network
+# then `systemctl daemon-reload` — Quadlet generates
+# mixchamb-network.service automatically.
+
+[Unit]
+Description=Mixchamb container network
+
+[Network]
+NetworkName=mixchamb

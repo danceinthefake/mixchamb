@@ -1,0 +1,98 @@
+# Production deploy workflow.
+#
+# Copy (or symlink) this to .github/workflows/deploy.yml — GitHub
+# only discovers workflows under that path. Lives here in the
+# repo so it sits next to the rest of the deployment assets and
+# gets reviewed together.
+#
+# Required GitHub Actions secrets:
+#   DEPLOY_SSH_KEY        ed25519 private key whose public half
+#                         is in /home/deploy/.ssh/authorized_keys
+#   DEPLOY_HOST           hostname or IP of the production VPS
+#   PUBLIC_URL            public domain for the smoke test (no scheme)
+#   TELEGRAM_BOT_TOKEN    bot token from @BotFather
+#   TELEGRAM_CHAT_ID      numeric chat ID of the private group
+
+name: Deploy
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-prod
+  cancel-in-progress: false   # never cancel a deploy mid-flight
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: erlef/setup-beam@v1
+        with:
+          elixir-version: "1.19.5"
+          otp-version: "28.0.1"
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "24.14.1"
+      - name: Build release
+        run: |
+          mix deps.get --only prod
+          (cd assets && npm ci)
+          MIX_ENV=prod mix assets.deploy
+          MIX_ENV=prod mix release --overwrite
+          TARBALL="mixchamb-${GITHUB_SHA::7}.tar.gz"
+          tar -czf "$TARBALL" -C _build/prod/rel mixchamb
+          echo "TARBALL=$TARBALL" >> "$GITHUB_ENV"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release
+          path: ${{ env.TARBALL }}
+          retention-days: 7
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-24.04
+    environment: production
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: release
+      - name: Install SSH key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.DEPLOY_SSH_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -H "${{ secrets.DEPLOY_HOST }}" >> ~/.ssh/known_hosts
+      - name: Upload tarball
+        run: |
+          TARBALL=$(ls mixchamb-*.tar.gz)
+          scp -i ~/.ssh/id_ed25519 "$TARBALL" \
+            deploy@${{ secrets.DEPLOY_HOST }}:/opt/mixchamb-releases/
+      - name: Extract + migrate + swap + restart
+        run: |
+          TARBALL=$(ls mixchamb-*.tar.gz)
+          ssh -i ~/.ssh/id_ed25519 deploy@${{ secrets.DEPLOY_HOST }} \
+            "/usr/local/bin/mixchamb-deploy $TARBALL"
+      - name: Smoke test
+        run: |
+          for i in {1..10}; do
+            STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
+              "https://${{ secrets.PUBLIC_URL }}/")
+            if [ "$STATUS" = "200" ]; then exit 0; fi
+            sleep 3
+          done
+          echo "Smoke test failed: last status $STATUS"
+          exit 1
+      - name: Notify Telegram
+        if: always()
+        run: |
+          STATUS="${{ job.status }}"
+          curl -sf \
+            "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
+            --data-urlencode "chat_id=${{ secrets.TELEGRAM_CHAT_ID }}" \
+            --data-urlencode "text=mixchamb deploy ${STATUS} — ${GITHUB_REF_NAME} (${GITHUB_SHA::7})"
