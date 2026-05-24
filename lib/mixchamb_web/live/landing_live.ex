@@ -173,6 +173,36 @@ defmodule MixchambWeb.LandingLive do
                 />
               </div>
             </button>
+
+            <%!-- Retrospective: private, link-only. Activity = "retro".
+                  Default columns are Good / Bad / Start / Thanks;
+                  host can rename inline during :setup. Voting is
+                  opt-in (off by default). --%>
+            <button
+              phx-click="create_chamber"
+              phx-value-activity="retro"
+              class="text-left rounded-2xl border bg-card hover:bg-accent transition-colors p-6 cursor-pointer space-y-3 group"
+            >
+              <div class="flex items-center gap-2">
+                <span class="size-2.5 rounded-full bg-accent-bass"></span>
+                <span class="text-xs uppercase tracking-wider text-muted-foreground">
+                  Private · Retro
+                </span>
+              </div>
+              <h2 class="text-2xl font-bold tracking-tight font-display">
+                Retrospective
+              </h2>
+              <p class="text-sm text-muted-foreground">
+                Reflect together. Brainstorm in private, reveal as a team, optionally vote to prioritise, then turn what surfaced into action items. Share the link, run the retro, walk out with what's next.
+              </p>
+              <div class="pt-2 text-sm font-medium text-foreground inline-flex items-center gap-1">
+                Start retrospective
+                <.icon
+                  name="hero-arrow-right-mini"
+                  class="size-4 transition-transform group-hover:translate-x-0.5"
+                />
+              </div>
+            </button>
           </div>
 
           <%!-- Resume-where-you-left-off. Renders only when the

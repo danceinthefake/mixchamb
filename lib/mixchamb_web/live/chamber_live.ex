@@ -137,6 +137,17 @@ defmodule MixchambWeb.ChamberLive do
      # by tapping the dock's presence pill; default closed.
      |> assign(:presence_sheet_open, false)
      |> assign(:poker_session, load_poker_session(chamber))
+     |> assign(:retro_session, load_retro_session(chamber))
+     # Past archived retro sessions for the chamber — newest-first.
+     # Surfaced in the presence aside as a <details> disclosure
+     # so the team can see how many retros they've run.
+     |> assign(:past_retros, load_past_retros(chamber))
+     # Live vote tallies during :voting — kept here (not in
+     # retro_session, which only carries DB-persisted state) so
+     # the LV diff is cheap on every vote broadcast. Reset on
+     # phase exit. Same for my_votes (per-user vote set).
+     |> assign(:retro_tallies, %{})
+     |> assign(:retro_my_votes, MapSet.new())
      |> assign_hosts(chamber, user)}
   end
 
@@ -188,6 +199,28 @@ defmodule MixchambWeb.ChamberLive do
   end
 
   defp load_poker_session(_), do: nil
+
+  # Same shape for retro: pull the current non-archived session
+  # for this chamber from the DB (with columns/cards/actions
+  # preloaded). Returns `nil` outside retro mode OR inside retro
+  # before the host has started a session.
+  defp load_retro_session(%{activity: "retro", id: chamber_id}) do
+    case Mixchamb.Retro.current_session(chamber_id) do
+      nil -> nil
+      session -> Mixchamb.Retro.load_session(session.id)
+    end
+  end
+
+  defp load_retro_session(_), do: nil
+
+  # Past archived retro sessions for this chamber, newest-first.
+  # Returns [] outside retro mode so the template can render the
+  # disclosure unconditionally without an `:if`.
+  defp load_past_retros(%{activity: "retro", id: chamber_id}) do
+    Mixchamb.Retro.list_archived_sessions(chamber_id)
+  end
+
+  defp load_past_retros(_), do: []
 
   @impl true
   def handle_event("set_kind", %{"kind" => kind}, socket) do
@@ -521,6 +554,201 @@ defmodule MixchambWeb.ChamberLive do
     {:noreply, socket}
   end
 
+  # --- Retro events from RetroBoard.vue ---------------------------
+  # Host-only: start_session / set_title / set_voting_enabled /
+  # rename_column / advance_phase / set_discussing. Anyone-in-chamber:
+  # add_card / update_card / delete_card / vote / withdraw_vote /
+  # add_action_item / update_action_item / delete_action_item.
+  # Server-side gates are authoritative (Chambers.Server checks
+  # state.hosts); the @is_host check here is fast-path UI only.
+
+  def handle_event("retro_start_session", _params, socket) do
+    if socket.assigns.is_host do
+      Mixchamb.Chambers.Server.retro_start_session(
+        socket.assigns.chamber_slug,
+        socket.assigns.current_user.id
+      )
+    end
+
+    {:noreply, socket}
+  end
+
+  def handle_event("retro_set_title", %{"title" => title}, socket) when is_binary(title) do
+    if socket.assigns.is_host do
+      Mixchamb.Chambers.Server.retro_set_title(
+        socket.assigns.chamber_slug,
+        socket.assigns.current_user.id,
+        title
+      )
+    end
+
+    {:noreply, socket}
+  end
+
+  def handle_event("retro_set_voting_enabled", %{"enabled" => enabled}, socket)
+      when is_boolean(enabled) do
+    if socket.assigns.is_host do
+      Mixchamb.Chambers.Server.retro_set_voting_enabled(
+        socket.assigns.chamber_slug,
+        socket.assigns.current_user.id,
+        enabled
+      )
+    end
+
+    {:noreply, socket}
+  end
+
+  def handle_event(
+        "retro_rename_column",
+        %{"column_id" => column_id, "name" => name},
+        socket
+      )
+      when is_binary(column_id) and is_binary(name) do
+    if socket.assigns.is_host do
+      Mixchamb.Chambers.Server.retro_rename_column(
+        socket.assigns.chamber_slug,
+        socket.assigns.current_user.id,
+        column_id,
+        name
+      )
+    end
+
+    {:noreply, socket}
+  end
+
+  def handle_event("retro_advance_phase", _params, socket) do
+    if socket.assigns.is_host do
+      Mixchamb.Chambers.Server.retro_advance_phase(
+        socket.assigns.chamber_slug,
+        socket.assigns.current_user.id
+      )
+    end
+
+    {:noreply, socket}
+  end
+
+  def handle_event(
+        "retro_add_card",
+        %{"column_id" => column_id, "body" => body},
+        socket
+      )
+      when is_binary(column_id) and is_binary(body) do
+    user = socket.assigns.current_user
+    alias_or_name = user.alias || user.display_name
+
+    Mixchamb.Chambers.Server.retro_add_card(
+      socket.assigns.chamber_slug,
+      user.id,
+      column_id,
+      body,
+      alias_or_name
+    )
+
+    {:noreply, socket}
+  end
+
+  def handle_event(
+        "retro_update_card",
+        %{"card_id" => card_id, "body" => body},
+        socket
+      )
+      when is_binary(card_id) and is_binary(body) do
+    Mixchamb.Chambers.Server.retro_update_card(
+      socket.assigns.chamber_slug,
+      socket.assigns.current_user.id,
+      card_id,
+      body
+    )
+
+    {:noreply, socket}
+  end
+
+  def handle_event("retro_delete_card", %{"card_id" => card_id}, socket)
+      when is_binary(card_id) do
+    Mixchamb.Chambers.Server.retro_delete_card(
+      socket.assigns.chamber_slug,
+      socket.assigns.current_user.id,
+      card_id
+    )
+
+    {:noreply, socket}
+  end
+
+  def handle_event("retro_vote", %{"card_id" => card_id}, socket) when is_binary(card_id) do
+    Mixchamb.Chambers.Server.retro_vote(
+      socket.assigns.chamber_slug,
+      socket.assigns.current_user.id,
+      card_id
+    )
+
+    {:noreply, socket}
+  end
+
+  def handle_event("retro_withdraw_vote", %{"card_id" => card_id}, socket)
+      when is_binary(card_id) do
+    Mixchamb.Chambers.Server.retro_withdraw_vote(
+      socket.assigns.chamber_slug,
+      socket.assigns.current_user.id,
+      card_id
+    )
+
+    {:noreply, socket}
+  end
+
+  def handle_event("retro_set_discussing", params, socket) do
+    card_id = Map.get(params, "card_id")
+
+    if socket.assigns.is_host do
+      Mixchamb.Chambers.Server.retro_set_discussing(
+        socket.assigns.chamber_slug,
+        socket.assigns.current_user.id,
+        card_id
+      )
+    end
+
+    {:noreply, socket}
+  end
+
+  def handle_event("retro_add_action_item", params, socket) do
+    user = socket.assigns.current_user
+
+    attrs =
+      params
+      |> Map.take(["body", "source_card_id", "assignee_alias", "due_date"])
+      |> Map.new(fn {k, v} -> {String.to_atom(k), v} end)
+      |> Map.put(:created_by_user_id, user.id)
+
+    Mixchamb.Chambers.Server.retro_add_action_item(socket.assigns.chamber_slug, attrs)
+
+    {:noreply, socket}
+  end
+
+  def handle_event(
+        "retro_update_action_item",
+        %{"action_id" => action_id} = params,
+        socket
+      )
+      when is_binary(action_id) do
+    attrs =
+      params
+      |> Map.take(["body", "assignee_alias", "due_date", "completed"])
+      |> Map.new(fn {k, v} -> {String.to_atom(k), v} end)
+
+    Mixchamb.Chambers.Server.retro_update_action_item(
+      socket.assigns.chamber_slug,
+      action_id,
+      attrs
+    )
+
+    {:noreply, socket}
+  end
+
+  def handle_event("retro_delete_action_item", %{"action_id" => action_id}, socket)
+      when is_binary(action_id) do
+    Mixchamb.Chambers.Server.retro_delete_action_item(socket.assigns.chamber_slug, action_id)
+    {:noreply, socket}
+  end
+
   # Creator promotes another participant to co-host. Server enforces
   # the creator-only rule independently; this LV-side check is the
   # fast path so a misclick on a stale UI doesn't burn a roundtrip.
@@ -615,6 +843,85 @@ defmodule MixchambWeb.ChamberLive do
     {:noreply, assign(socket, :poker_session, load_poker_session(socket.assigns.chamber))}
   end
 
+  # Retro broadcasts — reload the full session from DB for the
+  # state-changing ones (card add/edit/delete, action add/edit/delete,
+  # phase change, voting toggle, title/column rename, session start).
+  # Vote events also reload (so the LV's view of vote tallies stays
+  # in sync); the per-card vote counts are denormalised on cards
+  # post-materialisation, but mid-voting we don't surface live tallies
+  # from this stub anyway. Wire shapes:
+  #   {:retro, :evt, payload}          (3-tuple)
+  #   {:retro, :evt, a, b}             (4-tuple — card_edited, column_renamed, vote_cast pre-tallies)
+  #   {:retro, :evt, user_id, card_id, tallies}  (5-tuple — vote_cast / vote_withdrawn)
+  def handle_info({:retro, :phase_changed, new_phase}, socket) do
+    chamber = socket.assigns.chamber
+
+    socket =
+      socket
+      |> assign(:retro_session, load_retro_session(chamber))
+      # Reset vote tallies + my-votes on every phase change. Entering
+      # :voting starts at zero; exiting :voting drops the now-stale
+      # ephemeral signals (the materialised counts come back on the
+      # reloaded session).
+      |> assign(:retro_tallies, %{})
+      |> assign(:retro_my_votes, MapSet.new())
+
+    # Archive transition produces a new row in past_retros — reload
+    # the disclosure list. Other transitions don't touch that list.
+    socket =
+      if new_phase == :archived do
+        assign(socket, :past_retros, load_past_retros(chamber))
+      else
+        socket
+      end
+
+    {:noreply, socket}
+  end
+
+  def handle_info({:retro, :vote_cast, user_id, card_id, tallies}, socket) do
+    my_votes =
+      if user_id == socket.assigns.current_user.id do
+        MapSet.put(socket.assigns.retro_my_votes, card_id)
+      else
+        socket.assigns.retro_my_votes
+      end
+
+    {:noreply,
+     socket
+     |> assign(:retro_tallies, tallies)
+     |> assign(:retro_my_votes, my_votes)}
+  end
+
+  def handle_info({:retro, :vote_withdrawn, user_id, card_id, tallies}, socket) do
+    my_votes =
+      if user_id == socket.assigns.current_user.id do
+        MapSet.delete(socket.assigns.retro_my_votes, card_id)
+      else
+        socket.assigns.retro_my_votes
+      end
+
+    {:noreply,
+     socket
+     |> assign(:retro_tallies, tallies)
+     |> assign(:retro_my_votes, my_votes)}
+  end
+
+  # Catch-all retro broadcasts (card/action add/edit/delete, title,
+  # column rename, voting toggle, session start) all just reload
+  # the session. Cheap, avoids per-event patching against a stale
+  # local copy.
+  def handle_info({:retro, _evt, _payload}, socket) do
+    {:noreply, assign(socket, :retro_session, load_retro_session(socket.assigns.chamber))}
+  end
+
+  def handle_info({:retro, _evt, _a, _b}, socket) do
+    {:noreply, assign(socket, :retro_session, load_retro_session(socket.assigns.chamber))}
+  end
+
+  def handle_info({:retro, _evt, _a, _b, _c}, socket) do
+    {:noreply, assign(socket, :retro_session, load_retro_session(socket.assigns.chamber))}
+  end
+
   # Co-host promotion / demotion fans out to everyone in the chamber.
   # Each client recomputes its own is_host flag — the host-only
   # controls in the template will re-render accordingly within a
@@ -634,15 +941,18 @@ defmodule MixchambWeb.ChamberLive do
   end
 
   # Activity flipped by the host. Re-pull the chamber row so the
-  # local `activity` assign matches the DB, then reload the poker
-  # session (becomes a fresh session for poker, nil for music).
+  # local `activity` assign matches the DB, then reload the
+  # activity-specific session assigns (poker fresh / nil; retro
+  # rehydrated from DB if a session exists).
   def handle_info({:activity_changed, _activity}, socket) do
     chamber = Chambers.find_by_slug(socket.assigns.chamber_slug)
 
     {:noreply,
      socket
      |> assign(:chamber, chamber)
-     |> assign(:poker_session, load_poker_session(chamber))}
+     |> assign(:poker_session, load_poker_session(chamber))
+     |> assign(:retro_session, load_retro_session(chamber))
+     |> assign(:past_retros, load_past_retros(chamber))}
   end
 
   # Broadcast by the LV that wrote the title change. Everyone else
@@ -830,25 +1140,37 @@ defmodule MixchambWeb.ChamberLive do
 
   defp activity_label("music"), do: "Music"
   defp activity_label("poker"), do: "Poker"
+  defp activity_label("retro"), do: "Retro"
 
   # Active-state class for each activity chip. Music carries the
-  # brand pink (--primary); poker carries cyan (--accent-poker)
-  # so the chip-strip itself reads which activity the chamber is in.
-  # Static class strings so Tailwind picks them up at build time.
+  # brand pink (--primary); poker carries cyan (--accent-poker);
+  # retro carries the bass accent so the chip-strip itself reads
+  # which activity the chamber is in. Static class strings so
+  # Tailwind picks them up at build time.
   defp activity_chip_active_class("music"),
     do: "bg-primary/15 text-primary border-primary/40"
 
   defp activity_chip_active_class("poker"),
     do: "bg-accent-poker/15 text-accent-poker border-accent-poker/40"
 
+  defp activity_chip_active_class("retro"),
+    do: "bg-accent-bass/15 text-accent-bass border-accent-bass/40"
+
   defp chamber_og_title(%{activity: "poker"} = chamber),
     do: "Planning poker · #{chamber.title} · mixchamb"
+
+  defp chamber_og_title(%{activity: "retro"} = chamber),
+    do: "Retro · #{chamber.title} · mixchamb"
 
   defp chamber_og_title(chamber),
     do: "Jamming in #{chamber.title} · mixchamb"
 
   defp chamber_og_description(%{activity: "poker"} = chamber) do
     "Join the planning session in #{chamber.title}. Vote on stories, reveal together, anyone with the link can join."
+  end
+
+  defp chamber_og_description(%{activity: "retro"} = chamber) do
+    "Join the retrospective in #{chamber.title}. Brainstorm, optionally vote, leave with action items — anyone with the link can join."
   end
 
   defp chamber_og_description(chamber) do
@@ -916,6 +1238,52 @@ defmodule MixchambWeb.ChamberLive do
       deck: Atom.to_string(entry.deck),
       cards: Mixchamb.Chambers.PokerSession.cards_for(entry.deck),
       values: Map.values(entry.votes)
+    }
+  end
+
+  # Shape the loaded RetroSession (with its columns/cards/actions
+  # preloads) into a JSON-safe map for Chamber.vue / RetroBoard.vue.
+  # Strips Ecto metadata and snakes-into the wire shape RetroBoard
+  # expects (see assets/vue/activities/retro/RetroBoard.vue's
+  # `RetroSession` type). No per-user vote filtering at this layer
+  # — votes are ephemeral in the GenServer; vote_count on each
+  # card is the only persisted signal.
+  defp retro_view(nil), do: nil
+
+  defp retro_view(session) do
+    %{
+      id: session.id,
+      title: session.title,
+      status: session.status,
+      voting_enabled: session.voting_enabled,
+      columns:
+        Enum.map(session.columns, fn col ->
+          %{id: col.id, name: col.name, position: col.position}
+        end),
+      cards:
+        Enum.map(session.cards, fn card ->
+          %{
+            id: card.id,
+            retro_column_id: card.retro_column_id,
+            body: card.body,
+            author_user_id: card.author_user_id,
+            author_alias: card.author_alias,
+            vote_count: card.vote_count
+          }
+        end),
+      action_items:
+        Enum.map(session.action_items, fn action ->
+          %{
+            id: action.id,
+            source_card_id: action.source_card_id,
+            body: action.body,
+            assignee_alias: action.assignee_alias,
+            # Date → ISO string for the wire. live_vue's JSON
+            # encoder doesn't know how to serialise %Date{}.
+            due_date: action.due_date && Date.to_iso8601(action.due_date),
+            completed: action.completed
+          }
+        end)
     }
   end
 
@@ -1325,7 +1693,11 @@ defmodule MixchambWeb.ChamberLive do
               presence_count={map_size(@presences)}
               poker_session={poker_view(@poker_session, @current_user.id)}
               poker_participants={poker_participants(@presences)}
+              retro_session={retro_view(@retro_session)}
+              retro_tallies={@retro_tallies}
+              retro_my_votes={MapSet.to_list(@retro_my_votes)}
               current_user_id={@current_user.id}
+              current_user_alias={@current_user.alias || @current_user.display_name}
               is_host={@is_host}
             />
           </div>
@@ -1364,6 +1736,7 @@ defmodule MixchambWeb.ChamberLive do
                 presences={@presences}
                 hosts={@hosts}
                 recent_hits={@recent_hits}
+                past_retros={@past_retros}
               />
             </div>
           </aside>
@@ -1413,6 +1786,7 @@ defmodule MixchambWeb.ChamberLive do
                   chamber={@chamber}
                   presences={@presences}
                   hosts={@hosts}
+                  past_retros={@past_retros}
                 />
               </div>
             </div>
@@ -1542,6 +1916,7 @@ defmodule MixchambWeb.ChamberLive do
   attr :presences, :map, required: true
   attr :hosts, :any, required: true
   attr :recent_hits, :list, default: []
+  attr :past_retros, :list, default: []
 
   defp presence_panel_body(assigns) do
     ~H"""
@@ -1703,6 +2078,34 @@ defmodule MixchambWeb.ChamberLive do
         <span class="truncate min-w-0 text-foreground">{hit.label}</span>
       </div>
     </div>
+
+    <%!-- Past retros disclosure — retro chambers only, hidden
+         when there's no history yet. Shows session title (or
+         "Untitled retro") + archived date. v1 is list-only;
+         click-to-view a past retro is a polish iteration.
+         Caller passes [] for non-retro chambers (default). --%>
+    <details
+      :if={@chamber.activity == "retro" and @past_retros != []}
+      class="border-t group"
+    >
+      <summary class="cursor-pointer px-3 py-2 text-[10px] uppercase tracking-wider text-muted-foreground font-display flex items-center justify-between hover:text-foreground">
+        <span>Past retros ({length(@past_retros)})</span>
+        <span class="text-[10px] group-open:rotate-90 transition-transform" aria-hidden="true">›</span>
+      </summary>
+      <ul class="px-2 pb-2 space-y-1">
+        <li
+          :for={past <- @past_retros}
+          class="rounded-md border bg-background/40 px-2 py-1.5 text-[11px] leading-tight"
+        >
+          <div class="font-medium truncate text-foreground">
+            {past.title || "Untitled retro"}
+          </div>
+          <div class="text-muted-foreground tabular-nums text-[10px]">
+            archived {Calendar.strftime(past.archived_at, "%Y-%m-%d %H:%M") <> " UTC"}
+          </div>
+        </li>
+      </ul>
+    </details>
     """
   end
 end

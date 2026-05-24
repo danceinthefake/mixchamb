@@ -138,6 +138,98 @@ defmodule Mixchamb.Chambers.Server do
   def poker_set_queue(slug, lines) when is_list(lines),
     do: GenServer.cast(via(slug), {:poker_set_queue, lines})
 
+  # --- Retro API ------------------------------------------------
+  # All retro casts are dropped silently if the chamber isn't in
+  # "retro" activity (retro_state is nil) — same pattern as the
+  # poker fall-throughs. Host-gated actions check `state.hosts`
+  # inside the cast handler; non-host actions just check the
+  # session is live.
+
+  @doc """
+  Start a fresh retro session for this chamber. Host-only.
+  Idempotent — does nothing if a non-archived session already
+  exists.
+  """
+  def retro_start_session(slug, user_id) when is_binary(user_id),
+    do: GenServer.cast(via(slug), {:retro_start_session, user_id})
+
+  @doc "Update session title. Host-only."
+  def retro_set_title(slug, user_id, title) when is_binary(user_id),
+    do: GenServer.cast(via(slug), {:retro_set_title, user_id, title})
+
+  @doc "Toggle voting_enabled. Host-only. See spec §5 for transition rules."
+  def retro_set_voting_enabled(slug, user_id, enabled)
+      when is_binary(user_id) and is_boolean(enabled),
+      do: GenServer.cast(via(slug), {:retro_set_voting_enabled, user_id, enabled})
+
+  @doc "Rename a column. Host-only, :setup-only (spec §2)."
+  def retro_rename_column(slug, user_id, column_id, name)
+      when is_binary(user_id) and is_binary(column_id) and is_binary(name),
+      do: GenServer.cast(via(slug), {:retro_rename_column, user_id, column_id, name})
+
+  @doc "Advance the phase machine by one step. Host-only."
+  def retro_advance_phase(slug, user_id) when is_binary(user_id),
+    do: GenServer.cast(via(slug), {:retro_advance_phase, user_id})
+
+  @doc "Add a brainstorm card. Anyone in the chamber."
+  def retro_add_card(slug, user_id, column_id, body, author_alias)
+      when is_binary(user_id) and is_binary(column_id) and is_binary(body) and
+             is_binary(author_alias),
+      do:
+        GenServer.cast(
+          via(slug),
+          {:retro_add_card, user_id, column_id, body, author_alias}
+        )
+
+  @doc "Edit your own card's body. Author-only, :brainstorm-only."
+  def retro_update_card(slug, user_id, card_id, body)
+      when is_binary(user_id) and is_binary(card_id) and is_binary(body),
+      do: GenServer.cast(via(slug), {:retro_update_card, user_id, card_id, body})
+
+  @doc "Delete your own card. Author-only, :brainstorm-only."
+  def retro_delete_card(slug, user_id, card_id)
+      when is_binary(user_id) and is_binary(card_id),
+      do: GenServer.cast(via(slug), {:retro_delete_card, user_id, card_id})
+
+  @doc "Vote for a card during :voting. Capped at 3 per user."
+  def retro_vote(slug, user_id, card_id)
+      when is_binary(user_id) and is_binary(card_id),
+      do: GenServer.cast(via(slug), {:retro_vote, user_id, card_id})
+
+  @doc "Withdraw a vote for a card during :voting."
+  def retro_withdraw_vote(slug, user_id, card_id)
+      when is_binary(user_id) and is_binary(card_id),
+      do: GenServer.cast(via(slug), {:retro_withdraw_vote, user_id, card_id})
+
+  @doc "Highlight a card as currently-discussing. Host-only, :discuss-only."
+  def retro_set_discussing(slug, user_id, card_id_or_nil)
+      when is_binary(user_id) and (is_binary(card_id_or_nil) or is_nil(card_id_or_nil)),
+      do: GenServer.cast(via(slug), {:retro_set_discussing, user_id, card_id_or_nil})
+
+  @doc """
+  Add an action item during :discuss. Anyone in the chamber.
+  `attrs` should include :body and may include :source_card_id,
+  :assignee_alias, :due_date, :created_by_user_id.
+  """
+  def retro_add_action_item(slug, attrs) when is_map(attrs),
+    do: GenServer.cast(via(slug), {:retro_add_action_item, attrs})
+
+  @doc "Update an action item. Anyone in the chamber, :discuss-only."
+  def retro_update_action_item(slug, action_id, attrs)
+      when is_binary(action_id) and is_map(attrs),
+      do: GenServer.cast(via(slug), {:retro_update_action_item, action_id, attrs})
+
+  @doc "Delete an action item. Anyone in the chamber, :discuss-only."
+  def retro_delete_action_item(slug, action_id) when is_binary(action_id),
+    do: GenServer.cast(via(slug), {:retro_delete_action_item, action_id})
+
+  @doc """
+  Synchronously read the current retro EphemeralState (or `nil`
+  if not in retro activity). Used by LV mount + Presence-leave
+  cleanup.
+  """
+  def retro_state(slug), do: GenServer.call(via(slug), :retro_state)
+
   @doc """
   Promote `target_user_id` to a co-host. Rejected when
   `requester_user_id` isn't the chamber creator. Idempotent —
@@ -258,6 +350,26 @@ defmodule Mixchamb.Chambers.Server do
         Mixchamb.Chambers.PokerSession.new()
       end
 
+    # Retro is similar but persistent — the EphemeralState
+    # struct points at the live session row (if any) and holds
+    # the vote map + discussing-card focus that don't deserve a
+    # DB column. Re-hydrated from the latest non-archived
+    # session on GenServer restart; nil if no session exists yet
+    # (the LV's first host action creates one).
+    retro_state =
+      if activity == "retro" and state.chamber_id do
+        case Mixchamb.Retro.current_session(state.chamber_id) do
+          nil ->
+            nil
+
+          session ->
+            Mixchamb.Retro.EphemeralState.new(
+              session.id,
+              String.to_existing_atom(session.status)
+            )
+        end
+      end
+
     # Hosts: creator-plus-promoted set. Ephemeral by design —
     # promotions die with the chamber, same as poker / music state
     # (v4 §3.7). Creator is the single source of demote-immunity;
@@ -283,7 +395,8 @@ defmodule Mixchamb.Chambers.Server do
         activity: activity,
         creator_user_id: creator_user_id,
         hosts: hosts,
-        poker_session: poker_session
+        poker_session: poker_session,
+        retro_state: retro_state
       })
 
     {:ok, state}
@@ -464,6 +577,328 @@ defmodule Mixchamb.Chambers.Server do
   def handle_cast({:poker_set_deck, _}, state), do: {:noreply, state}
   def handle_cast({:poker_set_queue, _}, state), do: {:noreply, state}
 
+  # --- Retro cast handlers -----------------------------------------
+  # Pattern: pattern-match `state.retro_state` (non-nil = chamber
+  # is in retro mode with a live session). Host-gated actions also
+  # check `state.hosts`. Persistent ops go through `Mixchamb.Retro`;
+  # on success, broadcast and refresh the cached EphemeralState.
+  # Most handlers don't update the EphemeralState struct itself —
+  # only the vote / phase / discussing-focus ones do, because
+  # those are the only fields the struct carries.
+
+  def handle_cast({:retro_start_session, user_id}, state) do
+    cond do
+      state.activity != "retro" ->
+        {:noreply, state}
+
+      not MapSet.member?(state.hosts, user_id) ->
+        {:noreply, state}
+
+      not is_nil(state.retro_state) ->
+        # Idempotent — session already exists.
+        {:noreply, state}
+
+      true ->
+        case Mixchamb.Retro.start_session(state.chamber_id) do
+          {:ok, session} ->
+            retro_state =
+              Mixchamb.Retro.EphemeralState.new(
+                session.id,
+                String.to_existing_atom(session.status)
+              )
+
+            broadcast_retro(state.slug, {:retro, :session_started, session.id})
+            {:noreply, %{state | retro_state: retro_state}}
+
+          _ ->
+            {:noreply, state}
+        end
+    end
+  end
+
+  def handle_cast({:retro_set_title, user_id, title}, %{retro_state: rs} = state)
+      when not is_nil(rs) do
+    if not MapSet.member?(state.hosts, user_id) do
+      {:noreply, state}
+    else
+      with %_{} = session <- Mixchamb.Retro.load_session(rs.session_id),
+           {:ok, updated} <- Mixchamb.Retro.set_title(session, title) do
+        broadcast_retro(state.slug, {:retro, :title_changed, updated.title})
+      end
+
+      {:noreply, state}
+    end
+  end
+
+  def handle_cast({:retro_set_voting_enabled, user_id, enabled}, %{retro_state: rs} = state)
+      when not is_nil(rs) do
+    if not MapSet.member?(state.hosts, user_id) do
+      {:noreply, state}
+    else
+      session = Mixchamb.Retro.load_session(rs.session_id)
+
+      case Mixchamb.Retro.set_voting_enabled(session, enabled) do
+        {:ok, _updated} ->
+          broadcast_retro(state.slug, {:retro, :voting_enabled_changed, enabled})
+
+          # Special case from spec §5: toggling off mid-:voting
+          # discards the vote map and auto-advances to :discuss
+          # (no materialisation).
+          if rs.phase == :voting and enabled == false do
+            reloaded = Mixchamb.Retro.load_session(rs.session_id)
+
+            case Mixchamb.Retro.set_phase(reloaded, :discuss) do
+              {:ok, _} ->
+                {:ok, new_rs} = Mixchamb.Retro.EphemeralState.set_phase(rs, :discuss)
+                broadcast_retro(state.slug, {:retro, :phase_changed, :discuss})
+                {:noreply, %{state | retro_state: new_rs}}
+
+              _ ->
+                {:noreply, state}
+            end
+          else
+            {:noreply, state}
+          end
+
+        _ ->
+          {:noreply, state}
+      end
+    end
+  end
+
+  def handle_cast(
+        {:retro_rename_column, user_id, column_id, name},
+        %{retro_state: rs} = state
+      )
+      when not is_nil(rs) do
+    if not MapSet.member?(state.hosts, user_id) do
+      {:noreply, state}
+    else
+      session = Mixchamb.Retro.load_session(rs.session_id)
+      column = Mixchamb.Retro.get_column(column_id)
+
+      if column && column.retro_session_id == rs.session_id do
+        case Mixchamb.Retro.rename_column(column, name, session) do
+          {:ok, updated} ->
+            broadcast_retro(
+              state.slug,
+              {:retro, :column_renamed, updated.id, updated.name}
+            )
+
+          _ ->
+            :ok
+        end
+      end
+
+      {:noreply, state}
+    end
+  end
+
+  def handle_cast({:retro_advance_phase, user_id}, %{retro_state: rs} = state)
+      when not is_nil(rs) do
+    cond do
+      not MapSet.member?(state.hosts, user_id) ->
+        {:noreply, state}
+
+      true ->
+        session = Mixchamb.Retro.load_session(rs.session_id)
+
+        # If exiting :voting → :discuss, materialise the vote
+        # counts onto retro_cards.vote_count first, then clear
+        # the ephemeral vote map via set_phase.
+        if rs.phase == :voting do
+          counts = Mixchamb.Retro.EphemeralState.tally(rs)
+          Mixchamb.Retro.materialize_vote_counts(session, counts)
+        end
+
+        case Mixchamb.Retro.advance_phase(session) do
+          {:ok, updated} ->
+            new_phase = String.to_existing_atom(updated.status)
+            {:ok, new_rs} = Mixchamb.Retro.EphemeralState.set_phase(rs, new_phase)
+            broadcast_retro(state.slug, {:retro, :phase_changed, new_phase})
+            {:noreply, %{state | retro_state: new_rs}}
+
+          _ ->
+            {:noreply, state}
+        end
+    end
+  end
+
+  def handle_cast(
+        {:retro_add_card, user_id, column_id, body, author_alias},
+        %{retro_state: rs} = state
+      )
+      when not is_nil(rs) do
+    session = Mixchamb.Retro.load_session(rs.session_id)
+    column = Mixchamb.Retro.get_column(column_id)
+
+    if column && column.retro_session_id == rs.session_id do
+      case Mixchamb.Retro.add_card(session, column, %{
+             body: body,
+             author_user_id: user_id,
+             author_alias: author_alias
+           }) do
+        {:ok, card} ->
+          broadcast_retro(state.slug, {:retro, :card_added, card_to_wire(card)})
+
+        _ ->
+          :ok
+      end
+    end
+
+    {:noreply, state}
+  end
+
+  def handle_cast({:retro_update_card, user_id, card_id, body}, %{retro_state: rs} = state)
+      when not is_nil(rs) do
+    session = Mixchamb.Retro.load_session(rs.session_id)
+    card = Mixchamb.Retro.get_card(card_id)
+
+    if card && card.retro_session_id == rs.session_id do
+      case Mixchamb.Retro.update_card(card, body, user_id, session) do
+        {:ok, updated} ->
+          broadcast_retro(state.slug, {:retro, :card_edited, updated.id, updated.body})
+
+        _ ->
+          :ok
+      end
+    end
+
+    {:noreply, state}
+  end
+
+  def handle_cast({:retro_delete_card, user_id, card_id}, %{retro_state: rs} = state)
+      when not is_nil(rs) do
+    session = Mixchamb.Retro.load_session(rs.session_id)
+    card = Mixchamb.Retro.get_card(card_id)
+
+    if card && card.retro_session_id == rs.session_id do
+      case Mixchamb.Retro.delete_card(card, user_id, session) do
+        {:ok, _} ->
+          broadcast_retro(state.slug, {:retro, :card_deleted, card.id})
+
+        _ ->
+          :ok
+      end
+    end
+
+    {:noreply, state}
+  end
+
+  def handle_cast({:retro_vote, user_id, card_id}, %{retro_state: rs} = state)
+      when not is_nil(rs) do
+    case Mixchamb.Retro.EphemeralState.cast_vote(rs, user_id, card_id) do
+      {:ok, new_rs} ->
+        tallies = Mixchamb.Retro.EphemeralState.tally(new_rs)
+        broadcast_retro(state.slug, {:retro, :vote_cast, user_id, card_id, tallies})
+        {:noreply, %{state | retro_state: new_rs}}
+
+      _ ->
+        {:noreply, state}
+    end
+  end
+
+  def handle_cast({:retro_withdraw_vote, user_id, card_id}, %{retro_state: rs} = state)
+      when not is_nil(rs) do
+    case Mixchamb.Retro.EphemeralState.withdraw_vote(rs, user_id, card_id) do
+      {:ok, new_rs} ->
+        tallies = Mixchamb.Retro.EphemeralState.tally(new_rs)
+        broadcast_retro(state.slug, {:retro, :vote_withdrawn, user_id, card_id, tallies})
+        {:noreply, %{state | retro_state: new_rs}}
+
+      _ ->
+        {:noreply, state}
+    end
+  end
+
+  def handle_cast({:retro_set_discussing, user_id, card_id_or_nil}, %{retro_state: rs} = state)
+      when not is_nil(rs) do
+    if not MapSet.member?(state.hosts, user_id) do
+      {:noreply, state}
+    else
+      case Mixchamb.Retro.EphemeralState.set_discussing(rs, card_id_or_nil) do
+        {:ok, new_rs} ->
+          broadcast_retro(state.slug, {:retro, :discussing, card_id_or_nil})
+          {:noreply, %{state | retro_state: new_rs}}
+
+        _ ->
+          {:noreply, state}
+      end
+    end
+  end
+
+  def handle_cast({:retro_add_action_item, attrs}, %{retro_state: rs} = state)
+      when not is_nil(rs) do
+    session = Mixchamb.Retro.load_session(rs.session_id)
+
+    case Mixchamb.Retro.add_action_item(session, attrs) do
+      {:ok, action} ->
+        broadcast_retro(state.slug, {:retro, :action_added, action_to_wire(action)})
+
+      _ ->
+        :ok
+    end
+
+    {:noreply, state}
+  end
+
+  def handle_cast({:retro_update_action_item, action_id, attrs}, %{retro_state: rs} = state)
+      when not is_nil(rs) do
+    session = Mixchamb.Retro.load_session(rs.session_id)
+    action = Mixchamb.Retro.get_action_item(action_id)
+
+    if action && action.retro_session_id == rs.session_id do
+      case Mixchamb.Retro.update_action_item(action, attrs, session) do
+        {:ok, updated} ->
+          broadcast_retro(
+            state.slug,
+            {:retro, :action_updated, action_to_wire(updated)}
+          )
+
+        _ ->
+          :ok
+      end
+    end
+
+    {:noreply, state}
+  end
+
+  def handle_cast({:retro_delete_action_item, action_id}, %{retro_state: rs} = state)
+      when not is_nil(rs) do
+    session = Mixchamb.Retro.load_session(rs.session_id)
+    action = Mixchamb.Retro.get_action_item(action_id)
+
+    if action && action.retro_session_id == rs.session_id do
+      case Mixchamb.Retro.delete_action_item(action, session) do
+        {:ok, _} ->
+          broadcast_retro(state.slug, {:retro, :action_deleted, action.id})
+
+        _ ->
+          :ok
+      end
+    end
+
+    {:noreply, state}
+  end
+
+  # Retro fall-throughs when retro_state is nil (chamber isn't
+  # in retro mode or hasn't started a session yet). Note no
+  # fall-through for :retro_start_session — its primary handler
+  # doesn't gate on retro_state, so it always matches.
+  def handle_cast({:retro_set_title, _, _}, state), do: {:noreply, state}
+  def handle_cast({:retro_set_voting_enabled, _, _}, state), do: {:noreply, state}
+  def handle_cast({:retro_rename_column, _, _, _}, state), do: {:noreply, state}
+  def handle_cast({:retro_advance_phase, _}, state), do: {:noreply, state}
+  def handle_cast({:retro_add_card, _, _, _, _}, state), do: {:noreply, state}
+  def handle_cast({:retro_update_card, _, _, _}, state), do: {:noreply, state}
+  def handle_cast({:retro_delete_card, _, _}, state), do: {:noreply, state}
+  def handle_cast({:retro_vote, _, _}, state), do: {:noreply, state}
+  def handle_cast({:retro_withdraw_vote, _, _}, state), do: {:noreply, state}
+  def handle_cast({:retro_set_discussing, _, _}, state), do: {:noreply, state}
+  def handle_cast({:retro_add_action_item, _}, state), do: {:noreply, state}
+  def handle_cast({:retro_update_action_item, _, _}, state), do: {:noreply, state}
+  def handle_cast({:retro_delete_action_item, _}, state), do: {:noreply, state}
+
   # Host management. Authorisation is enforced here (not at the
   # LV layer alone) so a hand-crafted phx push from a co-host's
   # session can't sneak in a `promote_host` for themselves.
@@ -527,13 +962,37 @@ defmodule Mixchamb.Chambers.Server do
         _ -> nil
       end
 
+    # Retro persists across activity switches (spec §9): when
+    # flipping back to "retro" we re-hydrate the EphemeralState
+    # from the live DB session if one exists; nil otherwise (the
+    # LV's first host action creates a session). Switching away
+    # clears the ephemeral struct but leaves the DB rows alone.
+    retro_state =
+      case activity do
+        "retro" ->
+          case Mixchamb.Retro.current_session(state.chamber_id) do
+            nil ->
+              nil
+
+            session ->
+              Mixchamb.Retro.EphemeralState.new(
+                session.id,
+                String.to_existing_atom(session.status)
+              )
+          end
+
+        _ ->
+          nil
+      end
+
     Phoenix.PubSub.broadcast(
       Mixchamb.PubSub,
       Mixchamb.Chambers.topic(state.slug),
       {:activity_changed, activity}
     )
 
-    {:noreply, %{state | activity: activity, poker_session: poker_session}}
+    {:noreply,
+     %{state | activity: activity, poker_session: poker_session, retro_state: retro_state}}
   end
 
   @impl true
@@ -559,6 +1018,10 @@ defmodule Mixchamb.Chambers.Server do
 
   def handle_call(:poker_state, _from, state) do
     {:reply, state.poker_session, state}
+  end
+
+  def handle_call(:retro_state, _from, state) do
+    {:reply, state.retro_state, state}
   end
 
   def handle_call(:hosts, _from, state) do
@@ -665,5 +1128,40 @@ defmodule Mixchamb.Chambers.Server do
       Mixchamb.Chambers.topic(slug),
       message
     )
+  end
+
+  # Same shape as broadcast_poker. Retro events carry a leading
+  # `:retro` tag so the LV's handle_info can route them.
+  defp broadcast_retro(slug, message) do
+    Phoenix.PubSub.broadcast(
+      Mixchamb.PubSub,
+      Mixchamb.Chambers.topic(slug),
+      message
+    )
+  end
+
+  # Wire-format helpers — strip Ecto struct metadata so broadcast
+  # payloads are plain maps (cheap to encode for the LV → Vue
+  # round trip).
+  defp card_to_wire(card) do
+    %{
+      id: card.id,
+      retro_column_id: card.retro_column_id,
+      body: card.body,
+      author_user_id: card.author_user_id,
+      author_alias: card.author_alias,
+      vote_count: card.vote_count
+    }
+  end
+
+  defp action_to_wire(action) do
+    %{
+      id: action.id,
+      source_card_id: action.source_card_id,
+      body: action.body,
+      assignee_alias: action.assignee_alias,
+      due_date: action.due_date,
+      completed: action.completed
+    }
   end
 end

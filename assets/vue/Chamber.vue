@@ -30,6 +30,7 @@ import SynthPad from "@/instruments/SynthPad.vue"
 import SulingPad from "@/instruments/SulingPad.vue"
 import KendangPad from "@/instruments/KendangPad.vue"
 import PokerBoard from "@/activities/poker/PokerBoard.vue"
+import RetroBoard from "@/activities/retro/RetroBoard.vue"
 import {
   ensureStarted,
   play,
@@ -56,7 +57,7 @@ const props = defineProps<{
   // (tap-to-enter audio gate, FX bus, master volume). Defaults
   // to "music" so legacy chambers without the column behave
   // identically to v3.
-  activity: "music" | "poker"
+  activity: "music" | "poker" | "retro"
   // How many people are presently in the chamber. Used by music
   // mode to render the "Quiet here — start a chord…" hint when
   // the user is alone, mirroring the poker board's
@@ -69,7 +70,20 @@ const props = defineProps<{
   // to the client).
   poker_session?: import("./activities/poker/PokerBoard.vue").PokerSession | null
   poker_participants?: import("./activities/poker/PokerBoard.vue").Participant[]
+  // Retro-specific. `retro_session` is `null` when activity is
+  // not "retro" OR when in retro but no session started yet.
+  // current_user_alias is snapshotted into each card at create
+  // time (see features/retrospective.md §3).
+  retro_session?: import("./activities/retro/RetroBoard.vue").RetroSession | null
+  // Live vote tallies during :voting (card_id → count). Empty
+  // outside voting. Drives the live-count badges per card and
+  // the "N votes spent" header.
+  retro_tallies?: Record<string, number>
+  // The current user's voted card_ids during :voting (list form
+  // since LV serialises MapSet via Map.to_list).
+  retro_my_votes?: string[]
   current_user_id?: string
+  current_user_alias?: string
   is_host?: boolean
 }>()
 
@@ -530,6 +544,17 @@ live.handleEvent("play_remote_note", async (payload: RemoteNote) => {
     :poker_session="props.poker_session ?? null"
     :poker_participants="props.poker_participants ?? []"
     :current_user_id="props.current_user_id ?? ''"
+    :is_host="props.is_host ?? false"
+  />
+
+  <RetroBoard
+    v-else-if="props.activity === 'retro'"
+    :chamber_slug="props.chamber_slug"
+    :session="props.retro_session ?? null"
+    :tallies="props.retro_tallies ?? {}"
+    :my_votes="props.retro_my_votes ?? []"
+    :current_user_id="props.current_user_id ?? ''"
+    :current_user_alias="props.current_user_alias ?? ''"
     :is_host="props.is_host ?? false"
   />
 </template>
