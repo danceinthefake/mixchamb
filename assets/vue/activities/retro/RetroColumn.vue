@@ -4,10 +4,28 @@
 // many cards exist in the column overall — including others'
 // hidden cards during brainstorm so the room can gauge pace.
 
-import { ref } from "vue"
+import { computed, ref } from "vue"
 import { useLiveVue } from "live_vue"
 import RetroCard from "./RetroCard.vue"
 import type { RetroColumnT, RetroCard as RetroCardT, RetroPhase } from "./RetroBoard.vue"
+
+// Position-mapped subtle tint per column so the four lanes are
+// visually distinguishable at a glance. Uses the activity-accent
+// palette already loaded by Tailwind; /10 opacity keeps cards
+// inside the column the dominant focus. Class strings are
+// literal so Tailwind's source scan picks them up.
+const COLUMN_TINTS = [
+  "bg-accent-pad/10",
+  "bg-accent-drums/10",
+  "bg-accent-keyboard/10",
+  "bg-accent-bass/10",
+]
+const COLUMN_HEADER_DOTS = [
+  "bg-accent-pad",
+  "bg-accent-drums",
+  "bg-accent-keyboard",
+  "bg-accent-bass",
+]
 
 const props = defineProps<{
   column: RetroColumnT
@@ -29,6 +47,13 @@ const props = defineProps<{
 const live = useLiveVue()
 const draft = ref("")
 
+const tintClass = computed(
+  () => COLUMN_TINTS[props.column.position] ?? "bg-card/40",
+)
+const dotClass = computed(
+  () => COLUMN_HEADER_DOTS[props.column.position] ?? "bg-muted-foreground",
+)
+
 function submit() {
   const body = draft.value.trim()
   if (!body) return
@@ -39,11 +64,17 @@ function submit() {
 
 <template>
   <section
-    class="rounded-xl border bg-card/40 flex flex-col"
+    :class="['rounded-xl border flex flex-col', tintClass]"
     :aria-label="`Column: ${column.name}`"
   >
     <header class="flex items-center justify-between px-3 py-2.5 border-b">
-      <h2 class="text-sm font-semibold font-display tracking-tight">{{ column.name }}</h2>
+      <div class="flex items-center gap-2">
+        <span
+          aria-hidden="true"
+          :class="['size-2 rounded-full shrink-0', dotClass]"
+        ></span>
+        <h2 class="text-sm font-semibold font-display tracking-tight">{{ column.name }}</h2>
+      </div>
       <span
         v-if="total_count > 0"
         class="text-xs text-muted-foreground tabular-nums"
