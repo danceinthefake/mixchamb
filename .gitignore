@@ -44,3 +44,8 @@ node_modules/
 .env.local
 .env.*.local
 .env.lan
+
+# Local-only ops notes — kept on disk but never committed (these
+# accumulate VPS hostnames, tunnel UUIDs, secret-rotation
+# scratchpads, etc. as the deploy gets real).
+/HOSTING.md
