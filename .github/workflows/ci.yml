@@ -54,7 +54,7 @@ jobs:
           otp-version: "28.0.1"
 
       - name: Cache deps + build
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: |
             deps
@@ -105,7 +105,7 @@ jobs:
           otp-version: "28.0.1"
 
       - name: Cache mix deps
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: deps
           key: ${{ runner.os }}-mix-deps-${{ hashFiles('**/mix.lock') }}
