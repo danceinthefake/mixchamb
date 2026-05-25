@@ -55,7 +55,21 @@ defmodule MixchambWeb.RetroLive do
             author_user_id: card.author_user_id,
             author_alias: card.author_alias,
             author_display_name: card.author_display_name,
-            vote_count: card.vote_count
+            vote_count: card.vote_count,
+            reactions:
+              Enum.map(card.reactions, fn r ->
+                %{user_id: r.user_id, emoji: r.emoji}
+              end),
+            comments:
+              Enum.map(card.comments, fn co ->
+                %{
+                  id: co.id,
+                  body: co.body,
+                  author_user_id: co.author_user_id,
+                  author_alias: co.author_alias,
+                  author_display_name: co.author_display_name
+                }
+              end)
           }
         end),
       action_items:

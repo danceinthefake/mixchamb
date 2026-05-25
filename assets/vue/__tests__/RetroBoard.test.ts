@@ -14,6 +14,21 @@ import type { RetroSession } from "../activities/retro/RetroBoard.vue"
 
 enableAutoUnmount(afterEach)
 
+function makeCard(o: Partial<import("../activities/retro/RetroBoard.vue").RetroCard> = {}) {
+  return {
+    id: "c-default",
+    retro_column_id: "c1",
+    body: "x",
+    author_user_id: "u1",
+    author_alias: "me",
+    author_display_name: null,
+    vote_count: 0,
+    reactions: [],
+    comments: [],
+    ...o,
+  }
+}
+
 function makeSession(overrides: Partial<RetroSession> = {}): RetroSession {
   return {
     id: "s1",
@@ -90,6 +105,8 @@ describe("RetroBoard", () => {
           author_user_id: "u1",
           author_alias: "me",
           vote_count: 0,
+          reactions: [],
+          comments: [],
         },
         {
           id: "card-theirs-1",
@@ -98,6 +115,8 @@ describe("RetroBoard", () => {
           author_user_id: "u2",
           author_alias: "them",
           vote_count: 0,
+          reactions: [],
+          comments: [],
         },
         {
           id: "card-theirs-2",
@@ -106,6 +125,8 @@ describe("RetroBoard", () => {
           author_user_id: "u3",
           author_alias: "other",
           vote_count: 0,
+          reactions: [],
+          comments: [],
         },
       ],
     })
@@ -131,6 +152,8 @@ describe("RetroBoard", () => {
           author_user_id: "u1",
           author_alias: "me",
           vote_count: 0,
+          reactions: [],
+          comments: [],
         },
         {
           id: "theirs",
@@ -139,6 +162,8 @@ describe("RetroBoard", () => {
           author_user_id: "u2",
           author_alias: "them",
           vote_count: 0,
+          reactions: [],
+          comments: [],
         },
       ],
     })
@@ -164,6 +189,8 @@ describe("RetroBoard", () => {
           author_user_id: "u2",
           author_alias: "them",
           vote_count: 0,
+          reactions: [],
+          comments: [],
         },
       ],
     })
@@ -187,6 +214,8 @@ describe("RetroBoard", () => {
           author_user_id: "u1",
           author_alias: "me",
           vote_count: 0,
+          reactions: [],
+          comments: [],
         },
         {
           id: "card-theirs",
@@ -195,6 +224,8 @@ describe("RetroBoard", () => {
           author_user_id: "u2",
           author_alias: "them",
           vote_count: 0,
+          reactions: [],
+          comments: [],
         },
       ],
     })
@@ -216,6 +247,8 @@ describe("RetroBoard", () => {
           author_user_id: "u1",
           author_alias: "me",
           vote_count: 0,
+          reactions: [],
+          comments: [],
         },
         {
           id: "card-theirs",
@@ -224,6 +257,8 @@ describe("RetroBoard", () => {
           author_user_id: "u2",
           author_alias: "them",
           vote_count: 0,
+          reactions: [],
+          comments: [],
         },
       ],
     })
@@ -273,6 +308,8 @@ describe("RetroBoard", () => {
           author_user_id: "u1",
           author_alias: "me",
           vote_count: 1,
+          reactions: [],
+          comments: [],
         },
         {
           id: "high",
@@ -281,6 +318,8 @@ describe("RetroBoard", () => {
           author_user_id: "u1",
           author_alias: "me",
           vote_count: 5,
+          reactions: [],
+          comments: [],
         },
       ],
     })

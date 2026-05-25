@@ -22,6 +22,19 @@ export type RetroColumnT = {
   position: number
 }
 
+export type RetroReaction = {
+  user_id: string | null
+  emoji: string
+}
+
+export type RetroComment = {
+  id: string
+  body: string
+  author_user_id: string | null
+  author_alias: string
+  author_display_name: string | null
+}
+
 export type RetroCard = {
   id: string
   retro_column_id: string
@@ -36,6 +49,12 @@ export type RetroCard = {
   // (matches poker reveal's two-piece pattern; spec §3).
   author_display_name: string | null
   vote_count: number
+  // Emoji reactions (multi-emoji, one-per-user-per-emoji
+  // toggle). Empty when nobody's reacted yet.
+  reactions: RetroReaction[]
+  // Flat comments thread. Collapsed by default in the UI;
+  // expand to see / add.
+  comments: RetroComment[]
 }
 
 export type RetroActionItem = {

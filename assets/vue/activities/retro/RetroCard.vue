@@ -7,16 +7,26 @@
 import { computed, ref } from "vue"
 import { useLiveVue } from "live_vue"
 import RetroActionRow from "./RetroActionRow.vue"
+import RetroComments from "./RetroComments.vue"
 import type {
   RetroCard as RetroCardT,
   RetroActionItem,
   RetroPhase,
 } from "./RetroBoard.vue"
 
+// The same 6-emoji set RetroCardReaction validates on the
+// server. Order matches the schema's @emojis attribute so
+// counts always render in the same order across all clients.
+const REACTION_EMOJIS = ["👍", "❤️", "🎉", "😄", "😢", "🤔"] as const
+
 const props = defineProps<{
   card: RetroCardT
   phase: RetroPhase
   is_mine: boolean
+  // Used for "did I react / is this my comment" checks. Empty
+  // string in archived-permalink mode (RetroLive) — the
+  // reaction strip + comments thread still render read-only.
+  current_user_id: string
   tally: number
   is_my_vote: boolean
   votes_remaining: number
@@ -29,6 +39,42 @@ const props = defineProps<{
   // (spec §6). Empty list outside those phases.
   tied_actions: RetroActionItem[]
 }>()
+
+// Reactions + comments are available from :reveal onward (no
+// reacting / commenting on hidden brainstorm cards — needs the
+// same shared substrate for everyone). Mirror the server's
+// allow-list (Mixchamb.Retro's @reactable_statuses).
+const reactableNow = computed(() =>
+  ["reveal", "voting", "discuss", "archived"].includes(props.phase),
+)
+
+// Group reactions by emoji and check if current user has each.
+type ReactionSummary = {
+  emoji: string
+  count: number
+  mine: boolean
+}
+const reactionSummaries = computed<ReactionSummary[]>(() => {
+  const byEmoji: Record<string, ReactionSummary> = {}
+  for (const emoji of REACTION_EMOJIS) {
+    byEmoji[emoji] = { emoji, count: 0, mine: false }
+  }
+  for (const r of props.card.reactions) {
+    const summary = byEmoji[r.emoji]
+    if (!summary) continue
+    summary.count++
+    if (r.user_id && r.user_id === props.current_user_id) summary.mine = true
+  }
+  return REACTION_EMOJIS.map((e) => byEmoji[e])
+})
+
+const commentsReadOnly = computed(() => props.phase === "archived")
+
+function toggleReaction(emoji: string) {
+  if (!reactableNow.value) return
+  if (props.phase === "archived") return
+  live.pushEvent("retro_toggle_reaction", { card_id: props.card.id, emoji })
+}
 
 const showTiedActions = computed(
   () =>
@@ -194,6 +240,45 @@ function focusForDiscussion() {
         </span>
       </div>
     </div>
+
+    <!-- Emoji reactions strip. Visible from :reveal onward
+         (and archived). Each chip toggles the current user's
+         reaction; chips highlight when you've reacted. Read-
+         only on :archived. -->
+    <div
+      v-if="reactableNow"
+      class="pt-2 mt-2 border-t border-input/40 flex flex-wrap items-center gap-1"
+      :aria-label="`Reactions on: ${card.body}`"
+      @click.stop
+    >
+      <button
+        v-for="r in reactionSummaries"
+        :key="r.emoji"
+        type="button"
+        :aria-pressed="r.mine"
+        :aria-label="`${r.mine ? 'Remove' : 'Add'} ${r.emoji} reaction`"
+        :disabled="phase === 'archived'"
+        class="inline-flex items-center gap-1 rounded-md border px-1.5 py-0.5 text-xs transition-colors"
+        :class="
+          r.mine
+            ? 'bg-accent-bass/20 border-accent-bass text-foreground'
+            : 'border-input hover:bg-accent text-muted-foreground hover:text-foreground'
+        "
+        @click="toggleReaction(r.emoji)"
+      >
+        <span aria-hidden="true">{{ r.emoji }}</span>
+        <span v-if="r.count > 0" class="tabular-nums text-[10px]">{{ r.count }}</span>
+      </button>
+    </div>
+
+    <!-- Comments thread. Collapsed by default; click to expand. -->
+    <RetroComments
+      v-if="reactableNow"
+      :card_id="card.id"
+      :comments="card.comments"
+      :current_user_id="current_user_id"
+      :read_only="commentsReadOnly"
+    />
 
     <!-- Tied action items, nested below the card body during
          :discuss / :archived. Source-card context is implicit

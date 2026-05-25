@@ -379,6 +379,113 @@ defmodule Mixchamb.RetroTest do
     end
   end
 
+  describe "reactions" do
+    setup %{chamber: chamber, user: user} do
+      {:ok, s} = Retro.start_session(chamber.id)
+      s = advance_to(s, "brainstorm", user)
+      [col | _] = s.columns
+      {:ok, card} = Retro.add_card(s, col, %{body: "x", author_user_id: user.id, author_alias: "a"})
+      s = advance_to(s, "reveal", user)
+      %{session: s, card: card}
+    end
+
+    test "toggle_reaction adds then removes", %{session: s, card: card, user: user} do
+      assert {:added, _} = Retro.toggle_reaction(card, user.id, "👍", s)
+      assert {:removed, _} = Retro.toggle_reaction(card, user.id, "👍", s)
+    end
+
+    test "toggle_reaction stacks multiple emojis from same user", %{session: s, card: card, user: user} do
+      assert {:added, _} = Retro.toggle_reaction(card, user.id, "👍", s)
+      assert {:added, _} = Retro.toggle_reaction(card, user.id, "❤️", s)
+    end
+
+    test "toggle_reaction rejects invalid emoji", %{session: s, card: card, user: user} do
+      assert {:error, :invalid_emoji} = Retro.toggle_reaction(card, user.id, "🚀", s)
+    end
+
+    test "toggle_reaction rejects during :brainstorm", %{user: user} do
+      {:ok, fresh_chamber} = Chambers.create_chamber(user.id, "retro")
+      {:ok, s} = Retro.start_session(fresh_chamber.id)
+      s = advance_to(s, "brainstorm", user)
+      [col | _] = s.columns
+      {:ok, card} = Retro.add_card(s, col, %{body: "x", author_user_id: user.id, author_alias: "a"})
+      assert {:error, :phase_locked} = Retro.toggle_reaction(card, user.id, "👍", s)
+    end
+  end
+
+  describe "comments" do
+    setup %{chamber: chamber, user: user} do
+      {:ok, s} = Retro.start_session(chamber.id)
+      s = advance_to(s, "brainstorm", user)
+      [col | _] = s.columns
+      {:ok, card} = Retro.add_card(s, col, %{body: "x", author_user_id: user.id, author_alias: "a"})
+      s = advance_to(s, "reveal", user)
+      %{session: s, card: card}
+    end
+
+    test "add_comment during :reveal", %{session: s, card: card, user: user} do
+      assert {:ok, comment} =
+               Retro.add_comment(card, %{
+                 body: "Good point",
+                 author_user_id: user.id,
+                 author_alias: "alex"
+               }, s)
+      assert comment.body == "Good point"
+      assert comment.author_alias == "alex"
+    end
+
+    test "add_comment rejects during :brainstorm", %{user: user} do
+      {:ok, fresh_chamber} = Chambers.create_chamber(user.id, "retro")
+      {:ok, s} = Retro.start_session(fresh_chamber.id)
+      s = advance_to(s, "brainstorm", user)
+      [col | _] = s.columns
+      {:ok, card} = Retro.add_card(s, col, %{body: "x", author_user_id: user.id, author_alias: "a"})
+
+      assert {:error, :phase_locked} =
+               Retro.add_comment(card, %{body: "no", author_user_id: user.id, author_alias: "a"}, s)
+    end
+
+    test "update_comment author-only", %{session: s, card: card, user: user} do
+      {:ok, other} = Accounts.create_anonymous_user()
+
+      {:ok, comment} =
+        Retro.add_comment(card, %{body: "v1", author_user_id: user.id, author_alias: "a"}, s)
+
+      assert {:error, :not_author} = Retro.update_comment(comment, "edit", other.id, s)
+      assert {:ok, updated} = Retro.update_comment(comment, "edit", user.id, s)
+      assert updated.body == "edit"
+    end
+
+    test "delete_comment author-only", %{session: s, card: card, user: user} do
+      {:ok, other} = Accounts.create_anonymous_user()
+
+      {:ok, comment} =
+        Retro.add_comment(card, %{body: "x", author_user_id: user.id, author_alias: "a"}, s)
+
+      assert {:error, :not_author} = Retro.delete_comment(comment, other.id, s)
+      assert {:ok, _} = Retro.delete_comment(comment, user.id, s)
+    end
+
+    test "comments locked at :archived", %{user: user} do
+      {:ok, fresh_chamber} = Chambers.create_chamber(user.id, "retro")
+      {:ok, s} = Retro.start_session(fresh_chamber.id)
+      s = advance_to(s, "brainstorm", user)
+      [col | _] = s.columns
+      {:ok, card} = Retro.add_card(s, col, %{body: "x", author_user_id: user.id, author_alias: "a"})
+      s = advance_to(s, "reveal", user)
+
+      {:ok, comment} =
+        Retro.add_comment(card, %{body: "v1", author_user_id: user.id, author_alias: "a"}, s)
+
+      s = advance_to(s, "archived", user)
+
+      assert {:error, :phase_locked} = Retro.update_comment(comment, "edit", user.id, s)
+      assert {:error, :phase_locked} = Retro.delete_comment(comment, user.id, s)
+      assert {:error, :phase_locked} =
+               Retro.add_comment(card, %{body: "late", author_user_id: user.id, author_alias: "a"}, s)
+    end
+  end
+
   describe "list_archived_sessions/1" do
     test "returns all archived sessions for the chamber", %{chamber: chamber, user: user} do
       {:ok, s1} = Retro.start_session(chamber.id, %{title: "First"})

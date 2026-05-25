@@ -17,7 +17,9 @@ defmodule Mixchamb.Retro do
     RetroSession,
     RetroColumn,
     RetroCard,
-    RetroActionItem
+    RetroActionItem,
+    RetroCardReaction,
+    RetroCardComment
   }
 
   # ---------------------------------------------------------------
@@ -104,7 +106,12 @@ defmodule Mixchamb.Retro do
   defp load_associations(%RetroSession{} = session) do
     Repo.preload(session,
       columns: from(c in RetroColumn, order_by: [asc: c.position]),
-      cards: from(c in RetroCard, order_by: [asc: c.inserted_at]),
+      cards:
+        {from(c in RetroCard, order_by: [asc: c.inserted_at]),
+         [
+           reactions: from(r in RetroCardReaction, order_by: [asc: r.inserted_at]),
+           comments: from(co in RetroCardComment, order_by: [asc: co.inserted_at])
+         ]},
       action_items: from(a in RetroActionItem, order_by: [asc: a.inserted_at])
     )
   end
@@ -385,4 +392,100 @@ defmodule Mixchamb.Retro do
   def get_action_item(id) when is_binary(id) do
     Repo.get(RetroActionItem, id)
   end
+
+  # ---------------------------------------------------------------
+  # Reactions
+  # ---------------------------------------------------------------
+
+  @reactable_statuses ~w(reveal voting discuss)
+
+  @doc """
+  Toggle a user's reaction on a card. Cards become reactable
+  from `:reveal` onward (no reactions on hidden brainstorm
+  cards). Returns `{:added, reaction}` or `{:removed, count}`
+  so the caller knows which way the toggle went; `{:error, ...}`
+  otherwise.
+  """
+  def toggle_reaction(%RetroCard{} = card, user_id, emoji, %RetroSession{status: status})
+      when is_binary(user_id) and is_binary(emoji) and status in @reactable_statuses do
+    if emoji not in RetroCardReaction.emojis() do
+      {:error, :invalid_emoji}
+    else
+      query =
+        from r in RetroCardReaction,
+          where:
+            r.retro_card_id == ^card.id and r.user_id == ^user_id and r.emoji == ^emoji
+
+      case Repo.one(query) do
+        nil ->
+          case %RetroCardReaction{}
+               |> RetroCardReaction.creation_changeset(%{
+                 retro_card_id: card.id,
+                 user_id: user_id,
+                 emoji: emoji
+               })
+               |> Repo.insert() do
+            {:ok, reaction} -> {:added, reaction}
+            other -> other
+          end
+
+        existing ->
+          {1, _} = Repo.delete_all(from(r in RetroCardReaction, where: r.id == ^existing.id))
+          {:removed, existing}
+      end
+    end
+  end
+
+  def toggle_reaction(_, _, _, _), do: {:error, :phase_locked}
+
+  # ---------------------------------------------------------------
+  # Comments
+  # ---------------------------------------------------------------
+
+  @doc """
+  Add a comment to a card. Anyone in the chamber, reveal-phase
+  onward. `attrs` must include body + author_alias; optionally
+  author_user_id + author_display_name.
+  """
+  def add_comment(%RetroCard{} = card, attrs, %RetroSession{status: status})
+      when status in @reactable_statuses do
+    %RetroCardComment{}
+    |> RetroCardComment.creation_changeset(Map.put(attrs, :retro_card_id, card.id))
+    |> Repo.insert()
+  end
+
+  def add_comment(_, _, _), do: {:error, :phase_locked}
+
+  @doc "Author-only edit during live phases."
+  def update_comment(%RetroCardComment{} = comment, body, user_id, %RetroSession{
+        status: status
+      })
+      when is_binary(user_id) and status in @reactable_statuses do
+    cond do
+      comment.author_user_id != user_id ->
+        {:error, :not_author}
+
+      true ->
+        comment
+        |> RetroCardComment.body_changeset(%{body: body})
+        |> Repo.update()
+    end
+  end
+
+  def update_comment(_, _, _, _), do: {:error, :phase_locked}
+
+  @doc "Author-only delete during live phases."
+  def delete_comment(%RetroCardComment{} = comment, user_id, %RetroSession{status: status})
+      when is_binary(user_id) and status in @reactable_statuses do
+    if comment.author_user_id == user_id do
+      Repo.delete(comment)
+    else
+      {:error, :not_author}
+    end
+  end
+
+  def delete_comment(_, _, _), do: {:error, :phase_locked}
+
+  @doc "Load a single comment by id."
+  def get_comment(id) when is_binary(id), do: Repo.get(RetroCardComment, id)
 end

@@ -126,6 +126,7 @@ function submit() {
         :card="card"
         :phase="phase"
         :is_mine="card.author_user_id === current_user_id"
+        :current_user_id="current_user_id"
         :tally="tallies[card.id] ?? card.vote_count"
         :is_my_vote="my_votes.has(card.id)"
         :votes_remaining="votes_remaining"

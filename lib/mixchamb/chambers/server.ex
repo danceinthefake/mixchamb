@@ -236,6 +236,31 @@ defmodule Mixchamb.Chambers.Server do
   def retro_delete_action_item(slug, action_id) when is_binary(action_id),
     do: GenServer.cast(via(slug), {:retro_delete_action_item, action_id})
 
+  @doc "Toggle a user's emoji reaction on a card (reveal-phase onward)."
+  def retro_toggle_reaction(slug, user_id, card_id, emoji)
+      when is_binary(user_id) and is_binary(card_id) and is_binary(emoji),
+      do: GenServer.cast(via(slug), {:retro_toggle_reaction, user_id, card_id, emoji})
+
+  @doc "Add a comment to a card (reveal-phase onward)."
+  def retro_add_comment(slug, user_id, card_id, body, author_alias, author_display_name)
+      when is_binary(user_id) and is_binary(card_id) and is_binary(body) and
+             is_binary(author_alias) and is_binary(author_display_name),
+      do:
+        GenServer.cast(
+          via(slug),
+          {:retro_add_comment, user_id, card_id, body, author_alias, author_display_name}
+        )
+
+  @doc "Edit a comment's body. Author-only, live phases."
+  def retro_update_comment(slug, user_id, comment_id, body)
+      when is_binary(user_id) and is_binary(comment_id) and is_binary(body),
+      do: GenServer.cast(via(slug), {:retro_update_comment, user_id, comment_id, body})
+
+  @doc "Delete a comment. Author-only, live phases."
+  def retro_delete_comment(slug, user_id, comment_id)
+      when is_binary(user_id) and is_binary(comment_id),
+      do: GenServer.cast(via(slug), {:retro_delete_comment, user_id, comment_id})
+
   @doc """
   Synchronously read the current retro EphemeralState (or `nil`
   if not in retro activity). Used by LV mount + Presence-leave
@@ -940,6 +965,119 @@ defmodule Mixchamb.Chambers.Server do
     {:noreply, state}
   end
 
+  def handle_cast(
+        {:retro_toggle_reaction, user_id, card_id, emoji},
+        %{retro_state: rs} = state
+      )
+      when not is_nil(rs) do
+    session = Mixchamb.Retro.load_session(rs.session_id)
+    card = Mixchamb.Retro.get_card(card_id)
+
+    if card && card.retro_session_id == rs.session_id do
+      case Mixchamb.Retro.toggle_reaction(card, user_id, emoji, session) do
+        {:added, _} ->
+          broadcast_retro(
+            state.slug,
+            {:retro, :reaction_toggled, card.id, user_id, emoji, :added}
+          )
+
+        {:removed, _} ->
+          broadcast_retro(
+            state.slug,
+            {:retro, :reaction_toggled, card.id, user_id, emoji, :removed}
+          )
+
+        _ ->
+          :ok
+      end
+    end
+
+    {:noreply, state}
+  end
+
+  def handle_cast(
+        {:retro_add_comment, user_id, card_id, body, author_alias, author_display_name},
+        %{retro_state: rs} = state
+      )
+      when not is_nil(rs) do
+    session = Mixchamb.Retro.load_session(rs.session_id)
+    card = Mixchamb.Retro.get_card(card_id)
+
+    if card && card.retro_session_id == rs.session_id do
+      case Mixchamb.Retro.add_comment(
+             card,
+             %{
+               body: body,
+               author_user_id: user_id,
+               author_alias: author_alias,
+               author_display_name: author_display_name
+             },
+             session
+           ) do
+        {:ok, comment} ->
+          broadcast_retro(state.slug, {:retro, :comment_added, comment_to_wire(comment)})
+
+        _ ->
+          :ok
+      end
+    end
+
+    {:noreply, state}
+  end
+
+  def handle_cast(
+        {:retro_update_comment, user_id, comment_id, body},
+        %{retro_state: rs} = state
+      )
+      when not is_nil(rs) do
+    session = Mixchamb.Retro.load_session(rs.session_id)
+    comment = Mixchamb.Retro.get_comment(comment_id)
+
+    if comment do
+      card = Mixchamb.Retro.get_card(comment.retro_card_id)
+
+      if card && card.retro_session_id == rs.session_id do
+        case Mixchamb.Retro.update_comment(comment, body, user_id, session) do
+          {:ok, updated} ->
+            broadcast_retro(
+              state.slug,
+              {:retro, :comment_updated, comment_to_wire(updated)}
+            )
+
+          _ ->
+            :ok
+        end
+      end
+    end
+
+    {:noreply, state}
+  end
+
+  def handle_cast({:retro_delete_comment, user_id, comment_id}, %{retro_state: rs} = state)
+      when not is_nil(rs) do
+    session = Mixchamb.Retro.load_session(rs.session_id)
+    comment = Mixchamb.Retro.get_comment(comment_id)
+
+    if comment do
+      card = Mixchamb.Retro.get_card(comment.retro_card_id)
+
+      if card && card.retro_session_id == rs.session_id do
+        case Mixchamb.Retro.delete_comment(comment, user_id, session) do
+          {:ok, _} ->
+            broadcast_retro(
+              state.slug,
+              {:retro, :comment_deleted, comment.id, comment.retro_card_id}
+            )
+
+          _ ->
+            :ok
+        end
+      end
+    end
+
+    {:noreply, state}
+  end
+
   # Retro fall-throughs when retro_state is nil (chamber isn't
   # in retro mode or hasn't started a session yet). Note no
   # fall-through for :retro_start_session — its primary handler
@@ -958,6 +1096,10 @@ defmodule Mixchamb.Chambers.Server do
   def handle_cast({:retro_add_action_item, _}, state), do: {:noreply, state}
   def handle_cast({:retro_update_action_item, _, _}, state), do: {:noreply, state}
   def handle_cast({:retro_delete_action_item, _}, state), do: {:noreply, state}
+  def handle_cast({:retro_toggle_reaction, _, _, _}, state), do: {:noreply, state}
+  def handle_cast({:retro_add_comment, _, _, _, _, _}, state), do: {:noreply, state}
+  def handle_cast({:retro_update_comment, _, _, _}, state), do: {:noreply, state}
+  def handle_cast({:retro_delete_comment, _, _}, state), do: {:noreply, state}
 
   # Host management. Authorisation is enforced here (not at the
   # LV layer alone) so a hand-crafted phx push from a co-host's
@@ -1219,6 +1361,19 @@ defmodule Mixchamb.Chambers.Server do
       author_alias: card.author_alias,
       author_display_name: card.author_display_name,
       vote_count: card.vote_count
+    }
+  end
+
+  defp comment_to_wire(comment) do
+    %{
+      id: comment.id,
+      retro_card_id: comment.retro_card_id,
+      body: comment.body,
+      author_user_id: comment.author_user_id,
+      author_alias: comment.author_alias,
+      author_display_name: comment.author_display_name,
+      inserted_at: comment.inserted_at,
+      updated_at: comment.updated_at
     }
   end
 

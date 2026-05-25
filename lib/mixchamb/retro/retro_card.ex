@@ -36,6 +36,8 @@ defmodule Mixchamb.Retro.RetroCard do
     belongs_to :session, Mixchamb.Retro.RetroSession, foreign_key: :retro_session_id
     belongs_to :column, Mixchamb.Retro.RetroColumn, foreign_key: :retro_column_id
     belongs_to :author, Mixchamb.Accounts.AnonymousUser, foreign_key: :author_user_id
+    has_many :reactions, Mixchamb.Retro.RetroCardReaction, foreign_key: :retro_card_id
+    has_many :comments, Mixchamb.Retro.RetroCardComment, foreign_key: :retro_card_id
 
     timestamps(type: :utc_datetime)
   end

@@ -23,6 +23,8 @@ function baseCard(overrides: Partial<RetroCardT> = {}): RetroCardT {
     author_alias: "host-alias",
     author_display_name: null,
     vote_count: 0,
+    reactions: [],
+    comments: [],
     ...overrides,
   }
 }
@@ -31,6 +33,7 @@ const baseProps = {
   card: baseCard(),
   phase: "brainstorm" as const,
   is_mine: true,
+  current_user_id: "u1",
   tally: 0,
   is_my_vote: false,
   votes_remaining: 3,
@@ -236,7 +239,12 @@ describe("RetroCard", () => {
     const w = mount(RetroCard, {
       props: { ...baseProps, phase: "discuss", tally: 0 },
     })
-    // No chip rendered — body + author only
-    expect(w.findAll("button").length).toBe(0)
+    // No tabular-numbered span for the vote chip — the reaction
+    // strip's emoji counts only render when count > 0, so with
+    // a clean baseProps card the only tabular-nums element
+    // would be the vote chip if it existed. Asserting on its
+    // absence directly avoids tangling with reaction-strip
+    // buttons that also live on the card.
+    expect(w.findAll("span.tabular-nums").length).toBe(0)
   })
 })

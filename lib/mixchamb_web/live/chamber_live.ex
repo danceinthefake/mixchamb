@@ -798,6 +798,70 @@ defmodule MixchambWeb.ChamberLive do
     {:noreply, socket}
   end
 
+  def handle_event(
+        "retro_toggle_reaction",
+        %{"card_id" => card_id, "emoji" => emoji},
+        socket
+      )
+      when is_binary(card_id) and is_binary(emoji) do
+    Mixchamb.Chambers.Server.retro_toggle_reaction(
+      socket.assigns.chamber_slug,
+      socket.assigns.current_user.id,
+      card_id,
+      emoji
+    )
+
+    {:noreply, socket}
+  end
+
+  def handle_event(
+        "retro_add_comment",
+        %{"card_id" => card_id, "body" => body},
+        socket
+      )
+      when is_binary(card_id) and is_binary(body) do
+    user = socket.assigns.current_user
+    author_alias = user.alias || user.display_name
+
+    Mixchamb.Chambers.Server.retro_add_comment(
+      socket.assigns.chamber_slug,
+      user.id,
+      card_id,
+      body,
+      author_alias,
+      user.display_name
+    )
+
+    {:noreply, socket}
+  end
+
+  def handle_event(
+        "retro_update_comment",
+        %{"comment_id" => comment_id, "body" => body},
+        socket
+      )
+      when is_binary(comment_id) and is_binary(body) do
+    Mixchamb.Chambers.Server.retro_update_comment(
+      socket.assigns.chamber_slug,
+      socket.assigns.current_user.id,
+      comment_id,
+      body
+    )
+
+    {:noreply, socket}
+  end
+
+  def handle_event("retro_delete_comment", %{"comment_id" => comment_id}, socket)
+      when is_binary(comment_id) do
+    Mixchamb.Chambers.Server.retro_delete_comment(
+      socket.assigns.chamber_slug,
+      socket.assigns.current_user.id,
+      comment_id
+    )
+
+    {:noreply, socket}
+  end
+
   # Creator promotes another participant to co-host. Server enforces
   # the creator-only rule independently; this LV-side check is the
   # fast path so a misclick on a stale UI doesn't burn a roundtrip.
@@ -976,6 +1040,15 @@ defmodule MixchambWeb.ChamberLive do
   end
 
   def handle_info({:retro, _evt, _a, _b, _c}, socket) do
+    {:noreply, assign(socket, :retro_session, load_retro_session(socket.assigns.chamber))}
+  end
+
+  # :reaction_toggled is the only 6-tuple broadcast (card_id +
+  # user_id + emoji + :added|:removed). Reloading the session
+  # is heavier than a per-card patch would be, but reaction
+  # volume is low (one click per intent) so the cost is fine
+  # and keeps the receive-side simple.
+  def handle_info({:retro, _evt, _a, _b, _c, _d}, socket) do
     {:noreply, assign(socket, :retro_session, load_retro_session(socket.assigns.chamber))}
   end
 
@@ -1327,7 +1400,21 @@ defmodule MixchambWeb.ChamberLive do
             author_user_id: card.author_user_id,
             author_alias: card.author_alias,
             author_display_name: card.author_display_name,
-            vote_count: card.vote_count
+            vote_count: card.vote_count,
+            reactions:
+              Enum.map(card.reactions, fn r ->
+                %{user_id: r.user_id, emoji: r.emoji}
+              end),
+            comments:
+              Enum.map(card.comments, fn co ->
+                %{
+                  id: co.id,
+                  body: co.body,
+                  author_user_id: co.author_user_id,
+                  author_alias: co.author_alias,
+                  author_display_name: co.author_display_name
+                }
+              end)
           }
         end),
       action_items:
