@@ -54,6 +54,12 @@ function commitColumn(columnId: string) {
   if (orig?.name === next) return
   live.pushEvent("retro_rename_column", { column_id: columnId, name: next })
 }
+
+function toggleBrainstormVisible() {
+  live.pushEvent("retro_set_brainstorm_visible", {
+    visible: !props.session.brainstorm_visible,
+  })
+}
 </script>
 
 <template>
@@ -106,6 +112,29 @@ function commitColumn(columnId: string) {
             />
           </div>
         </div>
+      </div>
+
+      <!-- Brainstorm visibility toggle -->
+      <div class="space-y-1.5">
+        <label
+          class="inline-flex items-center gap-2 text-sm select-none cursor-pointer"
+        >
+          <input
+            type="checkbox"
+            :checked="session.brainstorm_visible"
+            @change="toggleBrainstormVisible"
+            class="size-4 rounded border-input"
+            aria-label="Show all cards during brainstorm (no hidden-until-reveal)"
+          />
+          Show all cards live during brainstorm
+        </label>
+        <p class="text-xs text-muted-foreground">
+          Off (default): each person sees only their own cards
+          until reveal — reduces groupthink, takes a beat longer.
+          On: everyone sees everything as it's written — faster
+          and more collaborative for smaller, high-trust teams.
+          Locked once brainstorm starts.
+        </p>
       </div>
     </div>
   </div>

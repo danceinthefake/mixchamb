@@ -53,6 +53,17 @@ defmodule Mixchamb.Chambers.ServerRetroTest do
       assert_receive {:retro, :voting_enabled_changed, true}, 500
     end
 
+    test "retro_set_brainstorm_visible broadcasts the new value during :setup",
+         %{chamber: chamber, host: host} do
+      Server.retro_set_brainstorm_visible(chamber.slug, host.id, true)
+      assert_receive {:retro, :brainstorm_visible_changed, true}, 500
+    end
+
+    test "retro_set_brainstorm_visible rejected by non-host", %{chamber: chamber, other: other} do
+      Server.retro_set_brainstorm_visible(chamber.slug, other.id, true)
+      refute_receive {:retro, :brainstorm_visible_changed, _}, 100
+    end
+
     test "retro_rename_column broadcasts column_renamed", %{chamber: chamber, host: host} do
       session = Retro.current_session(chamber.id) |> then(&Retro.load_session(&1.id))
       [col | _] = session.columns

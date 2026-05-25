@@ -20,6 +20,7 @@ function makeSession(overrides: Partial<RetroSession> = {}): RetroSession {
     title: null,
     status: "setup",
     voting_enabled: false,
+    brainstorm_visible: false,
     columns: [
       { id: "c1", name: "Good", position: 0 },
       { id: "c2", name: "Bad", position: 1 },
@@ -115,6 +116,40 @@ describe("RetroBoard", () => {
     expect(placeholders.length).toBe(2)
     expect(w.text()).toContain("my card")
     expect(w.text()).not.toContain("their card 1")
+  })
+
+  it("brainstorm_visible mode shows all cards live, no placeholders", () => {
+    const session = makeSession({
+      status: "brainstorm",
+      brainstorm_visible: true,
+      cards: [
+        {
+          id: "mine",
+          retro_column_id: "c1",
+          body: "my card",
+          author_user_id: "u1",
+          author_alias: "me",
+          vote_count: 0,
+        },
+        {
+          id: "theirs",
+          retro_column_id: "c1",
+          body: "their card",
+          author_user_id: "u2",
+          author_alias: "them",
+          vote_count: 0,
+        },
+      ],
+    })
+    const w = mount(RetroBoard, { props: { ...baseProps, session } })
+    // Both cards visible (no per-author filter)
+    expect(w.text()).toContain("my card")
+    expect(w.text()).toContain("their card")
+    // No face-down placeholders
+    const placeholders = w.findAll(
+      "[aria-label='Hidden card from another participant — reveals together']",
+    )
+    expect(placeholders.length).toBe(0)
   })
 
   it("no placeholders outside :brainstorm even when others have cards", () => {

@@ -45,6 +45,10 @@ export type RetroSession = {
   title: string | null
   status: RetroPhase
   voting_enabled: boolean
+  // When true: all cards visible to everyone during :brainstorm.
+  // When false (default): each participant sees only their own
+  // cards until host advances to :reveal.
+  brainstorm_visible: boolean
   columns: RetroColumnT[]
   cards: RetroCard[]
   action_items: RetroActionItem[]
@@ -96,9 +100,11 @@ const cardsByColumnId = computed(() => {
 })
 
 // During :brainstorm participants only see their own cards
-// (spec §4). The host has no special card-visibility privilege.
+// (spec §4) — unless the host opted into brainstorm_visible at
+// :setup, in which case everyone sees everything live.
 const visibleCardsByColumnId = computed(() => {
   if (phase.value !== "brainstorm") return cardsByColumnId.value
+  if (props.session?.brainstorm_visible) return cardsByColumnId.value
 
   const filtered: Record<string, RetroCard[]> = {}
   for (const [colId, cards] of Object.entries(cardsByColumnId.value)) {

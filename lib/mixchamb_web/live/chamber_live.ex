@@ -627,6 +627,19 @@ defmodule MixchambWeb.ChamberLive do
     {:noreply, socket}
   end
 
+  def handle_event("retro_set_brainstorm_visible", %{"visible" => visible}, socket)
+      when is_boolean(visible) do
+    if socket.assigns.is_host do
+      Mixchamb.Chambers.Server.retro_set_brainstorm_visible(
+        socket.assigns.chamber_slug,
+        socket.assigns.current_user.id,
+        visible
+      )
+    end
+
+    {:noreply, socket}
+  end
+
   def handle_event(
         "retro_rename_column",
         %{"column_id" => column_id, "name" => name},
@@ -1293,6 +1306,7 @@ defmodule MixchambWeb.ChamberLive do
       title: session.title,
       status: session.status,
       voting_enabled: session.voting_enabled,
+      brainstorm_visible: session.brainstorm_visible,
       columns:
         Enum.map(session.columns, fn col ->
           %{id: col.id, name: col.name, position: col.position}

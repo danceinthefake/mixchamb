@@ -21,7 +21,11 @@ const advanceLabel = computed(() => {
     case "setup":
       return "Start brainstorm"
     case "brainstorm":
-      return "Reveal cards"
+      // In always-visible mode, "Reveal cards" makes no sense
+      // (nothing is hidden). The phase boundary still matters
+      // as a "stop adding, start reading" gate — relabel
+      // accordingly.
+      return props.session.brainstorm_visible ? "Stop brainstorming" : "Reveal cards"
     case "reveal":
       return props.session.voting_enabled ? "Start voting" : "Start discussion"
     case "voting":

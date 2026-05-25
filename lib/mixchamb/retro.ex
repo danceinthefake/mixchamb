@@ -132,6 +132,22 @@ defmodule Mixchamb.Retro do
   end
 
   @doc """
+  Toggle brainstorm_visible. Allowed during `:setup` only —
+  locked once brainstorm begins so writers who started under one
+  visibility model don't get surprised mid-stream.
+  """
+  def set_brainstorm_visible(%RetroSession{status: "setup"} = session, visible)
+      when is_boolean(visible) do
+    session
+    |> RetroSession.brainstorm_visible_changeset(%{brainstorm_visible: visible})
+    |> Repo.update()
+  end
+
+  def set_brainstorm_visible(%RetroSession{}, _visible) do
+    {:error, :setup_only}
+  end
+
+  @doc """
   Advance the phase machine by one step. Returns
   `{:ok, session}` on success or `{:error, reason}` if the
   transition isn't valid from the current phase.

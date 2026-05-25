@@ -162,6 +162,11 @@ defmodule Mixchamb.Chambers.Server do
       when is_binary(user_id) and is_boolean(enabled),
       do: GenServer.cast(via(slug), {:retro_set_voting_enabled, user_id, enabled})
 
+  @doc "Toggle brainstorm_visible. Host-only, :setup-only."
+  def retro_set_brainstorm_visible(slug, user_id, visible)
+      when is_binary(user_id) and is_boolean(visible),
+      do: GenServer.cast(via(slug), {:retro_set_brainstorm_visible, user_id, visible})
+
   @doc "Rename a column. Host-only, :setup-only (spec §2)."
   def retro_rename_column(slug, user_id, column_id, name)
       when is_binary(user_id) and is_binary(column_id) and is_binary(name),
@@ -630,6 +635,28 @@ defmodule Mixchamb.Chambers.Server do
     end
   end
 
+  def handle_cast(
+        {:retro_set_brainstorm_visible, user_id, visible},
+        %{retro_state: rs} = state
+      )
+      when not is_nil(rs) do
+    if not MapSet.member?(state.hosts, user_id) do
+      {:noreply, state}
+    else
+      session = Mixchamb.Retro.load_session(rs.session_id)
+
+      case Mixchamb.Retro.set_brainstorm_visible(session, visible) do
+        {:ok, _updated} ->
+          broadcast_retro(state.slug, {:retro, :brainstorm_visible_changed, visible})
+
+        _ ->
+          :ok
+      end
+
+      {:noreply, state}
+    end
+  end
+
   def handle_cast({:retro_set_voting_enabled, user_id, enabled}, %{retro_state: rs} = state)
       when not is_nil(rs) do
     if not MapSet.member?(state.hosts, user_id) do
@@ -902,6 +929,7 @@ defmodule Mixchamb.Chambers.Server do
   # fall-through for :retro_start_session — its primary handler
   # doesn't gate on retro_state, so it always matches.
   def handle_cast({:retro_set_title, _, _}, state), do: {:noreply, state}
+  def handle_cast({:retro_set_brainstorm_visible, _, _}, state), do: {:noreply, state}
   def handle_cast({:retro_set_voting_enabled, _, _}, state), do: {:noreply, state}
   def handle_cast({:retro_rename_column, _, _, _}, state), do: {:noreply, state}
   def handle_cast({:retro_advance_phase, _}, state), do: {:noreply, state}

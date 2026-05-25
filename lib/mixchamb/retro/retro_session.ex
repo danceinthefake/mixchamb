@@ -22,12 +22,21 @@ defmodule Mixchamb.Retro.RetroSession do
   # Declaring encodable fields explicitly keeps the diff safe;
   # nested associations are walked via their own @derive below.
   @derive {LiveVue.Encoder,
-           only: [:id, :title, :status, :voting_enabled, :revealed_at, :archived_at]}
+           only: [
+             :id,
+             :title,
+             :status,
+             :voting_enabled,
+             :brainstorm_visible,
+             :revealed_at,
+             :archived_at
+           ]}
 
   schema "retro_sessions" do
     field :title, :string
     field :status, :string, default: "setup"
     field :voting_enabled, :boolean, default: false
+    field :brainstorm_visible, :boolean, default: false
     field :revealed_at, :utc_datetime
     field :archived_at, :utc_datetime
 
@@ -42,9 +51,16 @@ defmodule Mixchamb.Retro.RetroSession do
   @doc false
   def creation_changeset(session, attrs) do
     session
-    |> cast(attrs, [:chamber_id, :title, :voting_enabled])
+    |> cast(attrs, [:chamber_id, :title, :voting_enabled, :brainstorm_visible])
     |> validate_required([:chamber_id])
     |> validate_length(:title, max: 80)
+  end
+
+  @doc false
+  def brainstorm_visible_changeset(session, attrs) do
+    session
+    |> cast(attrs, [:brainstorm_visible])
+    |> validate_required([:brainstorm_visible])
   end
 
   @doc false

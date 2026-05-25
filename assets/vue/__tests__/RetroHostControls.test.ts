@@ -21,12 +21,14 @@ function session(
   status: RetroSession["status"],
   voting_enabled = false,
   cardCount = 0,
+  brainstorm_visible = false,
 ): RetroSession {
   return {
     id: "s1",
     title: null,
     status,
     voting_enabled,
+    brainstorm_visible,
     columns: [],
     cards: Array.from({ length: cardCount }, (_, i) => ({
       id: `c${i}`,
@@ -69,6 +71,17 @@ describe("RetroHostControls", () => {
       })
       expect(w.text()).toContain(label)
     }
+  })
+
+  it("brainstorm advance label changes in visible mode", () => {
+    const w = mount(RetroHostControls, {
+      props: {
+        session: session("brainstorm", false, 0, true),
+        is_host: true,
+      },
+    })
+    expect(w.text()).toContain("Stop brainstorming")
+    expect(w.text()).not.toContain("Reveal cards")
   })
 
   it("no advance button when :archived", () => {

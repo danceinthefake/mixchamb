@@ -113,6 +113,31 @@ defmodule Mixchamb.RetroTest do
     end
   end
 
+  describe "set_brainstorm_visible/2" do
+    test "default is false", %{chamber: chamber} do
+      {:ok, s} = Retro.start_session(chamber.id)
+      assert s.brainstorm_visible == false
+    end
+
+    test "toggleable during :setup", %{chamber: chamber} do
+      {:ok, s} = Retro.start_session(chamber.id)
+      assert {:ok, s2} = Retro.set_brainstorm_visible(s, true)
+      assert s2.brainstorm_visible == true
+    end
+
+    test "rejected once past :setup", %{chamber: chamber, user: user} do
+      {:ok, s} = Retro.start_session(chamber.id)
+      s = advance_to(s, "brainstorm", user)
+      assert {:error, :setup_only} = Retro.set_brainstorm_visible(s, true)
+      s = advance_to(s, "reveal", user)
+      assert {:error, :setup_only} = Retro.set_brainstorm_visible(s, true)
+      s = advance_to(s, "discuss", user)
+      assert {:error, :setup_only} = Retro.set_brainstorm_visible(s, true)
+      s = advance_to(s, "archived", user)
+      assert {:error, :setup_only} = Retro.set_brainstorm_visible(s, true)
+    end
+  end
+
   describe "rename_column/3" do
     test "renames during :setup", %{chamber: chamber} do
       {:ok, s} = Retro.start_session(chamber.id)

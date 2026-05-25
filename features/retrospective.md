@@ -171,11 +171,26 @@ bother"), reduces piggybacking ("X said something, so I'll just
 The cost — people can't build on each other's ideas — is what
 `:reveal` is for.
 
-**Why no host toggle for "always visible" mode:** an extra
-setting buys little (teams that prefer it can have everyone
-write into a shared Miro instead; mixchamb's retro is opinionated
-about the hidden-until-reveal flow). Revisit only if multiple
-teams ask.
+~~**Why no host toggle for "always visible" mode:** an extra
+setting buys little...~~ — _revisited and reversed._ Shipped as
+a `brainstorm_visible` boolean on `retro_sessions` (default
+`false` preserves hidden-until-reveal). Host toggles during
+`:setup` only — same gate as column rename, so writers who
+started under one mode don't get surprised mid-stream.
+
+When `brainstorm_visible` is true:
+- Card-author filter in `RetroBoard` is skipped during
+  `:brainstorm` — everyone sees everything as it lands.
+- Closed-card placeholders don't render (there are no hidden
+  cards to silhouette).
+- The `:brainstorm → :reveal` advance button relabels to "Stop
+  brainstorming" — the phase still serves as a "stop adding
+  cards" gate, just no reveal moment.
+
+Default stays `false` because hidden-until-reveal still serves
+most retros better; visible mode is the explicit opt-in for
+smaller, higher-trust teams who'd rather build on each other's
+ideas in real time.
 
 ## 5. Voting model — _Locked_
 
