@@ -1,16 +1,19 @@
 <script setup lang="ts">
-// Action items panel — visible during :discuss and read-only
-// during :archived. Anyone in the chamber can add actions
-// during :discuss; only the host has phase-advance / archive
-// authority. Actions can be tied to a source card (spec §6)
-// or freeform.
+// Freeform action items panel — visible during :discuss + read-
+// only during :archived. Per-card actions are rendered nested
+// inside RetroCard (spec §6); this panel handles only those
+// actions whose source_card_id is null, plus the global
+// "+Add action" form (which can still tie an action to a card
+// via the source-card dropdown).
 
 import { computed, ref } from "vue"
 import { useLiveVue } from "live_vue"
-import type { RetroSession, RetroCard, RetroActionItem } from "./RetroBoard.vue"
+import RetroActionRow from "./RetroActionRow.vue"
+import type { RetroSession, RetroActionItem } from "./RetroBoard.vue"
 
 const props = defineProps<{
   session: RetroSession
+  freeform_actions: RetroActionItem[]
   is_host: boolean
 }>()
 
@@ -24,57 +27,6 @@ const draft = ref({
   assignee_alias: "",
   due_date: "",
 })
-
-// Action being inline-edited (id or null). Local draft holds
-// the in-flight values; committing pushes a single
-// retro_update_action_item event for whichever fields changed.
-const editingId = ref<string | null>(null)
-const editDraft = ref({
-  body: "",
-  assignee_alias: "",
-  due_date: "",
-})
-
-const cardsById = computed(() => {
-  const map: Record<string, RetroCard> = {}
-  for (const c of props.session.cards) map[c.id] = c
-  return map
-})
-
-function startEdit(action: RetroActionItem) {
-  if (readOnly.value) return
-  editingId.value = action.id
-  editDraft.value = {
-    body: action.body,
-    assignee_alias: action.assignee_alias ?? "",
-    due_date: action.due_date ?? "",
-  }
-}
-
-function commitEdit(action: RetroActionItem) {
-  const body = editDraft.value.body.trim()
-  if (!body) {
-    cancelEdit()
-    return
-  }
-  const payload: Record<string, unknown> = { action_id: action.id }
-  if (body !== action.body) payload.body = body
-  if (editDraft.value.assignee_alias.trim() !== (action.assignee_alias ?? "")) {
-    payload.assignee_alias = editDraft.value.assignee_alias.trim() || null
-  }
-  if (editDraft.value.due_date !== (action.due_date ?? "")) {
-    payload.due_date = editDraft.value.due_date || null
-  }
-  // No fields changed — just close edit mode without pushing.
-  if (Object.keys(payload).length > 1) {
-    live.pushEvent("retro_update_action_item", payload)
-  }
-  editingId.value = null
-}
-
-function cancelEdit() {
-  editingId.value = null
-}
 
 function submit() {
   const body = draft.value.body.trim()
@@ -91,21 +43,8 @@ function submit() {
   draft.value.due_date = ""
 }
 
-function toggleCompleted(action: RetroActionItem) {
-  if (readOnly.value) return
-  live.pushEvent("retro_update_action_item", {
-    action_id: action.id,
-    completed: !action.completed,
-  })
-}
-
-function deleteAction(action: RetroActionItem) {
-  if (readOnly.value) return
-  if (!confirm("Delete this action item?")) return
-  live.pushEvent("retro_delete_action_item", { action_id: action.id })
-}
-
 function exportMarkdown() {
+  const cardsById = Object.fromEntries(props.session.cards.map((c) => [c.id, c]))
   const lines: string[] = []
   lines.push(`# ${props.session.title || "Retro"}`)
   lines.push("")
@@ -120,18 +59,24 @@ function exportMarkdown() {
       for (const c of colCards) {
         const votes = c.vote_count > 0 ? ` _(${c.vote_count} votes)_` : ""
         lines.push(`- ${c.body}${votes} — ${c.author_alias}`)
+        const tied = props.session.action_items.filter((a) => a.source_card_id === c.id)
+        for (const a of tied) {
+          const assignee = a.assignee_alias ? ` — @${a.assignee_alias}` : ""
+          const due = a.due_date ? ` _(by ${a.due_date})_` : ""
+          const done = a.completed ? "[x] " : "[ ] "
+          lines.push(`  - ${done}${a.body}${assignee}${due}`)
+        }
       }
     }
     lines.push("")
   }
-  if (props.session.action_items.length > 0) {
-    lines.push(`## Action items`)
-    for (const a of props.session.action_items) {
-      const tied = a.source_card_id ? ` _(re: ${cardsById.value[a.source_card_id]?.body ?? "?"})_` : ""
+  if (props.freeform_actions.length > 0) {
+    lines.push(`## Action items (freeform)`)
+    for (const a of props.freeform_actions) {
       const assignee = a.assignee_alias ? ` — @${a.assignee_alias}` : ""
       const due = a.due_date ? ` _(by ${a.due_date})_` : ""
       const done = a.completed ? "[x] " : "[ ] "
-      lines.push(`- ${done}${a.body}${assignee}${due}${tied}`)
+      lines.push(`- ${done}${a.body}${assignee}${due}`)
     }
   }
   const text = lines.join("\n")
@@ -147,7 +92,7 @@ function exportMarkdown() {
   <section class="rounded-xl border bg-card/40 p-4 space-y-4">
     <header class="flex items-baseline justify-between gap-3">
       <h2 class="text-sm uppercase tracking-wider text-muted-foreground font-display">
-        Action items
+        Freeform action items
       </h2>
       <button
         v-if="readOnly"
@@ -159,118 +104,21 @@ function exportMarkdown() {
       </button>
     </header>
 
-    <ul v-if="session.action_items.length > 0" class="space-y-2">
-      <li
-        v-for="action in session.action_items"
+    <div v-if="freeform_actions.length > 0" class="space-y-2">
+      <RetroActionRow
+        v-for="action in freeform_actions"
         :key="action.id"
-        class="rounded-lg border bg-background/40 p-3 flex items-start gap-3"
-      >
-        <input
-          type="checkbox"
-          :checked="action.completed"
-          :disabled="readOnly || editingId === action.id"
-          :aria-label="`Mark ${action.body} as ${action.completed ? 'incomplete' : 'complete'}`"
-          @change="toggleCompleted(action)"
-          class="mt-0.5 size-4 rounded border-input"
-        />
-
-        <!-- Display mode -->
-        <div v-if="editingId !== action.id" class="flex-1 space-y-1">
-          <p
-            class="text-sm leading-snug"
-            :class="action.completed && 'line-through text-muted-foreground'"
-          >
-            {{ action.body }}
-          </p>
-          <div class="flex items-center gap-2 text-[11px] text-muted-foreground flex-wrap">
-            <span v-if="action.assignee_alias" class="font-medium">
-              @{{ action.assignee_alias }}
-            </span>
-            <span v-if="action.due_date">due {{ action.due_date }}</span>
-            <span
-              v-if="action.source_card_id && cardsById[action.source_card_id]"
-              class="italic truncate max-w-xs"
-            >
-              re: {{ cardsById[action.source_card_id].body }}
-            </span>
-          </div>
-        </div>
-
-        <!-- Edit mode -->
-        <div v-else class="flex-1 space-y-2">
-          <textarea
-            v-model="editDraft.body"
-            maxlength="280"
-            rows="2"
-            :aria-label="`Edit action body`"
-            class="w-full rounded-md border bg-card px-2 py-1.5 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-accent-bass/40"
-            @keydown.enter.exact.prevent="commitEdit(action)"
-            @keydown.escape="cancelEdit"
-          ></textarea>
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
-            <input
-              v-model="editDraft.assignee_alias"
-              type="text"
-              maxlength="80"
-              placeholder="Assignee (optional)"
-              aria-label="Edit assignee alias"
-              class="rounded-md border bg-card px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-accent-bass/40"
-            />
-            <input
-              v-model="editDraft.due_date"
-              type="date"
-              aria-label="Edit due date"
-              class="rounded-md border bg-card px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-accent-bass/40"
-            />
-          </div>
-          <div class="flex justify-end gap-2 text-[11px]">
-            <button
-              type="button"
-              class="hover:text-foreground text-muted-foreground"
-              @click="cancelEdit"
-            >
-              cancel
-            </button>
-            <button
-              type="button"
-              class="font-medium rounded-md bg-accent-bass text-background px-2 py-0.5 hover:bg-accent-bass/90"
-              @click="commitEdit(action)"
-            >
-              save
-            </button>
-          </div>
-        </div>
-
-        <!-- Edit + delete affordances -->
-        <div
-          v-if="!readOnly && editingId !== action.id"
-          class="flex items-center gap-1.5"
-        >
-          <button
-            type="button"
-            class="text-[11px] text-muted-foreground hover:text-foreground"
-            @click="startEdit(action)"
-            :aria-label="`Edit action: ${action.body}`"
-          >
-            edit
-          </button>
-          <button
-            type="button"
-            class="text-[11px] text-muted-foreground hover:text-destructive"
-            @click="deleteAction(action)"
-            :aria-label="`Delete action: ${action.body}`"
-          >
-            ×
-          </button>
-        </div>
-      </li>
-    </ul>
+        :action="action"
+        :read_only="readOnly"
+        :hide_source_ref="true"
+      />
+    </div>
 
     <p v-else class="text-xs text-muted-foreground italic">
-      No action items captured yet.
+      No freeform action items yet. Per-card actions are nested under their cards above.
     </p>
 
-    <!-- Add form — discuss only -->
+    <!-- Add form -->
     <form v-if="!readOnly" @submit.prevent="submit" class="space-y-2 pt-2 border-t">
       <textarea
         v-model="draft.body"
@@ -300,7 +148,7 @@ function exportMarkdown() {
           aria-label="Tie to a card (optional)"
           class="rounded-md border bg-card px-2.5 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-accent-bass/40"
         >
-          <option value="">No source card</option>
+          <option value="">No source card (freeform)</option>
           <option v-for="c in session.cards" :key="c.id" :value="c.id">
             {{ c.body.slice(0, 50) }}{{ c.body.length > 50 ? "…" : "" }}
           </option>

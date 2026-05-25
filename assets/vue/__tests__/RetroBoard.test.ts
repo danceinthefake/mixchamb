@@ -240,7 +240,9 @@ describe("RetroBoard", () => {
   it("renders RetroDiscussPanel during :discuss", () => {
     const session = makeSession({ status: "discuss" })
     const w = mount(RetroBoard, { props: { ...baseProps, session } })
-    expect(w.text()).toContain("Action items")
+    // Header is now "Freeform action items" — actions tied to a
+    // card render nested under the card itself (spec §6).
+    expect(w.text().toLowerCase()).toContain("freeform action items")
   })
 
   it("sorts cards by vote_count desc in :discuss", () => {

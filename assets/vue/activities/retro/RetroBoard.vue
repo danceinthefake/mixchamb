@@ -113,6 +113,26 @@ const visibleCardsByColumnId = computed(() => {
   return filtered
 })
 
+// Action items grouped by source card id. Tied actions appear
+// nested under their card during :discuss / :archived (spec §6).
+// Freeform actions (source_card_id == null) bucket under the
+// special key "__freeform__" for RetroDiscussPanel to pick up.
+const actionsByCardId = computed(() => {
+  const grouped: Record<string, RetroActionItem[]> = { __freeform__: [] }
+  if (!props.session) return grouped
+  for (const action of props.session.action_items) {
+    if (action.source_card_id) {
+      if (!grouped[action.source_card_id]) grouped[action.source_card_id] = []
+      grouped[action.source_card_id].push(action)
+    } else {
+      grouped.__freeform__.push(action)
+    }
+  }
+  return grouped
+})
+
+const freeformActions = computed(() => actionsByCardId.value.__freeform__ ?? [])
+
 // Card count per column, visible to everyone during :brainstorm
 // so the room can gauge pace without reading content.
 const countsByColumnId = computed(() => {
@@ -206,6 +226,7 @@ function startSession() {
           :my_votes="myVoteSet"
           :votes_remaining="votesRemaining"
           :discussing_card_id="discussing_card_id"
+          :actions_by_card_id="actionsByCardId"
         />
       </div>
 
@@ -218,6 +239,7 @@ function startSession() {
       <RetroDiscussPanel
         v-if="phase === 'discuss' || phase === 'archived'"
         :session="session"
+        :freeform_actions="freeformActions"
         :is_host="is_host"
       />
     </div>

@@ -6,7 +6,12 @@
 
 import { computed, ref } from "vue"
 import { useLiveVue } from "live_vue"
-import type { RetroCard as RetroCardT, RetroPhase } from "./RetroBoard.vue"
+import RetroActionRow from "./RetroActionRow.vue"
+import type {
+  RetroCard as RetroCardT,
+  RetroActionItem,
+  RetroPhase,
+} from "./RetroBoard.vue"
 
 const props = defineProps<{
   card: RetroCardT
@@ -19,7 +24,18 @@ const props = defineProps<{
   // Visually highlight this card if it's the currently-focused
   // discussion card (host-driven, broadcast to everyone).
   is_discussing: boolean
+  // Action items whose source_card_id is this card. Rendered
+  // nested below the card body during :discuss / :archived
+  // (spec §6). Empty list outside those phases.
+  tied_actions: RetroActionItem[]
 }>()
+
+const showTiedActions = computed(
+  () =>
+    (props.phase === "discuss" || props.phase === "archived") &&
+    props.tied_actions.length > 0,
+)
+const readOnlyActions = computed(() => props.phase === "archived")
 
 const live = useLiveVue()
 
@@ -170,6 +186,24 @@ function focusForDiscussion() {
           {{ tally }}
         </span>
       </div>
+    </div>
+
+    <!-- Tied action items, nested below the card body during
+         :discuss / :archived. Source-card context is implicit
+         (the actions sit under their card), so the row hides
+         the "re: …" tail. -->
+    <div
+      v-if="showTiedActions"
+      class="pt-2 mt-2 border-t border-input/40 space-y-1.5"
+      :aria-label="`Action items for: ${card.body}`"
+    >
+      <RetroActionRow
+        v-for="action in tied_actions"
+        :key="action.id"
+        :action="action"
+        :read_only="readOnlyActions"
+        :hide_source_ref="true"
+      />
     </div>
   </article>
 </template>

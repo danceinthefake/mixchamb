@@ -7,7 +7,12 @@
 import { computed, ref } from "vue"
 import { useLiveVue } from "live_vue"
 import RetroCard from "./RetroCard.vue"
-import type { RetroColumnT, RetroCard as RetroCardT, RetroPhase } from "./RetroBoard.vue"
+import type {
+  RetroColumnT,
+  RetroCard as RetroCardT,
+  RetroActionItem,
+  RetroPhase,
+} from "./RetroBoard.vue"
 
 // Position-mapped subtle tint per column so the four lanes are
 // visually distinguishable at a glance. Uses the activity-accent
@@ -62,6 +67,10 @@ const props = defineProps<{
   // Currently-focused card id during :discuss; passed through to
   // RetroCard so the highlight ring appears on the matching one.
   discussing_card_id: string | null
+  // Action items grouped by their source_card_id. RetroCard
+  // reads this to render its tied actions nested below the card
+  // body during :discuss / :archived (spec §6).
+  actions_by_card_id: Record<string, RetroActionItem[]>
 }>()
 
 const live = useLiveVue()
@@ -122,6 +131,7 @@ function submit() {
         :votes_remaining="votes_remaining"
         :is_host="is_host"
         :is_discussing="card.id === discussing_card_id"
+        :tied_actions="actions_by_card_id[card.id] ?? []"
       />
 
       <!-- Face-down "card-back" placeholders for cards others

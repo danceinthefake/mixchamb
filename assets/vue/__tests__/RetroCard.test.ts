@@ -35,6 +35,7 @@ const baseProps = {
   votes_remaining: 3,
   is_host: false,
   is_discussing: false,
+  tied_actions: [],
 }
 
 describe("RetroCard", () => {
@@ -129,6 +130,48 @@ describe("RetroCard", () => {
     })
     await w.get("article").trigger("click")
     expect(pushEventMock).not.toHaveBeenCalled()
+  })
+
+  it("renders tied action items nested below card body during :discuss", () => {
+    const w = mount(RetroCard, {
+      props: {
+        ...baseProps,
+        phase: "discuss",
+        tied_actions: [
+          {
+            id: "a1",
+            source_card_id: "card1",
+            body: "Investigate the flaky test",
+            assignee_alias: "alex",
+            due_date: null,
+            completed: false,
+          },
+        ],
+      },
+    })
+    expect(w.text()).toContain("Investigate the flaky test")
+    expect(w.text()).toContain("@alex")
+  })
+
+  it("no nested actions section in :brainstorm even if tied_actions provided", () => {
+    // tied_actions only renders during :discuss / :archived.
+    const w = mount(RetroCard, {
+      props: {
+        ...baseProps,
+        phase: "brainstorm",
+        tied_actions: [
+          {
+            id: "a1",
+            source_card_id: "card1",
+            body: "Should not appear",
+            assignee_alias: null,
+            due_date: null,
+            completed: false,
+          },
+        ],
+      },
+    })
+    expect(w.text()).not.toContain("Should not appear")
   })
 
   it("static count chip appears in :discuss when tally > 0", () => {
