@@ -594,8 +594,8 @@ defmodule Mixchamb.Chambers.Server do
       not MapSet.member?(state.hosts, user_id) ->
         {:noreply, state}
 
-      not is_nil(state.retro_state) ->
-        # Idempotent — session already exists.
+      live_retro_state?(state.retro_state) ->
+        # Idempotent — a non-archived session already exists.
         {:noreply, state}
 
       true ->
@@ -1155,6 +1155,16 @@ defmodule Mixchamb.Chambers.Server do
       message
     )
   end
+
+  # "Live" = non-nil EphemeralState pointing at a session that
+  # hasn't been archived. The proactive archive path clears
+  # retro_state to nil on phase exit, but stale state can survive
+  # across code reloads of an already-archived chamber's
+  # GenServer — this defensive check makes start_session recover
+  # instead of staying stuck.
+  defp live_retro_state?(nil), do: false
+  defp live_retro_state?(%{phase: :archived}), do: false
+  defp live_retro_state?(_), do: true
 
   # Wire-format helpers — strip Ecto struct metadata so broadcast
   # payloads are plain maps (cheap to encode for the LV → Vue

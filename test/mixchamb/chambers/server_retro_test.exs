@@ -271,6 +271,40 @@ defmodule Mixchamb.Chambers.ServerRetroTest do
       # Confirm the new session is live + in :setup.
       assert %_{status: "setup", id: ^second_id} = Retro.current_session(chamber.id)
     end
+
+    test "recovers if retro_state is stale (phase: :archived) — defensive",
+         %{chamber: chamber, host: host} do
+      # Simulate the bug: an existing chamber GenServer whose state
+      # still carries an EphemeralState with phase :archived (the
+      # situation after hot-reload of an already-archived chamber).
+      # Build a real archived session in the DB so current_session
+      # returns nil — then poke the GenServer state directly.
+      Server.retro_start_session(chamber.slug, host.id)
+      assert_receive {:retro, :session_started, _first_id}, 500
+
+      Enum.each([:brainstorm, :reveal, :discuss, :archived], fn phase ->
+        Server.retro_advance_phase(chamber.slug, host.id)
+        assert_receive {:retro, :phase_changed, ^phase}, 500
+      end)
+
+      # After my proactive fix, retro_state is nil here. Reach into
+      # the GenServer and re-stash an archived ephemeral struct to
+      # simulate the pre-fix state.
+      :sys.replace_state(Server.via(chamber.slug), fn s ->
+        archived =
+          Mixchamb.Retro.EphemeralState.new(Ecto.UUID.generate(), :archived)
+
+        %{s | retro_state: archived}
+      end)
+
+      assert match?(%{phase: :archived}, Server.retro_state(chamber.slug))
+
+      # The defensive guard should treat archived as "no live
+      # session" and let a new one start.
+      Server.retro_start_session(chamber.slug, host.id)
+      assert_receive {:retro, :session_started, _second_id}, 500
+      assert match?(%{phase: :setup}, Server.retro_state(chamber.slug))
+    end
   end
 
   describe "activity switch" do
