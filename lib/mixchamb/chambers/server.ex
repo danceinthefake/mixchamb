@@ -714,9 +714,25 @@ defmodule Mixchamb.Chambers.Server do
         case Mixchamb.Retro.advance_phase(session) do
           {:ok, updated} ->
             new_phase = String.to_existing_atom(updated.status)
-            {:ok, new_rs} = Mixchamb.Retro.EphemeralState.set_phase(rs, new_phase)
             broadcast_retro(state.slug, {:retro, :phase_changed, new_phase})
-            {:noreply, %{state | retro_state: new_rs}}
+
+            # On archive, drop the EphemeralState entirely — the
+            # session is no longer "live" from the GenServer's
+            # point of view. Without this, retro_start_session
+            # refuses to create a new session because its
+            # "already-active" guard sees the stale archived
+            # struct. Subsequent retro_* casts against an
+            # archived state hit the nil fall-throughs and
+            # silently no-op.
+            new_state =
+              if new_phase == :archived do
+                %{state | retro_state: nil}
+              else
+                {:ok, new_rs} = Mixchamb.Retro.EphemeralState.set_phase(rs, new_phase)
+                %{state | retro_state: new_rs}
+              end
+
+            {:noreply, new_state}
 
           _ ->
             {:noreply, state}

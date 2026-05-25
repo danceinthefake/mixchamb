@@ -245,6 +245,34 @@ defmodule Mixchamb.Chambers.ServerRetroTest do
     end
   end
 
+  describe "start → archive → start round-trip" do
+    test "host can start a new session after archiving the previous one",
+         %{chamber: chamber, host: host} do
+      # Start the first session.
+      Server.retro_start_session(chamber.slug, host.id)
+      assert_receive {:retro, :session_started, first_id}, 500
+
+      # Walk it all the way to :archived (4 advances, voting off).
+      Enum.each([:brainstorm, :reveal, :discuss, :archived], fn phase ->
+        Server.retro_advance_phase(chamber.slug, host.id)
+        assert_receive {:retro, :phase_changed, ^phase}, 500
+      end)
+
+      # GenServer should have cleared retro_state on archive so a
+      # new start_session works.
+      assert Server.retro_state(chamber.slug) == nil
+      assert Retro.current_session(chamber.id) == nil
+
+      # Start a fresh session — different id from the archived one.
+      Server.retro_start_session(chamber.slug, host.id)
+      assert_receive {:retro, :session_started, second_id}, 500
+      assert second_id != first_id
+
+      # Confirm the new session is live + in :setup.
+      assert %_{status: "setup", id: ^second_id} = Retro.current_session(chamber.id)
+    end
+  end
+
   describe "activity switch" do
     test "switching away then back rehydrates retro_state from DB",
          %{chamber: chamber, host: host} do
