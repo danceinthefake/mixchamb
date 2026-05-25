@@ -82,7 +82,7 @@ defmodule MixchambWeb.RetroLive do
             Archived retro
           </p>
           <p
-            :if={@retro_session.chamber_slug_snapshot or @retro_session.chamber_title_snapshot}
+            :if={@retro_session.chamber_slug_snapshot || @retro_session.chamber_title_snapshot}
             class="text-xs text-muted-foreground"
           >
             From: {@retro_session.chamber_title_snapshot || @retro_session.chamber_slug_snapshot}<span
