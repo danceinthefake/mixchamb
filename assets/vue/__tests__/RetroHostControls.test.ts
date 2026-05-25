@@ -17,14 +17,25 @@ import type { RetroSession } from "../activities/retro/RetroBoard.vue"
 
 enableAutoUnmount(afterEach)
 
-function session(status: RetroSession["status"], voting_enabled = false): RetroSession {
+function session(
+  status: RetroSession["status"],
+  voting_enabled = false,
+  cardCount = 0,
+): RetroSession {
   return {
     id: "s1",
     title: null,
     status,
     voting_enabled,
     columns: [],
-    cards: [],
+    cards: Array.from({ length: cardCount }, (_, i) => ({
+      id: `c${i}`,
+      retro_column_id: "col1",
+      body: `card ${i}`,
+      author_user_id: "u1",
+      author_alias: "a",
+      vote_count: 0,
+    })),
     action_items: [],
   }
 }
@@ -106,5 +117,36 @@ describe("RetroHostControls", () => {
     })
     await w.get("input[type='checkbox']").trigger("change")
     expect(pushEventMock).toHaveBeenCalledWith("retro_set_voting_enabled", { enabled: true })
+  })
+
+  describe("voting threshold hint", () => {
+    it("hidden below the threshold", () => {
+      const w = mount(RetroHostControls, {
+        props: { session: session("brainstorm", false, 14), is_host: true },
+      })
+      expect(w.text()).not.toContain("voting helps")
+    })
+
+    it("shown at or above the threshold when voting is off", () => {
+      const w = mount(RetroHostControls, {
+        props: { session: session("brainstorm", false, 15), is_host: true },
+      })
+      expect(w.text()).toContain("15 cards")
+      expect(w.text()).toContain("voting helps")
+    })
+
+    it("hidden once voting is already enabled", () => {
+      const w = mount(RetroHostControls, {
+        props: { session: session("brainstorm", true, 20), is_host: true },
+      })
+      expect(w.text()).not.toContain("voting helps")
+    })
+
+    it("hidden once past :voting (no longer toggleable)", () => {
+      const w = mount(RetroHostControls, {
+        props: { session: session("discuss", false, 20), is_host: true },
+      })
+      expect(w.text()).not.toContain("voting helps")
+    })
   })
 })
