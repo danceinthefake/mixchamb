@@ -2170,14 +2170,19 @@ defmodule MixchambWeb.ChamberLive do
       <ul class="px-2 pb-2 space-y-1">
         <li
           :for={past <- @past_retros}
-          class="rounded-md border bg-background/40 px-2 py-1.5 text-[11px] leading-tight"
+          class="text-[11px] leading-tight"
         >
-          <div class="font-medium truncate text-foreground">
-            {past.title || "Untitled retro"}
-          </div>
-          <div class="text-muted-foreground tabular-nums text-[10px]">
-            archived {Calendar.strftime(past.archived_at, "%Y-%m-%d %H:%M") <> " UTC"}
-          </div>
+          <.link
+            navigate={~p"/retro/#{past.id}"}
+            class="block rounded-md border bg-background/40 hover:bg-accent transition-colors px-2 py-1.5"
+          >
+            <div class="font-medium truncate text-foreground">
+              {past.title || "Untitled retro"}
+            </div>
+            <div class="text-muted-foreground tabular-nums text-[10px]">
+              archived {Calendar.strftime(past.archived_at, "%Y-%m-%d %H:%M") <> " UTC"}
+            </div>
+          </.link>
         </li>
       </ul>
     </details>

@@ -318,6 +318,26 @@ defmodule Mixchamb.Chambers.ServerRetroTest do
     end
   end
 
+  describe "archive snapshot end-to-end via server" do
+    test "advance to :archived snapshots chamber slug + title + creator",
+         %{chamber: chamber, host: host} do
+      {:ok, _} = Mixchamb.Chambers.set_title(chamber, "Sprint 24")
+      Server.retro_start_session(chamber.slug, host.id)
+      assert_receive {:retro, :session_started, session_id}, 500
+
+      Enum.each([:brainstorm, :reveal, :discuss, :archived], fn phase ->
+        Server.retro_advance_phase(chamber.slug, host.id)
+        assert_receive {:retro, :phase_changed, ^phase}, 500
+      end)
+
+      snapped = Retro.get_archived_by_id(session_id)
+      assert snapped != nil
+      assert snapped.chamber_slug_snapshot == chamber.slug
+      assert snapped.chamber_title_snapshot == "Sprint 24"
+      assert snapped.creator_user_id == host.id
+    end
+  end
+
   describe "activity switch" do
     test "switching away then back rehydrates retro_state from DB",
          %{chamber: chamber, host: host} do

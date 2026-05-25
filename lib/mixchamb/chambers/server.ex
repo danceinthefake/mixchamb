@@ -740,6 +740,19 @@ defmodule Mixchamb.Chambers.Server do
           Mixchamb.Retro.materialize_vote_counts(session, counts)
         end
 
+        # If exiting :discuss → :archived, snapshot the chamber
+        # context (slug + title + creator) onto the session so
+        # the permanent /retro/:id view keeps that context even
+        # after chamber reaping NULLs out the FK. Skipped when
+        # the chamber row is gone (shouldn't happen — server is
+        # for an active chamber — but guards against the race).
+        if rs.phase == :discuss do
+          case Mixchamb.Chambers.find_by_id(state.chamber_id) do
+            nil -> :ok
+            chamber -> Mixchamb.Retro.snapshot_chamber_archive(session, chamber)
+          end
+        end
+
         case Mixchamb.Retro.advance_phase(session) do
           {:ok, updated} ->
             new_phase = Mixchamb.Retro.EphemeralState.phase_from_string(updated.status)

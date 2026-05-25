@@ -83,6 +83,21 @@ defmodule Mixchamb.Retro do
     Repo.get!(RetroSession, session_id) |> load_associations()
   end
 
+  @doc """
+  Load an archived session by id (the permanent /retro/:id view).
+  Returns `nil` if no row exists OR if the row exists but isn't
+  archived — live retros are scoped to their chamber's URL and
+  shouldn't leak via the public retro permalink. Preloads
+  columns / cards / actions so the view renders in one query
+  pass.
+  """
+  def get_archived_by_id(session_id) when is_binary(session_id) do
+    case load_session(session_id) do
+      %RetroSession{status: "archived"} = session -> session
+      _ -> nil
+    end
+  end
+
   defp load_associations(nil), do: nil
 
   defp load_associations(%RetroSession{} = session) do
@@ -128,6 +143,22 @@ defmodule Mixchamb.Retro do
       when is_boolean(enabled) do
     session
     |> RetroSession.voting_enabled_changeset(%{voting_enabled: enabled})
+    |> Repo.update()
+  end
+
+  @doc """
+  Snapshot the originating chamber's slug + title + creator onto
+  the retro session, so the archived view stays self-describing
+  after chamber reaping NULLs out the chamber_id FK. Called by
+  `Chambers.Server` when phase advances to `:archived`.
+  """
+  def snapshot_chamber_archive(%RetroSession{} = session, %{} = chamber) do
+    session
+    |> RetroSession.archive_snapshot_changeset(%{
+      chamber_slug_snapshot: chamber.slug,
+      chamber_title_snapshot: chamber.title,
+      creator_user_id: chamber.creator_user_id
+    })
     |> Repo.update()
   end
 

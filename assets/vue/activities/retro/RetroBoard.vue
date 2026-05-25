@@ -6,7 +6,7 @@
 //
 // See features/retrospective.md for the full design.
 
-import { computed, provide } from "vue"
+import { computed, provide, ref } from "vue"
 import { useLiveVue } from "live_vue"
 import RetroSetup from "./RetroSetup.vue"
 import RetroColumn from "./RetroColumn.vue"
@@ -185,6 +185,28 @@ const votesRemaining = computed(() => VOTE_CAP - myVoteSet.value.size)
 function startSession() {
   live.pushEvent("retro_start_session", {})
 }
+
+// Permalink for the archived view. Outlives the chamber — see
+// /retro/:id route + the chamber_id-nullable FK on
+// retro_sessions. Only meaningful when session.status =
+// "archived"; we still derive the URL eagerly so the host can
+// see it the moment the phase flips.
+const permalink = computed(() => {
+  if (!props.session) return ""
+  return `${window.location.origin}/retro/${props.session.id}`
+})
+
+const copiedFlash = ref(false)
+async function copyPermalink() {
+  try {
+    await navigator.clipboard.writeText(permalink.value)
+    copiedFlash.value = true
+    setTimeout(() => (copiedFlash.value = false), 1500)
+  } catch {
+    /* clipboard blocked — user can still copy from the input */
+  }
+}
+
 </script>
 
 <template>
@@ -230,6 +252,41 @@ function startSession() {
 
     <!-- :brainstorm / :reveal / :voting / :discuss / :archived — columns grid -->
     <div v-else class="space-y-4">
+      <!-- Permalink banner — shown the moment the retro is
+           archived, so the host can grab the shareable URL
+           before the chamber idles out. Survives chamber
+           reaping; the /retro/:id route loads straight from
+           Postgres. Lives above the column grid so the link is
+           the first thing the eye lands on. -->
+      <div
+        v-if="session.status === 'archived'"
+        class="rounded-xl border border-accent-bass/40 bg-accent-bass/10 px-4 py-3 flex flex-wrap items-center gap-3"
+        role="status"
+      >
+        <div class="text-xs space-y-0.5 flex-1 min-w-0">
+          <p class="font-semibold text-foreground">Retro archived · permanent link</p>
+          <p class="text-muted-foreground">
+            Bookmark to revisit. The chamber will eventually be reaped;
+            this URL keeps working.
+          </p>
+        </div>
+        <input
+          type="text"
+          :value="permalink"
+          readonly
+          aria-label="Permanent retro link"
+          class="rounded-md border bg-card px-2 py-1 text-xs font-mono min-w-0 flex-1 sm:flex-none sm:w-80"
+          @focus="($event.target as HTMLInputElement).select()"
+        />
+        <button
+          type="button"
+          @click="copyPermalink"
+          class="rounded-md bg-accent-bass text-background px-3 py-1.5 text-xs font-medium hover:bg-accent-bass/90"
+        >
+          {{ copiedFlash ? "Copied!" : "Copy link" }}
+        </button>
+      </div>
+
       <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4">
         <RetroColumn
           v-for="col in session.columns"

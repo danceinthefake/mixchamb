@@ -323,6 +323,62 @@ defmodule Mixchamb.RetroTest do
     end
   end
 
+  describe "snapshot_chamber_archive/2 + get_archived_by_id/1" do
+    test "snapshot writes the chamber's slug/title/creator onto the session",
+         %{chamber: chamber, user: user} do
+      {:ok, s} = Retro.start_session(chamber.id)
+      {:ok, _} = Mixchamb.Chambers.set_title(chamber, "Sprint 23 chamber")
+      chamber = Mixchamb.Chambers.find_by_id(chamber.id)
+
+      {:ok, snapped} = Retro.snapshot_chamber_archive(s, chamber)
+
+      assert snapped.chamber_slug_snapshot == chamber.slug
+      assert snapped.chamber_title_snapshot == "Sprint 23 chamber"
+      assert snapped.creator_user_id == user.id
+    end
+
+    test "get_archived_by_id returns archived sessions",
+         %{chamber: chamber, user: user} do
+      {:ok, s} = Retro.start_session(chamber.id)
+      s = advance_to(s, "archived", user)
+      assert match?(%RetroSession{id: _}, Retro.get_archived_by_id(s.id))
+    end
+
+    test "get_archived_by_id refuses live sessions", %{chamber: chamber, user: user} do
+      {:ok, s} = Retro.start_session(chamber.id)
+      assert Retro.get_archived_by_id(s.id) == nil
+
+      s = advance_to(s, "brainstorm", user)
+      assert Retro.get_archived_by_id(s.id) == nil
+
+      s = advance_to(s, "discuss", user)
+      assert Retro.get_archived_by_id(s.id) == nil
+    end
+
+    test "archived retro survives chamber deletion (FK nilify_all)",
+         %{chamber: chamber, user: user} do
+      {:ok, s} = Retro.start_session(chamber.id)
+
+      # Walk to discuss + snapshot before archiving (mirroring
+      # what Chambers.Server does on the :discuss → :archived
+      # transition).
+      s = advance_to(s, "discuss", user)
+      chamber_loaded = Mixchamb.Chambers.find_by_id(chamber.id)
+      {:ok, _} = Retro.snapshot_chamber_archive(s, chamber_loaded)
+      s = advance_to(Retro.load_session(s.id), "archived", user)
+
+      # Now delete the chamber row, mimicking sweeper reap.
+      {:ok, _} = Mixchamb.Chambers.delete(chamber)
+
+      # Retro session still exists, chamber_id now NULL but
+      # snapshot fields preserved.
+      retrieved = Retro.get_archived_by_id(s.id)
+      assert retrieved != nil
+      assert retrieved.chamber_id == nil
+      assert retrieved.chamber_slug_snapshot == chamber.slug
+    end
+  end
+
   describe "list_archived_sessions/1" do
     test "returns all archived sessions for the chamber", %{chamber: chamber, user: user} do
       {:ok, s1} = Retro.start_session(chamber.id, %{title: "First"})
