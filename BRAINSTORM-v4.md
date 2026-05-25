@@ -19,15 +19,20 @@ mixchamb is no longer music-only. The new framing:
 Music stays as one activity, alongside future tools targeted at
 distributed engineering teams:
 
-- **Planning poker** — estimate cards, reveal, discuss, re-vote
+- **Planning poker** ✅ — estimate cards, reveal, discuss, re-vote
+  _(shipped 2026-05-23; see `features/planning-poker.md`)_
 - **Standup** — round-robin updates, optional "yesterday / today /
   blockers" structure, history
-- **Retrospective** — multi-column board (start / stop / continue
-  or similar), grouping, voting, action items
+- **Retrospective** 🟡 — multi-column board (custom names; default
+  Good / Bad / Start / Thanks), optional dot-voting, persisted
+  action items _(v1 partial 2026-05-25; spec at
+  `features/retrospective.md`; remaining spec-locked gaps + polish
+  list in §6a below)_
 - **Icebreaker** — prompts, polls, would-you-rather, etc.
 - **Mini-game** — small synchronous games (Pictionary-style, trivia,
   Gartic Phone-ish)
-- **Music** — the existing chamber experience
+- **Music** ✅ — the existing chamber experience (carried over from
+  v1–v3)
 
 Each activity is a different "room mode" inside the same chamber
 shell. Users go to a chamber URL; what they see inside depends on
@@ -288,27 +293,133 @@ activity goes under `assets/vue/activities/<name>/`.
 Final estimate vs reality: planned ~3–4 days, shipped in two
 focused sessions across 2026-05-22/23.
 
+## 6a. Activity #2 (retrospective) — v1 partial, shipped 2026-05-25
+
+Same shape as the planning-poker landing: a 7-step build
+walked from migrations to Playwright smoke. Durable design
+decisions live in `features/retrospective.md`; this section
+is the brief BRAINSTORM-level summary so the parent doc stays
+coherent across the multi-activity arc.
+
+**Persistence split.** Unlike poker (every artefact ephemeral
+in `Chambers.Server`), retro splits durability:
+- `retro_sessions`, `retro_columns`, `retro_cards`,
+  `retro_action_items` persist to Postgres — the team can run
+  many retros in the same chamber and browse archived ones
+- the vote map + discussing-card focus live in
+  `Mixchamb.Retro.EphemeralState` inside the GenServer, same
+  as poker votes. Materialised onto `retro_cards.vote_count`
+  when `:voting → :discuss` so the archived record is the
+  durable signal.
+
+**Phase machine.** 5 or 6 phases depending on whether voting
+is enabled: `:setup → :brainstorm → :reveal →
+[(:voting if voting_enabled) →] :discuss → :archived`. Voting
+is opt-in (default off — most retros don't have enough cards
+to need it; the host gets a 15-card threshold hint when it
+starts mattering).
+
+**Visibility model.** Default: cards hidden from non-authors
+during `:brainstorm`, revealed together at `:reveal`. Closed-
+card placeholders (one per others' hidden card, coloured by
+the column accent) signal that others are contributing
+without leaking content. Opt-in `brainstorm_visible` mode
+shows all cards live for smaller / higher-trust teams.
+
+**Columns.** Fixed at 4, custom-named per session (default
+Good / Bad / Start / Thanks), each lane tinted with one of
+the activity-accent tokens for at-a-glance orientation.
+
+**What landed beyond the spec's locked sections** (during the
+build pass, after seeing it run):
+- Per-column accent tinting + colour-matched closed-card backs
+- 15-card threshold hint nudging voting-enable
+- `brainstorm_visible` toggle (spec §4 originally rejected,
+  reversed during build)
+- Empty-session archive warning
+- Late-joiner / refresh hydration via `seed_retro_ephemeral/3`
+- Bug fix for "can't start a new retro after archive" — the
+  GenServer was keeping a stale archived EphemeralState
+
+**Constraints kept:** ephemeral votes (no per-user history),
+4 fixed columns (no add/remove in v1), anonymous-user identity
+unchanged, no event sequencing yet.
+
+**Spec-locked gaps still open (block declaring v1 done):**
+
+1. **§6 — Action items not nested under source cards.** Spec
+   says actions tied to a card render under that card during
+   `:discuss`, with freeform actions in a separate panel.
+   Reality: all actions live in one flat list. Loses the
+   "this top-voted card → these actions" visual link.
+2. **§6 — No assignee autocomplete.** Spec says
+   `assignee_alias` autocompletes from current chamber Presence.
+   Reality: plain text input.
+3. **§3 — Author display drops half the identity.** Spec
+   matches poker's `alias · display_name` two-piece pattern;
+   reality snapshots `user.alias || user.display_name` into a
+   single string at card creation, so we only carry one of the
+   two. Conflicts with the persistent "alias is additive on top
+   of display_name" memory.
+
+**§11 polish backlog (spec-deferred — not required for v1):**
+
+- Card grouping / merging at `:reveal`
+- Discussing-card highlight animation (static ring is in;
+  animation deferred)
+- Action item carry-over from previous retro
+- Anonymous mode
+- Preset column templates (SSC / MSG / 4Ls)
+- Keyboard shortcuts (1–4 add to column, Enter submits, etc.)
+
+**Real-world gaps surfaced by use (not in spec):**
+
+- Past-retros disclosure is list-only — no click-to-view of
+  archived content
+- Edit mode has no live char counter (only add forms do)
+- No vote-cast cue (poker has reveal chime, retro is silent)
+- Vote button toggle is "click to vote / click again to
+  withdraw" with no visible hint
+
+Final estimate vs reality: planned ~6 working days, ~1
+focused session for v1-partial (9 commits, unpushed at time of
+writing). Gaps above stay open until closed; this entry will
+flip to ✅ when they do.
+
+---
+
 ## 7. Path forward
 
-After the planning-poker MVP lands and gets used in real
-sprint planning at least twice:
-
-1. **Pick activity #2.** Probably standup or retro. Standup wins
-   on frequency (daily), retro wins on novelty. User signal from
-   the team should decide.
-2. **Add auth — magic link + OAuth Google.** Magic link is the
+1. 🟡 **Activity #2 — retrospective (v1 partial).** Landed
+   2026-05-25 but with three spec-locked gaps still open (see
+   §6a). Picked novelty over frequency: poker covered the
+   "structured ceremony with discrete votes" pattern; retro
+   covers "free-form brainstorm → cluster → discuss → action
+   items," which exercises the same architecture differently
+   (persistent cards + actions vs. ephemeral poker votes) and
+   surfaces what's load-bearing in the shared shell. Spec at
+   `features/retrospective.md`. Will flip to ✅ once the
+   §6a gap list closes. Standup deferred — its "yesterday /
+   today / blockers" structure is closer in spirit to poker's
+   discrete-vote pattern, so we'd learn less by doing it next.
+2. **Activity #3 — standup.** Now that the
+   ephemeral-poker / persisted-retro split has been exercised,
+   standup is the natural test of "structured round-robin
+   ceremony." Likely sits closer to poker (ephemeral state,
+   small per-user payload) but with a turn order to manage.
+3. **Add auth — magic link + OAuth Google.** Magic link is the
    low-friction default for the casual case; OAuth Google gives
    the team SSO. Either path lands on a real `users` row with
    `email`. The existing `anonymous_users` table stays as-is —
    the two identities co-exist (logged-in users still get a
    chamber-side display_name + alias; the difference is they can
    own event templates).
-3. **Add sequencing.** Logged-in user defines an "event template"
+4. **Add sequencing.** Logged-in user defines an "event template"
    (`standup → music → retro`); host runs it from a chamber and
    the "advance" button moves the room through the template
    (host-driven transitions, per §3.3). Schedule-driven and
    activity-driven transitions remain on the table for later.
-4. **Add activity #3, #4, #5** at whatever cadence feels right.
+5. **Add activity #4, #5** at whatever cadence feels right.
    Each one extends the same `chamber.activity` switch pattern.
 
 ## 8. What this means for the existing music build
