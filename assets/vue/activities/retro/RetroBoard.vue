@@ -187,13 +187,13 @@ function startSession() {
 }
 
 // Permalink for the archived view. Outlives the chamber — see
-// /retro/:id route + the chamber_id-nullable FK on
+// /archives/retros/:id route + the chamber_id-nullable FK on
 // retro_sessions. Only meaningful when session.status =
 // "archived"; we still derive the URL eagerly so the host can
 // see it the moment the phase flips.
 const permalink = computed(() => {
   if (!props.session) return ""
-  return `${window.location.origin}/retro/${props.session.id}`
+  return `${window.location.origin}/archives/retros/${props.session.id}`
 })
 
 const copiedFlash = ref(false)

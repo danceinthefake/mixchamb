@@ -1,7 +1,7 @@
 defmodule MixchambWeb.RetroLive do
   @moduledoc """
   Permanent read-only view of an archived retrospective. Mounted
-  at `/retro/:id`. Decoupled from any chamber GenServer (the
+  at `/archives/retros/:id`. Decoupled from any chamber GenServer (the
   chamber may have been reaped); just loads the session from
   Postgres and renders the Vue board in archived mode.
   """

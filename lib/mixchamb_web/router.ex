@@ -45,8 +45,10 @@ defmodule MixchambWeb.Router do
       live "/chamber/:slug", ChamberLive
       # Permanent read-only view of an archived retro. Outlives
       # the originating chamber via the decoupled FK + snapshots
-      # on retro_sessions — share the URL to share the artefact.
-      live "/retro/:id", RetroLive
+      # on retro_sessions. Under /archives/ so future archived
+      # activities (standups, icebreakers, …) get a consistent
+      # namespace.
+      live "/archives/retros/:id", RetroLive
     end
 
     # Admin login / logout — ungated so the user can reach the

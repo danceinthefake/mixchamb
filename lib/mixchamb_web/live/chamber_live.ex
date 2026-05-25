@@ -2173,7 +2173,7 @@ defmodule MixchambWeb.ChamberLive do
           class="text-[11px] leading-tight"
         >
           <.link
-            navigate={~p"/retro/#{past.id}"}
+            navigate={~p"/archives/retros/#{past.id}"}
             class="block rounded-md border bg-background/40 hover:bg-accent transition-colors px-2 py-1.5"
           >
             <div class="font-medium truncate text-foreground">

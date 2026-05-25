@@ -84,7 +84,8 @@ defmodule Mixchamb.Retro do
   end
 
   @doc """
-  Load an archived session by id (the permanent /retro/:id view).
+  Load an archived session by id (the permanent
+  `/archives/retros/:id` view).
   Returns `nil` if no row exists OR if the row exists but isn't
   archived — live retros are scoped to their chamber's URL and
   shouldn't leak via the public retro permalink. Preloads

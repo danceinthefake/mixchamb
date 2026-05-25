@@ -43,7 +43,7 @@ defmodule Mixchamb.Retro.RetroSession do
     field :archived_at, :utc_datetime
 
     # Snapshots of the originating chamber, captured at archive
-    # time so the past-retro view (/retro/:id) keeps context even
+    # time so the past-retro view (/archives/retros/:id) keeps context even
     # after chamber reaping NULLs out the chamber_id FK.
     field :chamber_slug_snapshot, :string
     field :chamber_title_snapshot, :string

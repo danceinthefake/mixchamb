@@ -742,7 +742,7 @@ defmodule Mixchamb.Chambers.Server do
 
         # If exiting :discuss → :archived, snapshot the chamber
         # context (slug + title + creator) onto the session so
-        # the permanent /retro/:id view keeps that context even
+        # the permanent /archives/retros/:id view keeps context even
         # after chamber reaping NULLs out the FK. Skipped when
         # the chamber row is gone (shouldn't happen — server is
         # for an active chamber — but guards against the race).
