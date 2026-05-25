@@ -45,7 +45,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Set up Elixir + OTP
         uses: erlef/setup-beam@v1
@@ -92,7 +92,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       # `package.json` pulls live_vue / phoenix / phoenix_html /
       # phoenix_live_view via `file:./deps/...`, which means those
@@ -158,7 +158,7 @@ jobs:
 
     steps:
       - name: Checkout main (badge script + assumptions)
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           # Full history needed for the orphan-branch dance below.
           fetch-depth: 0
