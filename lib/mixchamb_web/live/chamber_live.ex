@@ -1610,7 +1610,7 @@ defmodule MixchambWeb.ChamberLive do
                     value={@chamber.title || ""}
                     maxlength="80"
                     placeholder="Untitled chamber"
-                    class="flex-1 bg-transparent border-none outline-none text-2xl font-bold tracking-tight font-display text-foreground placeholder:text-muted-foreground/50"
+                    class="flex-1 bg-transparent border-none outline-none text-2xl font-bold tracking-tight font-display text-foreground placeholder:text-muted-foreground/80"
                   />
                   <%!-- The hint is just clutter on mobile, where on-screen
                      keyboards already show their own submit affordance. --%>

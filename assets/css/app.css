@@ -95,7 +95,11 @@
 
 :root {
   --radius: 0.625rem;
-  --background: oklch(1 0 0);
+  /* Background a faint step BELOW pure white (with the same
+     hue-280 tint dark mode uses) so cards-as-white-elevated-
+     surfaces have lift. Previously both --background and --card
+     were oklch(1 0 0) which made cards float invisibly. */
+  --background: oklch(0.97 0.005 280);
   --foreground: oklch(0.141 0.005 285.823);
   --card: oklch(1 0 0);
   --card-foreground: oklch(0.141 0.005 285.823);
@@ -108,15 +112,15 @@
      in light mode clears WCAG AA for large/UI text. */
   --primary: oklch(0.68 0.21 5);
   --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.967 0.001 286.375);
+  --secondary: oklch(0.96 0.005 280);
   --secondary-foreground: oklch(0.21 0.006 285.885);
-  --muted: oklch(0.967 0.001 286.375);
-  --muted-foreground: oklch(0.552 0.016 285.938);
-  --accent: oklch(0.967 0.001 286.375);
+  --muted: oklch(0.94 0.005 280);
+  --muted-foreground: oklch(0.48 0.012 280);
+  --accent: oklch(0.94 0.005 280);
   --accent-foreground: oklch(0.21 0.006 285.885);
   --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.92 0.004 286.32);
-  --input: oklch(0.92 0.004 286.32);
+  --border: oklch(0.88 0.005 280);
+  --input: oklch(0.88 0.005 280);
   /* Focus ring picks up the same brand pink so keyboard-only
      navigation traces the brand colour. */
   --ring: oklch(0.68 0.21 5);
@@ -229,6 +233,28 @@
       radial-gradient(ellipse 120% 50% at 50% 0%, oklch(0.2 0.05 280 / 0.4), transparent 60%),
       radial-gradient(ellipse 80% 40% at 50% 100%, oklch(0.18 0.06 320 / 0.25), transparent 60%);
     background-attachment: fixed;
+  }
+
+  /* Light-mode ambient — brand-pink + brand-cyan pools at very
+     low alpha, in the same top + bottom positions as dark mode.
+     Reads as a softly lit page instead of flat white paper.
+     Same brand-gradient hues so the identity carries through. */
+  :root:not(.dark) body {
+    background-image:
+      radial-gradient(ellipse 120% 50% at 50% 0%, oklch(0.85 0.10 5 / 0.35), transparent 60%),
+      radial-gradient(ellipse 80% 40% at 50% 100%, oklch(0.85 0.10 215 / 0.25), transparent 60%);
+    background-attachment: fixed;
+  }
+
+  /* Light-mode card elevation. Dark mode doesn't need this —
+     the background-vs-card contrast does the lifting for free.
+     In light mode cards are pure white on a tinted background;
+     a small drop shadow reinforces that they're elevated
+     surfaces rather than recessed panels. Scoped to .bg-card so
+     non-card surfaces (inputs, popovers with their own shadows)
+     don't double up. */
+  :root:not(.dark) .bg-card {
+    box-shadow: 0 1px 3px oklch(0 0 0 / 0.04), 0 1px 2px oklch(0 0 0 / 0.06);
   }
   /* Faint horizontal scanline texture across the whole page in dark
      mode. 1.5% white at 1px intervals — barely perceptible on its
