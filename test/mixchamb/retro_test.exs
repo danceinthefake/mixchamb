@@ -403,13 +403,23 @@ defmodule Mixchamb.RetroTest do
       assert {:error, :invalid_emoji} = Retro.toggle_reaction(card, user.id, "🚀", s)
     end
 
-    test "toggle_reaction rejects during :brainstorm", %{user: user} do
+    test "toggle_reaction rejects during :brainstorm (hidden mode)", %{user: user} do
       {:ok, fresh_chamber} = Chambers.create_chamber(user.id, "retro")
       {:ok, s} = Retro.start_session(fresh_chamber.id)
       s = advance_to(s, "brainstorm", user)
       [col | _] = s.columns
       {:ok, card} = Retro.add_card(s, col, %{body: "x", author_user_id: user.id, author_alias: "a"})
       assert {:error, :phase_locked} = Retro.toggle_reaction(card, user.id, "👍", s)
+    end
+
+    test "toggle_reaction allowed during :brainstorm when brainstorm_visible", %{user: user} do
+      {:ok, fresh_chamber} = Chambers.create_chamber(user.id, "retro")
+      {:ok, s} = Retro.start_session(fresh_chamber.id)
+      {:ok, s} = Retro.set_brainstorm_visible(s, true)
+      s = advance_to(s, "brainstorm", user)
+      [col | _] = s.columns
+      {:ok, card} = Retro.add_card(s, col, %{body: "x", author_user_id: user.id, author_alias: "a"})
+      assert {:added, _} = Retro.toggle_reaction(card, user.id, "👍", s)
     end
   end
 
@@ -434,7 +444,7 @@ defmodule Mixchamb.RetroTest do
       assert comment.author_alias == "alex"
     end
 
-    test "add_comment rejects during :brainstorm", %{user: user} do
+    test "add_comment rejects during :brainstorm (hidden mode)", %{user: user} do
       {:ok, fresh_chamber} = Chambers.create_chamber(user.id, "retro")
       {:ok, s} = Retro.start_session(fresh_chamber.id)
       s = advance_to(s, "brainstorm", user)
@@ -443,6 +453,20 @@ defmodule Mixchamb.RetroTest do
 
       assert {:error, :phase_locked} =
                Retro.add_comment(card, %{body: "no", author_user_id: user.id, author_alias: "a"}, s)
+    end
+
+    test "add_comment allowed during :brainstorm when brainstorm_visible", %{user: user} do
+      {:ok, fresh_chamber} = Chambers.create_chamber(user.id, "retro")
+      {:ok, s} = Retro.start_session(fresh_chamber.id)
+      {:ok, s} = Retro.set_brainstorm_visible(s, true)
+      s = advance_to(s, "brainstorm", user)
+      [col | _] = s.columns
+      {:ok, card} = Retro.add_card(s, col, %{body: "x", author_user_id: user.id, author_alias: "a"})
+
+      assert {:ok, comment} =
+               Retro.add_comment(card, %{body: "early thought", author_user_id: user.id, author_alias: "a"}, s)
+
+      assert comment.body == "early thought"
     end
 
     test "update_comment author-only", %{session: s, card: card, user: user} do

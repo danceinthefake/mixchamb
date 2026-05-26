@@ -22,6 +22,10 @@ const REACTION_EMOJIS = ["👍", "❤️", "🎉", "😄", "😢", "🤔"] as co
 const props = defineProps<{
   card: RetroCardT
   phase: RetroPhase
+  // Host's "show all cards live" toggle from :setup. When true,
+  // reactions + comments unlock during :brainstorm too (same
+  // logic as the server-side Mixchamb.Retro.interactive?/1).
+  brainstorm_visible: boolean
   is_mine: boolean
   // Used for "did I react / is this my comment" checks. Empty
   // string in archived-permalink mode (RetroLive) — the
@@ -40,15 +44,19 @@ const props = defineProps<{
   tied_actions: RetroActionItem[]
 }>()
 
-// Reactions + comments are available from :reveal onward (no
-// reacting / commenting on hidden brainstorm cards — needs the
-// same shared substrate for everyone). Mirror the server's
-// allow-list (Mixchamb.Retro's @reactable_statuses).
-const reactableNow = computed(() =>
-  ["reveal", "voting", "discuss", "archived"].includes(props.phase),
-)
+// Reactions + comments are available from :reveal onward, plus
+// during :brainstorm when the host opted into always-visible
+// mode. Mirrors Mixchamb.Retro.interactive?/1 on the server.
+const reactableNow = computed(() => {
+  if (["reveal", "voting", "discuss", "archived"].includes(props.phase)) return true
+  if (props.phase === "brainstorm" && props.brainstorm_visible) return true
+  return false
+})
 
 // Group reactions by emoji and check if current user has each.
+// Only emojis with at least one reaction render in the strip;
+// the "+" picker exposes the full set so users can add
+// emojis nobody's used yet.
 type ReactionSummary = {
   emoji: string
   count: number
@@ -56,17 +64,25 @@ type ReactionSummary = {
 }
 const reactionSummaries = computed<ReactionSummary[]>(() => {
   const byEmoji: Record<string, ReactionSummary> = {}
-  for (const emoji of REACTION_EMOJIS) {
-    byEmoji[emoji] = { emoji, count: 0, mine: false }
-  }
   for (const r of props.card.reactions) {
-    const summary = byEmoji[r.emoji]
-    if (!summary) continue
+    const summary = byEmoji[r.emoji] || { emoji: r.emoji, count: 0, mine: false }
     summary.count++
     if (r.user_id && r.user_id === props.current_user_id) summary.mine = true
+    byEmoji[r.emoji] = summary
   }
-  return REACTION_EMOJIS.map((e) => byEmoji[e])
+  // Sort by REACTION_EMOJIS order so chips stay in a stable
+  // left-to-right order across clients.
+  return REACTION_EMOJIS.filter((e) => byEmoji[e]).map((e) => byEmoji[e])
 })
+
+const pickerOpen = ref(false)
+function togglePicker() {
+  pickerOpen.value = !pickerOpen.value
+}
+function pickEmoji(emoji: string) {
+  toggleReaction(emoji)
+  pickerOpen.value = false
+}
 
 const commentsReadOnly = computed(() => props.phase === "archived")
 
@@ -241,13 +257,14 @@ function focusForDiscussion() {
       </div>
     </div>
 
-    <!-- Emoji reactions strip. Visible from :reveal onward
-         (and archived). Each chip toggles the current user's
-         reaction; chips highlight when you've reacted. Read-
-         only on :archived. -->
+    <!-- Emoji reactions strip. Only emojis that have been used
+         render as chips (with counts). The "+" button opens a
+         picker showing the full allow-list so users can add
+         emojis nobody's reacted with yet. Read-only on :archived
+         (no +/toggle), but used chips still display. -->
     <div
       v-if="reactableNow"
-      class="pt-2 mt-2 border-t border-input/40 flex flex-wrap items-center gap-1"
+      class="pt-2 mt-2 border-t border-input/40 flex flex-wrap items-center gap-1 relative"
       :aria-label="`Reactions on: ${card.body}`"
       @click.stop
     >
@@ -267,8 +284,39 @@ function focusForDiscussion() {
         @click="toggleReaction(r.emoji)"
       >
         <span aria-hidden="true">{{ r.emoji }}</span>
-        <span v-if="r.count > 0" class="tabular-nums text-[10px]">{{ r.count }}</span>
+        <span class="tabular-nums text-[10px]">{{ r.count }}</span>
       </button>
+
+      <button
+        v-if="phase !== 'archived'"
+        type="button"
+        :aria-label="pickerOpen ? 'Close reaction picker' : 'Add reaction'"
+        :aria-expanded="pickerOpen"
+        class="inline-flex items-center justify-center rounded-md border border-dashed border-input px-1.5 py-0.5 text-[11px] text-muted-foreground hover:text-foreground hover:bg-accent"
+        @click="togglePicker"
+      >
+        + 😊
+      </button>
+
+      <!-- Picker popover — six emojis to pick from. Clicking
+           an emoji here toggles its reaction and closes. -->
+      <div
+        v-if="pickerOpen"
+        class="absolute z-10 top-full mt-1 left-0 rounded-md border bg-card shadow-lg p-1 flex gap-0.5"
+        role="menu"
+      >
+        <button
+          v-for="emoji in REACTION_EMOJIS"
+          :key="`picker-${emoji}`"
+          type="button"
+          role="menuitem"
+          :aria-label="`Add ${emoji} reaction`"
+          class="rounded hover:bg-accent px-1.5 py-1 text-base"
+          @click="pickEmoji(emoji)"
+        >
+          {{ emoji }}
+        </button>
+      </div>
     </div>
 
     <!-- Comments thread. Collapsed by default; click to expand. -->

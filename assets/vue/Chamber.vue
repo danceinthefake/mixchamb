@@ -90,6 +90,12 @@ const props = defineProps<{
   // the assignee-input <datalist> autocomplete during :discuss
   // (spec §6).
   retro_participant_aliases?: string[]
+  // Most-recent archived retro for this chamber. Drives the
+  // "Last retro archived → Copy share link" notice in the
+  // chamber's empty-retro state so the host can grab the
+  // permalink the moment they archive without hunting through
+  // the past-retros disclosure.
+  retro_last_archived?: { id: string; title: string | null; archived_at: string | null } | null
   current_user_id?: string
   current_user_alias?: string
   is_host?: boolean
@@ -563,6 +569,7 @@ live.handleEvent("play_remote_note", async (payload: RemoteNote) => {
     :my_votes="props.retro_my_votes ?? []"
     :discussing_card_id="props.retro_discussing_card_id ?? null"
     :participant_aliases="props.retro_participant_aliases ?? []"
+    :last_archived="props.retro_last_archived ?? null"
     :current_user_id="props.current_user_id ?? ''"
     :current_user_alias="props.current_user_alias ?? ''"
     :is_host="props.is_host ?? false"

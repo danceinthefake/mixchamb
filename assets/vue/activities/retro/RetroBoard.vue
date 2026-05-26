@@ -82,6 +82,12 @@ export type RetroSession = {
 
 const VOTE_CAP = 3
 
+type LastArchived = {
+  id: string
+  title: string | null
+  archived_at: string | null
+} | null
+
 const props = defineProps<{
   chamber_slug: string
   session: RetroSession | null
@@ -95,6 +101,11 @@ const props = defineProps<{
   // to descendants via inject so RetroActionRow / RetroDiscussPanel
   // can offer assignee autocomplete without prop-drilling.
   participant_aliases: string[]
+  // Most-recent archived retro for this chamber (or null).
+  // Powers the "Last retro archived → Copy share link" notice
+  // that shows in the empty-retro state so hosts can grab the
+  // permalink immediately after clicking Archive.
+  last_archived: LastArchived
   current_user_id: string
   current_user_alias: string
   is_host: boolean
@@ -111,6 +122,34 @@ provide(
 const live = useLiveVue()
 
 const phase = computed<RetroPhase | null>(() => props.session?.status ?? null)
+
+// Stepper model — the canonical retro flow in display order.
+// `voting` is dimmed when the host hasn't opted into voting at
+// :setup. Each step's index relative to the current phase tells
+// us "done / current / upcoming" for visual state.
+const STEPPER_PHASES: { phase: RetroPhase; label: string }[] = [
+  { phase: "setup", label: "Setup" },
+  { phase: "brainstorm", label: "Brainstorm" },
+  { phase: "reveal", label: "Reveal" },
+  { phase: "voting", label: "Voting" },
+  { phase: "discuss", label: "Discuss" },
+  { phase: "archived", label: "Archived" },
+]
+
+const currentPhaseIndex = computed(() =>
+  phase.value ? STEPPER_PHASES.findIndex((s) => s.phase === phase.value) : -1,
+)
+
+function stepperState(idx: number, stepPhase: RetroPhase) {
+  // Voting is dimmed-and-skipped when voting_enabled is false —
+  // still rendered for orientation (you can see the phase
+  // exists, just not for this run) but de-emphasised.
+  const votingSkipped =
+    stepPhase === "voting" && !(props.session?.voting_enabled ?? false)
+  if (idx === currentPhaseIndex.value) return "current"
+  if (idx < currentPhaseIndex.value) return votingSkipped ? "skipped" : "done"
+  return votingSkipped ? "skipped" : "upcoming"
+}
 
 // Cards grouped by column id, sorted by:
 //   - vote_count desc in :discuss / :archived (after materialisation)
@@ -207,51 +246,183 @@ function startSession() {
 
 // Permalink for the archived view. Outlives the chamber — see
 // /archives/retros/:id route + the chamber_id-nullable FK on
-// retro_sessions. Only meaningful when session.status =
-// "archived"; we still derive the URL eagerly so the host can
-// see it the moment the phase flips.
-const permalink = computed(() => {
-  if (!props.session) return ""
-  return `${window.location.origin}/archives/retros/${props.session.id}`
-})
+// retro_sessions. Used both for the in-board banner (when
+// session.status = "archived") and the empty-state notice
+// (which targets last_archived.id, the most-recent past retro).
+function buildPermalink(id: string) {
+  return `${window.location.origin}/archives/retros/${id}`
+}
+const permalink = computed(() => (props.session ? buildPermalink(props.session.id) : ""))
+const lastArchivedPermalink = computed(() =>
+  props.last_archived ? buildPermalink(props.last_archived.id) : "",
+)
 
 const copiedFlash = ref(false)
-async function copyPermalink() {
+async function copyText(text: string) {
   try {
-    await navigator.clipboard.writeText(permalink.value)
+    await navigator.clipboard.writeText(text)
     copiedFlash.value = true
     setTimeout(() => (copiedFlash.value = false), 1500)
   } catch {
-    /* clipboard blocked — user can still copy from the input */
+    /* clipboard blocked — silent fail; bookmark via the past-retros disclosure */
   }
+}
+async function copyPermalink() {
+  await copyText(permalink.value)
+}
+async function copyLastArchivedPermalink() {
+  await copyText(lastArchivedPermalink.value)
 }
 
 </script>
 
 <template>
   <div class="space-y-6">
-    <header class="flex items-baseline justify-between gap-4">
-      <div>
-        <h1 class="text-2xl font-bold tracking-tight font-display brand-gradient-text">
-          {{ session?.title || "Retrospective" }}
-        </h1>
-        <p v-if="session" class="text-xs uppercase tracking-wider text-muted-foreground mt-1">
-          {{ session.status }}<span v-if="session.voting_enabled"> · voting</span>
+    <header class="space-y-3">
+      <h1 class="text-2xl font-bold tracking-tight font-display brand-gradient-text">
+        {{ session?.title || "Retrospective" }}
+      </h1>
+
+      <!-- Phase stepper. Shows where the team is in the 5-or-6
+           step flow at a glance. Voting step de-emphasises
+           when the host hasn't enabled voting for this run. -->
+      <ol
+        v-if="session"
+        class="flex flex-wrap items-center gap-x-1 gap-y-1.5 text-[11px]"
+        :aria-label="`Retro phase: ${session.status}`"
+      >
+        <template v-for="(step, idx) in STEPPER_PHASES" :key="step.phase">
+          <li class="flex items-center gap-1.5">
+            <span
+              aria-hidden="true"
+              class="inline-flex items-center justify-center size-4 rounded-full text-[10px] font-mono shrink-0 transition-colors"
+              :class="{
+                'bg-accent-bass text-background ring-2 ring-accent-bass/40 ring-offset-1 ring-offset-background':
+                  stepperState(idx, step.phase) === 'current',
+                'bg-accent-bass/60 text-background':
+                  stepperState(idx, step.phase) === 'done',
+                'border border-input bg-card text-muted-foreground':
+                  stepperState(idx, step.phase) === 'upcoming',
+                'border border-dashed border-input bg-card text-muted-foreground/50':
+                  stepperState(idx, step.phase) === 'skipped',
+              }"
+            >
+              {{ stepperState(idx, step.phase) === "done" ? "✓" : idx + 1 }}
+            </span>
+            <span
+              class="font-medium"
+              :class="{
+                'text-foreground': stepperState(idx, step.phase) === 'current',
+                'text-muted-foreground': stepperState(idx, step.phase) !== 'current',
+                'line-through opacity-60': stepperState(idx, step.phase) === 'skipped',
+              }"
+            >
+              {{ step.label }}
+            </span>
+          </li>
+          <li
+            v-if="idx < STEPPER_PHASES.length - 1"
+            aria-hidden="true"
+            class="text-muted-foreground/40 select-none"
+          >
+            ›
+          </li>
+        </template>
+      </ol>
+    </header>
+
+    <!-- Collapsible process guide. Helps first-time users (and
+         occasional ones who've forgotten the flow) without
+         taking real-estate from the board. Closed by default. -->
+    <details class="rounded-lg border bg-card/40 group">
+      <summary
+        class="cursor-pointer px-3 py-2 text-xs font-medium text-muted-foreground hover:text-foreground flex items-center justify-between"
+      >
+        <span>How retros work</span>
+        <span aria-hidden="true" class="group-open:rotate-90 transition-transform">›</span>
+      </summary>
+      <div class="px-4 pb-3 pt-1 text-xs text-muted-foreground space-y-2 leading-relaxed">
+        <p>
+          A retro walks through 5 or 6 phases. The host advances; everyone else
+          writes, reacts, votes, and comments.
+        </p>
+        <ol class="space-y-1.5 list-decimal pl-5">
+          <li>
+            <span class="font-semibold text-foreground">Setup</span> — host renames
+            columns, decides whether to enable voting and "show all cards live."
+            Locked at the next click.
+          </li>
+          <li>
+            <span class="font-semibold text-foreground">Brainstorm</span> — everyone
+            adds cards. By default each person sees only their own + face-down
+            placeholders for others'. Live-visible mode shows everything as it lands.
+          </li>
+          <li>
+            <span class="font-semibold text-foreground">Reveal</span> — all cards
+            become visible. Read the room. React with emojis, comment to dig in.
+          </li>
+          <li>
+            <span class="font-semibold text-foreground">Voting</span>
+            <span class="italic">(opt-in)</span> — each person spends 3 dots across
+            the cards. Useful when you have too many to discuss linearly (~15+).
+          </li>
+          <li>
+            <span class="font-semibold text-foreground">Discuss</span> — cards sort
+            by vote count. Host can highlight a card as currently-discussing;
+            anyone adds action items (tied to a card or freeform).
+          </li>
+          <li>
+            <span class="font-semibold text-foreground">Archived</span> — session
+            frozen. Permanent link survives the chamber being reaped. Start a new
+            retro in the same chamber when ready.
+          </li>
+        </ol>
+        <p class="pt-1">
+          <span class="font-semibold text-foreground">Tips:</span>
+          ≥15 cards → enable voting · small high-trust team → turn on
+          "show all live" in setup · creator can promote co-hosts (presence
+          panel) so anyone can advance the phase.
         </p>
       </div>
-    </header>
+    </details>
+
+    <!-- No active session — but if there's a recently-archived
+         one in this chamber, surface the share link so the host
+         can grab it without hunting through the past-retros
+         disclosure. -->
+    <div
+      v-if="!session && last_archived"
+      class="rounded-xl border border-accent-bass/40 bg-accent-bass/10 px-4 py-3 flex flex-wrap items-center gap-3"
+      role="status"
+    >
+      <div class="text-xs space-y-0.5 flex-1 min-w-0">
+        <p class="font-semibold text-foreground">
+          Last retro archived: {{ last_archived.title || "Untitled retro" }}
+        </p>
+        <p class="text-muted-foreground">
+          Permanent link kept. Share or bookmark before the chamber idles out.
+        </p>
+      </div>
+      <button
+        type="button"
+        @click="copyLastArchivedPermalink"
+        class="rounded-md bg-accent-bass text-background px-3 py-1.5 text-xs font-medium hover:bg-accent-bass/90 shrink-0"
+      >
+        {{ copiedFlash ? "Copied!" : "Copy share link" }}
+      </button>
+    </div>
 
     <!-- No session yet -->
     <div v-if="!session && is_host" class="rounded-xl border bg-card p-6 space-y-3">
       <p class="text-sm text-muted-foreground">
-        No retro session running. Start one to begin.
+        {{ last_archived ? "Ready for the next retro?" : "No retro session running. Start one to begin." }}
       </p>
       <button
         type="button"
         @click="startSession"
         class="rounded-md bg-accent-bass text-background px-4 py-2 text-sm font-medium hover:bg-accent-bass/90"
       >
-        Start retro
+        {{ last_archived ? "Start new retro" : "Start retro" }}
       </button>
     </div>
 
@@ -274,9 +445,10 @@ async function copyPermalink() {
       <!-- Permalink banner — shown the moment the retro is
            archived, so the host can grab the shareable URL
            before the chamber idles out. Survives chamber
-           reaping; the /retro/:id route loads straight from
-           Postgres. Lives above the column grid so the link is
-           the first thing the eye lands on. -->
+           reaping; the /archives/retros/:id route loads
+           straight from Postgres. URL isn't surfaced visually
+           — one click copies it to clipboard, the "Copied!"
+           flash confirms. -->
       <div
         v-if="session.status === 'archived'"
         class="rounded-xl border border-accent-bass/40 bg-accent-bass/10 px-4 py-3 flex flex-wrap items-center gap-3"
@@ -289,20 +461,12 @@ async function copyPermalink() {
             this URL keeps working.
           </p>
         </div>
-        <input
-          type="text"
-          :value="permalink"
-          readonly
-          aria-label="Permanent retro link"
-          class="rounded-md border bg-card px-2 py-1 text-xs font-mono min-w-0 flex-1 sm:flex-none sm:w-80"
-          @focus="($event.target as HTMLInputElement).select()"
-        />
         <button
           type="button"
           @click="copyPermalink"
-          class="rounded-md bg-accent-bass text-background px-3 py-1.5 text-xs font-medium hover:bg-accent-bass/90"
+          class="rounded-md bg-accent-bass text-background px-3 py-1.5 text-xs font-medium hover:bg-accent-bass/90 shrink-0"
         >
-          {{ copiedFlash ? "Copied!" : "Copy link" }}
+          {{ copiedFlash ? "Copied!" : "Copy share link" }}
         </button>
       </div>
 
@@ -315,6 +479,7 @@ async function copyPermalink() {
           :total_count="countsByColumnId[col.id] ?? 0"
           :hidden_count="hiddenCountByColumnId[col.id] ?? 0"
           :phase="phase!"
+          :brainstorm_visible="session.brainstorm_visible"
           :is_host="is_host"
           :current_user_id="current_user_id"
           :tallies="tallies"

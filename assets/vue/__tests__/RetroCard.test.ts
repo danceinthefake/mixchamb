@@ -32,6 +32,7 @@ function baseCard(overrides: Partial<RetroCardT> = {}): RetroCardT {
 const baseProps = {
   card: baseCard(),
   phase: "brainstorm" as const,
+  brainstorm_visible: false,
   is_mine: true,
   current_user_id: "u1",
   tally: 0,

@@ -6,7 +6,7 @@
 // edit + delete during live phases (reveal/voting/discuss);
 // everything is read-only on :archived.
 
-import { ref } from "vue"
+import { computed, ref } from "vue"
 import { useLiveVue } from "live_vue"
 import type { RetroComment } from "./RetroBoard.vue"
 
@@ -21,6 +21,23 @@ const live = useLiveVue()
 
 const expanded = ref(false)
 const draft = ref("")
+
+// Trim long threads to keep the column compact. Once the user
+// clicks "Load more" the rest unfolds and stays unfolded for
+// the remainder of the session.
+const TRIM_THRESHOLD = 3
+const showAllComments = ref(false)
+const visibleComments = computed<RetroComment[]>(() => {
+  if (showAllComments.value || props.comments.length <= TRIM_THRESHOLD) {
+    return props.comments
+  }
+  // Show the most recent 3 by default — preserves thread tail,
+  // hides the older context behind the click.
+  return props.comments.slice(-TRIM_THRESHOLD)
+})
+const hiddenCommentCount = computed(() =>
+  Math.max(0, props.comments.length - visibleComments.value.length),
+)
 
 const editingId = ref<string | null>(null)
 const editDraft = ref("")
@@ -89,8 +106,18 @@ function deleteComment(comment: RetroComment) {
         No comments yet.
       </p>
 
+      <button
+        v-if="hiddenCommentCount > 0"
+        type="button"
+        class="w-full text-[11px] text-muted-foreground hover:text-foreground italic text-left"
+        @click="showAllComments = true"
+      >
+        Load {{ hiddenCommentCount }} earlier
+        {{ hiddenCommentCount === 1 ? "comment" : "comments" }}
+      </button>
+
       <div
-        v-for="comment in comments"
+        v-for="comment in visibleComments"
         :key="comment.id"
         class="rounded-md border bg-background/40 p-2 text-xs space-y-1 group"
       >

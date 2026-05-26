@@ -71,6 +71,10 @@ const props = defineProps<{
   // reads this to render its tied actions nested below the card
   // body during :discuss / :archived (spec §6).
   actions_by_card_id: Record<string, RetroActionItem[]>
+  // Whether brainstorm cards are live-visible (host opted in
+  // at :setup). Pass-through to RetroCard so reactions +
+  // comments unlock during :brainstorm in that mode.
+  brainstorm_visible: boolean
 }>()
 
 const live = useLiveVue()
@@ -125,6 +129,7 @@ function submit() {
         :key="card.id"
         :card="card"
         :phase="phase"
+        :brainstorm_visible="brainstorm_visible"
         :is_mine="card.author_user_id === current_user_id"
         :current_user_id="current_user_id"
         :tally="tallies[card.id] ?? card.vote_count"

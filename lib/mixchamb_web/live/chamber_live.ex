@@ -1433,6 +1433,20 @@ defmodule MixchambWeb.ChamberLive do
     }
   end
 
+  # Slim wire shape for the most-recent archived retro in this
+  # chamber. RetroBoard renders a "Copy share link" notice in
+  # its empty state pointing at this. Returns nil when nothing's
+  # been archived yet.
+  defp retro_last_archived([]), do: nil
+
+  defp retro_last_archived([latest | _]) do
+    %{
+      id: latest.id,
+      title: latest.title,
+      archived_at: latest.archived_at
+    }
+  end
+
   # Just the display labels (alias_or_name) for the current
   # participants, used by retro's assignee-input autocomplete
   # (spec §6). Sorted by joined_at for a stable order; deduped
@@ -1490,11 +1504,16 @@ defmodule MixchambWeb.ChamberLive do
     MixchambWeb.Endpoint.url() <> "/chamber/" <> chamber.slug
   end
 
-  # Whether to show the creator-only invite-link banner. True iff
-  # the current user IS the creator AND the chamber hasn't been
-  # activated yet (i.e., still in the 30-minute grace window).
-  defp show_invite_banner?(chamber, current_user) do
-    chamber.activated_at == nil and chamber.creator_user_id == current_user.id
+  # Whether to show the "Share this chamber" disclosure. Anyone
+  # in the chamber sees it; the chaos chamber (system row with
+  # no human creator + a known slug) is the only exception —
+  # its URL is public knowledge, no point cluttering the chrome.
+  # Previously creator-only + grace-window-only; loosened
+  # because hosts wanted to share the URL after the chamber
+  # was already activated, and non-creators sometimes want to
+  # forward the link too.
+  defp show_invite_banner?(chamber, _current_user) do
+    not is_nil(chamber.creator_user_id)
   end
 
   defp creator?(chamber, current_user), do: chamber.creator_user_id == current_user.id
@@ -1794,52 +1813,33 @@ defmodule MixchambWeb.ChamberLive do
               </button>
             </div>
 
-            <%!-- Creator-only invite banner. Shows the chamber's
-               shareable URL with a copy button while the chamber
-               is still in its 30-minute grace window — disappears
-               the moment somebody else joins (chamber.activated_at
-               flips). Other users coming in via the link never see
-               it.
+            <%!-- One-click "Copy share link" button — visible to
+               anyone in the chamber (host inviting new
+               participants, participants forwarding the link).
+               Hidden only on the system Chaos chamber, where
+               the URL is public knowledge.
 
-               Collapsed by default (<details> without `open`) so
-               the chamber chrome stays calm while the host is
-               still setting things up; one click on the header row
-               expands to reveal the URL + copy button. --%>
-            <details
+               The CopyToClipboard hook in assets/js/app.js
+               handles the click → copy → "Copied!" flash →
+               restore-original-text cycle, so no Vue / LV
+               round-trip needed. --%>
+            <div
               :if={show_invite_banner?(@chamber, @current_user)}
-              class="group rounded-xl border bg-card/80 backdrop-blur-sm"
+              class="flex items-center justify-end"
             >
-              <summary class="flex items-center gap-3 p-4 sm:p-6 cursor-pointer list-none [&::-webkit-details-marker]:hidden focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 rounded-xl">
-                <.icon name="hero-link-mini" class="size-5 text-muted-foreground" />
-                <h3 class="flex-1 text-sm font-semibold tracking-tight font-display">
-                  Share this chamber
-                </h3>
-                <.icon
-                  name="hero-chevron-down-mini"
-                  class="size-4 text-muted-foreground transition-transform group-open:rotate-180"
-                />
-              </summary>
-              <div class="px-4 sm:px-6 pb-4 sm:pb-6 space-y-3">
-                <p class="text-xs text-muted-foreground">
-                  Anyone with the link can join. The chamber closes on its own if nobody else shows up within 30 minutes.
-                </p>
-                <div class="flex items-center gap-2">
-                  <code class="flex-1 truncate rounded-md bg-muted px-3 py-2 text-xs font-mono text-foreground">
-                    {chamber_url(@chamber)}
-                  </code>
-                  <button
-                    type="button"
-                    id="chamber-copy-link"
-                    phx-hook="CopyToClipboard"
-                    phx-update="ignore"
-                    data-copy-url={chamber_url(@chamber)}
-                    class="rounded-md border bg-card hover:bg-accent px-3 py-2 text-xs font-medium transition-colors cursor-pointer whitespace-nowrap"
-                  >
-                    Copy link
-                  </button>
-                </div>
-              </div>
-            </details>
+              <button
+                type="button"
+                id="chamber-copy-link"
+                phx-hook="CopyToClipboard"
+                phx-update="ignore"
+                data-copy-url={chamber_url(@chamber)}
+                class="inline-flex items-center gap-1.5 rounded-md border bg-card hover:bg-accent px-3 py-1.5 text-xs font-medium transition-colors cursor-pointer"
+                title="Copy this chamber's URL to clipboard"
+              >
+                <.icon name="hero-link-mini" class="size-4" />
+                <span>Copy share link</span>
+              </button>
+            </div>
 
             <%!-- One live_vue island for the whole chamber. Vue handles
                the v-if swap between pads internally — see Chamber.vue
@@ -1858,6 +1858,7 @@ defmodule MixchambWeb.ChamberLive do
               retro_my_votes={MapSet.to_list(@retro_my_votes)}
               retro_discussing_card_id={@retro_discussing_card_id}
               retro_participant_aliases={retro_participant_aliases(@presences)}
+              retro_last_archived={retro_last_archived(@past_retros)}
               current_user_id={@current_user.id}
               current_user_alias={@current_user.alias || @current_user.display_name}
               is_host={@is_host}

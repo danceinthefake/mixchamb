@@ -399,40 +399,57 @@ defmodule Mixchamb.Retro do
 
   @reactable_statuses ~w(reveal voting discuss)
 
+  # Brainstorm is normally non-interactive (cards are hidden
+  # from non-authors). When the host turned on brainstorm_visible
+  # at :setup, cards are live-visible to everyone — so reacting
+  # and commenting make sense there too.
+  defp interactive?(%RetroSession{status: status}) when status in @reactable_statuses,
+    do: true
+
+  defp interactive?(%RetroSession{status: "brainstorm", brainstorm_visible: true}),
+    do: true
+
+  defp interactive?(_), do: false
+
   @doc """
   Toggle a user's reaction on a card. Cards become reactable
-  from `:reveal` onward (no reactions on hidden brainstorm
-  cards). Returns `{:added, reaction}` or `{:removed, count}`
-  so the caller knows which way the toggle went; `{:error, ...}`
-  otherwise.
+  from `:reveal` onward, plus during `:brainstorm` when the
+  session is in always-visible mode. Returns `{:added, reaction}`
+  or `{:removed, count}` so the caller knows which way the
+  toggle went; `{:error, ...}` otherwise.
   """
-  def toggle_reaction(%RetroCard{} = card, user_id, emoji, %RetroSession{status: status})
-      when is_binary(user_id) and is_binary(emoji) and status in @reactable_statuses do
-    if emoji not in RetroCardReaction.emojis() do
-      {:error, :invalid_emoji}
-    else
-      query =
-        from r in RetroCardReaction,
-          where:
-            r.retro_card_id == ^card.id and r.user_id == ^user_id and r.emoji == ^emoji
+  def toggle_reaction(%RetroCard{} = card, user_id, emoji, %RetroSession{} = session)
+      when is_binary(user_id) and is_binary(emoji) do
+    cond do
+      not interactive?(session) ->
+        {:error, :phase_locked}
 
-      case Repo.one(query) do
-        nil ->
-          case %RetroCardReaction{}
-               |> RetroCardReaction.creation_changeset(%{
-                 retro_card_id: card.id,
-                 user_id: user_id,
-                 emoji: emoji
-               })
-               |> Repo.insert() do
-            {:ok, reaction} -> {:added, reaction}
-            other -> other
-          end
+      emoji not in RetroCardReaction.emojis() ->
+        {:error, :invalid_emoji}
 
-        existing ->
-          {1, _} = Repo.delete_all(from(r in RetroCardReaction, where: r.id == ^existing.id))
-          {:removed, existing}
-      end
+      true ->
+        query =
+          from r in RetroCardReaction,
+            where:
+              r.retro_card_id == ^card.id and r.user_id == ^user_id and r.emoji == ^emoji
+
+        case Repo.one(query) do
+          nil ->
+            case %RetroCardReaction{}
+                 |> RetroCardReaction.creation_changeset(%{
+                   retro_card_id: card.id,
+                   user_id: user_id,
+                   emoji: emoji
+                 })
+                 |> Repo.insert() do
+              {:ok, reaction} -> {:added, reaction}
+              other -> other
+            end
+
+          existing ->
+            {1, _} = Repo.delete_all(from(r in RetroCardReaction, where: r.id == ^existing.id))
+            {:removed, existing}
+        end
     end
   end
 
@@ -443,25 +460,28 @@ defmodule Mixchamb.Retro do
   # ---------------------------------------------------------------
 
   @doc """
-  Add a comment to a card. Anyone in the chamber, reveal-phase
-  onward. `attrs` must include body + author_alias; optionally
-  author_user_id + author_display_name.
+  Add a comment to a card. Anyone in the chamber, during any
+  interactive phase (reveal/voting/discuss + brainstorm when
+  brainstorm_visible is on). `attrs` must include body +
+  author_alias; optionally author_user_id + author_display_name.
   """
-  def add_comment(%RetroCard{} = card, attrs, %RetroSession{status: status})
-      when status in @reactable_statuses do
-    %RetroCardComment{}
-    |> RetroCardComment.creation_changeset(Map.put(attrs, :retro_card_id, card.id))
-    |> Repo.insert()
+  def add_comment(%RetroCard{} = card, attrs, %RetroSession{} = session) do
+    if interactive?(session) do
+      %RetroCardComment{}
+      |> RetroCardComment.creation_changeset(Map.put(attrs, :retro_card_id, card.id))
+      |> Repo.insert()
+    else
+      {:error, :phase_locked}
+    end
   end
 
-  def add_comment(_, _, _), do: {:error, :phase_locked}
-
-  @doc "Author-only edit during live phases."
-  def update_comment(%RetroCardComment{} = comment, body, user_id, %RetroSession{
-        status: status
-      })
-      when is_binary(user_id) and status in @reactable_statuses do
+  @doc "Author-only edit during interactive phases."
+  def update_comment(%RetroCardComment{} = comment, body, user_id, %RetroSession{} = session)
+      when is_binary(user_id) do
     cond do
+      not interactive?(session) ->
+        {:error, :phase_locked}
+
       comment.author_user_id != user_id ->
         {:error, :not_author}
 
@@ -472,19 +492,15 @@ defmodule Mixchamb.Retro do
     end
   end
 
-  def update_comment(_, _, _, _), do: {:error, :phase_locked}
-
-  @doc "Author-only delete during live phases."
-  def delete_comment(%RetroCardComment{} = comment, user_id, %RetroSession{status: status})
-      when is_binary(user_id) and status in @reactable_statuses do
-    if comment.author_user_id == user_id do
-      Repo.delete(comment)
-    else
-      {:error, :not_author}
+  @doc "Author-only delete during interactive phases."
+  def delete_comment(%RetroCardComment{} = comment, user_id, %RetroSession{} = session)
+      when is_binary(user_id) do
+    cond do
+      not interactive?(session) -> {:error, :phase_locked}
+      comment.author_user_id != user_id -> {:error, :not_author}
+      true -> Repo.delete(comment)
     end
   end
-
-  def delete_comment(_, _, _), do: {:error, :phase_locked}
 
   @doc "Load a single comment by id."
   def get_comment(id) when is_binary(id), do: Repo.get(RetroCardComment, id)

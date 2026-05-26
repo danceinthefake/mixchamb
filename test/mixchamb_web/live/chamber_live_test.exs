@@ -39,18 +39,19 @@ defmodule MixchambWeb.ChamberLiveTest do
     end
   end
 
-  describe "creator-only invite banner" do
-    test "shows for the creator while the chamber is in grace", %{conn: conn, chamber: chamber} do
+  describe "copy-share-link button" do
+    test "shows for the creator", %{conn: conn, chamber: chamber} do
       {:ok, _view, html} = live(conn, ~p"/chamber/#{chamber.slug}")
-      assert html =~ "Share this chamber"
+      assert html =~ "Copy share link"
     end
 
-    test "hides for non-creators", %{conn: conn, chamber: chamber} do
+    test "also shows for non-creators (anyone can forward the link)",
+         %{conn: conn, chamber: chamber} do
       {:ok, other} = Accounts.create_anonymous_user()
       conn = Plug.Test.init_test_session(conn, %{"user_id" => other.id})
 
       {:ok, _view, html} = live(conn, ~p"/chamber/#{chamber.slug}")
-      refute html =~ "Share this chamber"
+      assert html =~ "Copy share link"
     end
   end
 

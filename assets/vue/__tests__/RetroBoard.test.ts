@@ -55,6 +55,7 @@ const baseProps = {
   my_votes: [],
   discussing_card_id: null,
   participant_aliases: [],
+  last_archived: null,
   current_user_id: "u1",
   current_user_alias: "host-alias",
   is_host: true,
@@ -295,6 +296,45 @@ describe("RetroBoard", () => {
     expect(datalist.exists()).toBe(true)
     const options = datalist.findAll("option").map((o) => o.attributes("value"))
     expect(options).toEqual(["alex", "Brave Otter 12", "kim"])
+  })
+
+  it("stepper highlights the current phase + checks past ones", () => {
+    const session = makeSession({ status: "voting", voting_enabled: true })
+    const w = mount(RetroBoard, { props: { ...baseProps, session } })
+    // All six step labels appear
+    for (const label of ["Setup", "Brainstorm", "Reveal", "Voting", "Discuss", "Archived"]) {
+      expect(w.text()).toContain(label)
+    }
+    // Done steps before voting render the checkmark
+    expect(w.text()).toContain("✓")
+  })
+
+  it("stepper de-emphasises voting step when voting disabled", () => {
+    const session = makeSession({ status: "discuss", voting_enabled: false })
+    const w = mount(RetroBoard, { props: { ...baseProps, session } })
+    const html = w.html()
+    // Voting step should still appear but with the line-through opacity class
+    expect(html).toContain("Voting")
+    expect(html).toContain("line-through")
+  })
+
+  it("Copy share link appears in empty state when last_archived is present", () => {
+    const w = mount(RetroBoard, {
+      props: {
+        ...baseProps,
+        session: null,
+        last_archived: { id: "past-1", title: "Sprint 23", archived_at: null },
+      },
+    })
+    expect(w.text()).toContain("Last retro archived: Sprint 23")
+    expect(w.text()).toContain("Copy share link")
+  })
+
+  it("no Copy share link when nothing has been archived", () => {
+    const w = mount(RetroBoard, {
+      props: { ...baseProps, session: null, last_archived: null },
+    })
+    expect(w.text()).not.toContain("Copy share link")
   })
 
   it("sorts cards by vote_count desc in :discuss", () => {
