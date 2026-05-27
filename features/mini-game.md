@@ -391,8 +391,9 @@ re-debated each pass.
   the lobby (`"custom"` pack, `config.custom_words`); the view sends
   only a count. Persisting a team's pack across sessions still needs
   the auth milestone (`../BRAINSTORM-v4.md` §7).
-- ⬜ **Save the drawing.** Opt-in "keep this masterpiece" → a small
-  gallery. _Deferred — needs the first bit of minigame persistence._
+- ❌ **Save the drawing.** ~~Opt-in "keep this masterpiece" → a small
+  gallery.~~ Dropped (2026-05-27) — the game is deliberately ephemeral;
+  not worth the persistence layer.
 - ✅ **Keyboard shortcuts** _(shipped)_: `1`–`8` brush color, `[` / `]`
   brush size, `E` eraser, `Z` undo (DrawingCanvas); `Enter` submits a
   guess (GuessFeed form).
