@@ -33,7 +33,8 @@ distributed engineering teams:
   prompts / polls / would-you-rather are just small synchronous games_
 - **Mini-game** — small synchronous games (Pictionary-style, trivia,
   Gartic Phone-ish; absorbs the icebreaker prompts / polls /
-  would-you-rather idea)
+  would-you-rather idea) _(spec drafted: `features/mini-game.md` —
+  a game-registry framework + Pictionary as the v1 game)_
 - **Music** ✅ — the existing chamber experience (carried over from
   v1–v3)
 
@@ -430,7 +431,9 @@ the spec explicitly defers polish.
 4. **Add more activities** at whatever cadence feels right.
    Each one extends the same `chamber.activity` switch pattern.
    Mini-game (which absorbs the icebreaker idea) is the leading
-   candidate.
+   candidate — spec drafted at `features/mini-game.md`: a
+   game-registry framework shipping Pictionary (live draw-and-guess)
+   as its v1 game.
 
 **Dropped from the roadmap (2026-05-27):**
 
