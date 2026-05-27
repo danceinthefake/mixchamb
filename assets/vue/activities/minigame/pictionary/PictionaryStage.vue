@@ -101,7 +101,10 @@ function chooseWord(word: string) {
 
       <!-- Drawer is choosing a word -->
       <div v-if="state.is_choosing && state.is_drawer" class="space-y-2">
-        <p class="text-sm text-muted-foreground">Pick a word to draw:</p>
+        <p class="text-sm text-muted-foreground">
+          Pick a word to draw
+          <span class="text-[11px] italic">— the first is picked for you if you wait</span>
+        </p>
         <div class="flex flex-wrap gap-2">
           <button
             v-for="w in state.word_choices"

@@ -115,6 +115,18 @@ defmodule Mixchamb.MiniGame.PictionaryTest do
                  user_id: "p1"
                })
     end
+
+    test "auto-pick (choice timeout) picks the first candidate as the drawer" do
+      # The server's word-choice timeout dispatches exactly this.
+      s = started()
+      first = hd(s.word_choices)
+
+      {:ok, s2, [:changed]} =
+        Pictionary.handle_action(s, {:choose_word, first}, %{user_id: s.drawer_id})
+
+      assert s2.word == first
+      assert is_integer(s2.turn_deadline)
+    end
   end
 
   describe "guessing" do

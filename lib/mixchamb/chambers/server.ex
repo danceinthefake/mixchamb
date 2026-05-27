@@ -29,6 +29,9 @@ defmodule Mixchamb.Chambers.Server do
   # just refreshing (spec §9 reconnect-grace). If they're still gone
   # when this elapses, the turn ends and they leave the rotation.
   @minigame_drawer_grace_ms 5_000
+  # How long the drawer has to pick one of their three words before the
+  # server auto-picks the first — stops an AFK drawer stalling the turn.
+  @minigame_choice_ms 20_000
   # Grace window during which the chamber must see a non-creator
   # join. If `activated_at` is still NULL when this elapses, the
   # GenServer deletes the chamber row and shuts itself down.
@@ -1700,6 +1703,21 @@ defmodule Mixchamb.Chambers.Server do
 
   def handle_info({:minigame_step_expire, _token}, state), do: {:noreply, state}
 
+  # Pictionary word-choice timeout: drawer never picked → auto-pick the
+  # first candidate (as the drawer) so the turn starts. Token + still-
+  # choosing guard drops stale timers.
+  def handle_info(
+        {:minigame_choice_expire, token},
+        %{
+          minigame_state:
+            %State{turn_token: token, phase: :turn, word: nil, word_choices: [first | _]} = mg
+        } = state
+      ) do
+    dispatch_action(state, mg, {:choose_word, first}, %{user_id: mg.drawer_id})
+  end
+
+  def handle_info({:minigame_choice_expire, _token}, state), do: {:noreply, state}
+
   def handle_info(:bump_activity, %{chamber_id: chamber_id, dirty?: dirty?} = state) do
     # If notes came in this minute, flush a single DB write to
     # update last_activity_at. If nothing happened, skip the write
@@ -1844,6 +1862,18 @@ defmodule Mixchamb.Chambers.Server do
          (is_nil(old_mg) or old_mg.turn_token != new_mg.turn_token) do
       delay = max(0, new_mg.turn_deadline - System.system_time(:millisecond))
       Process.send_after(self(), {:minigame_step_expire, new_mg.turn_token}, delay)
+    end
+
+    # Pictionary word-choice timeout: a fresh turn sits in "choosing"
+    # (word nil) with no draw clock yet — schedule an auto-pick so an
+    # AFK drawer can't stall the turn.
+    if new_mg.game == "pictionary" and new_mg.phase == :turn and is_nil(new_mg.word) and
+         new_mg.word_choices != [] and (is_nil(old_mg) or old_mg.turn_token != new_mg.turn_token) do
+      Process.send_after(
+        self(),
+        {:minigame_choice_expire, new_mg.turn_token},
+        @minigame_choice_ms
+      )
     end
 
     :ok
