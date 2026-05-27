@@ -191,13 +191,22 @@ function saveCustom() {
          sets up. Also lives on the stage during play. -->
     <HowToPlay :game="game" />
 
-    <!-- Start gate / waiting hint -->
-    <p
+    <!-- Start gate — highlighted so it's hard to miss when short. -->
+    <div
       v-if="player_count < min_players"
-      class="text-xs text-muted-foreground italic text-center pt-1"
+      class="rounded-lg border border-accent-minigame/50 bg-accent-minigame/10 px-3 py-2.5 flex items-center gap-2.5 text-sm"
+      role="status"
     >
-      Need at least {{ min_players }} players to start. Share the chamber link to invite more.
-    </p>
+      <span aria-hidden="true" class="text-lg leading-none">👥</span>
+      <span>
+        <span class="font-semibold text-accent-minigame">
+          Need at least {{ min_players }} players
+        </span>
+        <span class="text-muted-foreground">
+          — {{ player_count }} here so far. Share the chamber link to invite more.
+        </span>
+      </span>
+    </div>
     <p v-else-if="!is_host" class="text-xs text-muted-foreground italic text-center pt-1">
       Waiting for the host to start the game.
     </p>
