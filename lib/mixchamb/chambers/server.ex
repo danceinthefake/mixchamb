@@ -1692,12 +1692,15 @@ defmodule Mixchamb.Chambers.Server do
 
   def handle_info({:minigame_reveal_letter, _token}, state), do: {:noreply, state}
 
-  # Gartic Phone step timer: time's up for this step → fill stragglers
-  # and advance (to the next step or the album). Token-guarded.
+  # Per-phase step timer (Gartic step / Two Truths writing+guessing):
+  # time's up → the game's advance/1 handles it (fill stragglers, move
+  # on). Guarded on the token matching AND a live deadline, so it never
+  # fires during a host-paced reveal/album that kept the same token.
   def handle_info(
         {:minigame_step_expire, token},
-        %{minigame_state: %State{turn_token: token, phase: :play} = mg} = state
-      ) do
+        %{minigame_state: %State{turn_token: token, turn_deadline: deadline} = mg} = state
+      )
+      when not is_nil(deadline) do
     commit_minigame(state, mg, MiniGameRegistry.module(mg.game).advance(mg), [:changed])
   end
 
@@ -1855,9 +1858,12 @@ defmodule Mixchamb.Chambers.Server do
       )
     end
 
-    # Gartic Phone per-step clock: each new step bumps turn_token and
-    # carries a fresh deadline; schedule its expiry.
-    if new_mg.game == "gartic_phone" and new_mg.phase == :play and
+    # Per-phase clock for the simultaneous games (Gartic Phone steps,
+    # Two Truths writing/guessing): a new phase bumps turn_token and
+    # carries a fresh deadline, so schedule its expiry. Pictionary uses
+    # its own timers above and is excluded. Host-paced phases (album,
+    # reveal) carry a nil deadline, so nothing is scheduled there.
+    if new_mg.game in ["gartic_phone", "two_truths"] and
          not is_nil(new_mg.turn_deadline) and
          (is_nil(old_mg) or old_mg.turn_token != new_mg.turn_token) do
       delay = max(0, new_mg.turn_deadline - System.system_time(:millisecond))

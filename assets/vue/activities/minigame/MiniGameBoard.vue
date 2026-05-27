@@ -17,6 +17,7 @@ import MiniGameScoreboard from "./MiniGameScoreboard.vue"
 import MiniGameHostControls from "./MiniGameHostControls.vue"
 import PictionaryStage from "./pictionary/PictionaryStage.vue"
 import GarticStage from "./gartic_phone/GarticStage.vue"
+import TwoTruthsStage from "./two_truths/TwoTruthsStage.vue"
 
 export type MiniGamePhase = "lobby" | "turn" | "turn_reveal" | "gameover"
 
@@ -86,6 +87,35 @@ export type GarticView = {
   books?: { owner: string; pages: GarticEntry[] }[]
 }
 
+// Two Truths and a Lie per-user view.
+export type TwoTruthsView = {
+  game: "two_truths"
+  phase: "lobby" | "writing" | "guessing" | "reveal" | "gameover"
+  config?: { write_seconds: number; guess_seconds: number }
+  min_players?: number
+  // writing
+  is_player?: boolean
+  submitted?: boolean
+  submitted_count?: number
+  player_count?: number
+  deadline?: number | null
+  turn_token?: number
+  // guessing / reveal
+  author?: string
+  author_index?: number
+  total_authors?: number
+  guessed_count?: number
+  guesser_count?: number
+  players?: string[]
+  scores?: Record<string, number>
+  statements?: string[]
+  is_author?: boolean
+  my_guess?: number | null
+  guessed?: string[]
+  lie_index?: number
+  picks?: Record<string, number>
+}
+
 export type Participant = {
   user_id: string
   display_name: string
@@ -93,7 +123,7 @@ export type Participant = {
 }
 
 const props = defineProps<{
-  state: MiniGameView | GarticView | null
+  state: MiniGameView | GarticView | TwoTruthsView | null
   participants: Participant[]
   current_user_id: string
   is_host: boolean
@@ -108,11 +138,15 @@ const phase = computed(() => state.value?.phase ?? null)
 // Narrowed views per game so the template stays type-safe.
 const pict = computed(() => (game.value === "pictionary" ? (state.value as MiniGameView) : null))
 const gartic = computed(() => (game.value === "gartic_phone" ? (state.value as GarticView) : null))
+const twoTruths = computed(() =>
+  game.value === "two_truths" ? (state.value as TwoTruthsView) : null,
+)
 
 const pictPlaying = computed(
   () => !!pict.value && (phase.value === "turn" || phase.value === "turn_reveal"),
 )
 const garticActive = computed(() => !!gartic.value && phase.value !== "lobby")
+const twoTruthsActive = computed(() => !!twoTruths.value && phase.value !== "lobby")
 
 // alias_or_name lookup for rendering players without leaking raw ids.
 const nameOf = computed(() => {
@@ -217,6 +251,15 @@ watch(phase, (next, prev) => {
     <GarticStage
       v-else-if="garticActive"
       :state="gartic!"
+      :current_user_id="current_user_id"
+      :is_host="is_host"
+      :name-of="nameOf"
+    />
+
+    <!-- Two Truths and a Lie: writing / guessing / reveal / gameover -->
+    <TwoTruthsStage
+      v-else-if="twoTruthsActive"
+      :state="twoTruths!"
       :current_user_id="current_user_id"
       :is_host="is_host"
       :name-of="nameOf"

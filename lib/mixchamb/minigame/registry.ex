@@ -8,10 +8,12 @@ defmodule Mixchamb.MiniGame.Registry do
 
   alias Mixchamb.MiniGame.Pictionary
   alias Mixchamb.MiniGame.GarticPhone
+  alias Mixchamb.MiniGame.TwoTruths
 
   @games %{
     "pictionary" => Pictionary,
-    "gartic_phone" => GarticPhone
+    "gartic_phone" => GarticPhone,
+    "two_truths" => TwoTruths
   }
 
   @default "pictionary"
@@ -32,5 +34,6 @@ defmodule Mixchamb.MiniGame.Registry do
   @doc "Human label for a game key, used in the picker + page title."
   def label("pictionary"), do: "Pictionary"
   def label("gartic_phone"), do: "Gartic Phone"
+  def label("two_truths"), do: "Two Truths & a Lie"
   def label(other), do: String.capitalize(other)
 end

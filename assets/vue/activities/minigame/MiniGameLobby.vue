@@ -35,6 +35,11 @@ const GAMES = [
     label: "Gartic Phone",
     blurb: "Write → draw → describe down a chain, then watch the books unravel.",
   },
+  {
+    key: "two_truths",
+    label: "Two Truths & a Lie",
+    blurb: "Everyone writes two truths and a lie; the room guesses which is the fib.",
+  },
 ]
 
 const WORD_PACKS = [
@@ -47,6 +52,8 @@ const WORD_PACKS = [
 const TURN_SECONDS = [60, 80, 120]
 const ROUND_COUNTS = [1, 2, 3, 4, 5]
 const STEP_SECONDS = [45, 60, 90]
+const WRITE_SECONDS = [60, 90, 120]
+const GUESS_SECONDS = [20, 30, 45]
 
 function setConfig(key: string, value: string | number) {
   if (!props.is_host) return
@@ -184,6 +191,33 @@ function saveCustom() {
         One round per player: write a phrase, draw the one you're handed, describe the next… then
         the whole chain is revealed.
       </p>
+    </div>
+
+    <!-- Per-game config (Two Truths and a Lie) — host only -->
+    <div v-if="game === 'two_truths' && is_host" class="rounded-xl border bg-card/60 p-4 space-y-3">
+      <p class="text-xs uppercase tracking-wider text-muted-foreground font-display">Setup</p>
+      <label class="flex items-center justify-between gap-3 text-sm">
+        <span class="text-muted-foreground">Writing time</span>
+        <select
+          :value="config.write_seconds"
+          :disabled="!is_host"
+          @change="(e) => setConfig('write_seconds', Number((e.target as HTMLSelectElement).value))"
+          class="px-2 py-1 text-sm rounded-md border bg-card disabled:opacity-60 cursor-pointer"
+        >
+          <option v-for="s in WRITE_SECONDS" :key="s" :value="s">{{ s }}s</option>
+        </select>
+      </label>
+      <label class="flex items-center justify-between gap-3 text-sm">
+        <span class="text-muted-foreground">Guessing time</span>
+        <select
+          :value="config.guess_seconds"
+          :disabled="!is_host"
+          @change="(e) => setConfig('guess_seconds', Number((e.target as HTMLSelectElement).value))"
+          class="px-2 py-1 text-sm rounded-md border bg-card disabled:opacity-60 cursor-pointer"
+        >
+          <option v-for="s in GUESS_SECONDS" :key="s" :value="s">{{ s }}s</option>
+        </select>
+      </label>
     </div>
 
     <!-- How to play — shown to everyone in the lobby so players can

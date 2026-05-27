@@ -11,7 +11,16 @@ defineProps<{ game: string }>()
     <summary
       class="cursor-pointer px-3 py-2 text-xs font-medium text-muted-foreground hover:text-foreground flex items-center justify-between"
     >
-      <span>How to play {{ game === "gartic_phone" ? "Gartic Phone" : "Pictionary" }}</span>
+      <span>
+        How to play
+        {{
+          game === "gartic_phone"
+            ? "Gartic Phone"
+            : game === "two_truths"
+              ? "Two Truths & a Lie"
+              : "Pictionary"
+        }}
+      </span>
       <span aria-hidden="true" class="group-open:rotate-90 transition-transform">›</span>
     </summary>
 
@@ -43,6 +52,33 @@ defineProps<{ game: string }>()
       <p class="pt-1">
         <span class="font-semibold text-foreground">Tip:</span>
         there's a timer per step — if you run out, whatever you've got is submitted.
+      </p>
+    </div>
+
+    <div
+      v-else-if="game === 'two_truths'"
+      class="px-4 pb-3 pt-1 text-xs text-muted-foreground space-y-2 leading-relaxed"
+    >
+      <p>Spot the fib. Everyone writes three statements; the room guesses which one's the lie.</p>
+      <ol class="space-y-1.5 list-decimal pl-5">
+        <li>
+          <span class="font-semibold text-foreground">Write</span> — type two true statements about
+          yourself and one believable lie, then mark which is the lie.
+        </li>
+        <li>
+          <span class="font-semibold text-foreground">Guess</span> — one person's three statements
+          show (shuffled); everyone else picks which they think is the lie.
+        </li>
+        <li>
+          <span class="font-semibold text-foreground">Reveal</span> — the lie is shown.
+          <span class="font-semibold text-foreground">+10</span> for spotting it,
+          <span class="font-semibold text-foreground">+5</span> to the author for each person they
+          fooled. Then the next person's turn.
+        </li>
+      </ol>
+      <p class="pt-1">
+        <span class="font-semibold text-foreground">Tip:</span>
+        a believable lie + a surprising truth makes you hardest to read.
       </p>
     </div>
 
