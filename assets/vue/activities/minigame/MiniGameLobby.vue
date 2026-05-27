@@ -185,9 +185,10 @@ function saveCustom() {
       </p>
     </div>
 
-    <!-- How to play — host only in the lobby (the players reading the
-         rules mid-game see it on the stage instead). -->
-    <HowToPlay v-if="is_host" :game="game" />
+    <!-- How to play — shown to everyone in the lobby so players can
+         read the rules (for the host's selected game) while the host
+         sets up. Also lives on the stage during play. -->
+    <HowToPlay :game="game" />
 
     <!-- Start gate / waiting hint -->
     <p v-if="player_count < 2" class="text-xs text-muted-foreground italic text-center pt-1">
