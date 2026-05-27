@@ -1,0 +1,21 @@
+# Pre-commit format gate. Fast (Go binary), parallel, check-only — it
+# blocks a commit when Elixir or Vue/TS files aren't formatted, so CI's
+# `mix format --check-formatted` + `oxfmt --check` never fail on a
+# committed change. Each job is gated by `glob`, so it only runs when
+# files of that kind are staged.
+#
+# To fix a blocked commit, run the formatters and restage:
+#   mix format && npx oxfmt assets/vue
+#
+# Installed via the package.json `prepare` script (`lefthook install`),
+# which runs on `npm install`. Skip the hooks for one commit with
+# `LEFTHOOK=0 git commit …` if you ever need to.
+pre-commit:
+  parallel: true
+  jobs:
+    - name: elixir-format
+      glob: "*.{ex,exs}"
+      run: mix format --check-formatted
+    - name: vue-format
+      glob: "assets/**/*.{vue,ts}"
+      run: npx oxfmt --check assets/vue

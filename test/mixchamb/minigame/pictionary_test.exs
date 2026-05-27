@@ -11,7 +11,9 @@ defmodule Mixchamb.MiniGame.PictionaryTest do
   end
 
   defp choose(state, word) do
-    {:ok, s, _} = Pictionary.handle_action(state, {:choose_word, word}, %{user_id: state.drawer_id})
+    {:ok, s, _} =
+      Pictionary.handle_action(state, {:choose_word, word}, %{user_id: state.drawer_id})
+
     s
   end
 
@@ -93,12 +95,14 @@ defmodule Mixchamb.MiniGame.PictionaryTest do
 
     test "a non-drawer cannot choose" do
       s = started()
+
       assert {:error, :not_drawer} =
                Pictionary.handle_action(s, {:choose_word, hd(s.word_choices)}, %{user_id: "p2"})
     end
 
     test "a word outside the three offered is rejected" do
       s = started()
+
       assert {:error, :not_a_choice} =
                Pictionary.handle_action(s, {:choose_word, "definitely-not-offered"}, %{
                  user_id: "p1"
@@ -136,7 +140,10 @@ defmodule Mixchamb.MiniGame.PictionaryTest do
 
       assert MapSet.member?(s2.guessed, "p2")
       assert s2.scores["p2"] >= 50
-      assert {:feed, %{type: "correct", user_id: "p2", order: 1}} = List.keyfind(effects, :feed, 0)
+
+      assert {:feed, %{type: "correct", user_id: "p2", order: 1}} =
+               List.keyfind(effects, :feed, 0)
+
       refute Enum.any?(effects, &match?({:feed, %{text: _}}, &1)), "winning text not leaked"
 
       # Locked out of a second guess.
@@ -160,6 +167,7 @@ defmodule Mixchamb.MiniGame.PictionaryTest do
 
     test "a guess before the word is chosen is rejected" do
       s = started()
+
       assert {:error, :not_started} =
                Pictionary.handle_action(s, {:guess, "apple"}, %{user_id: "p2", alias: "P2"})
     end

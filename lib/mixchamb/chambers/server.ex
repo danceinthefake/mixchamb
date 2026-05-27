@@ -1348,7 +1348,10 @@ defmodule Mixchamb.Chambers.Server do
   def handle_cast({:minigame_stroke, user_id, payload}, %{minigame_state: mg} = state)
       when not is_nil(mg) do
     if drawing?(mg, user_id) do
-      broadcast_minigame(state.slug, {:minigame_relay, :stroke, Map.put(payload, "from", user_id)})
+      broadcast_minigame(
+        state.slug,
+        {:minigame_relay, :stroke, Map.put(payload, "from", user_id)}
+      )
     end
 
     {:noreply, state}

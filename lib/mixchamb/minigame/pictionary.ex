@@ -122,7 +122,11 @@ defmodule Mixchamb.MiniGame.Pictionary do
       # send to everyone — it's lengths, not letters (spec §4).
       blanks: blanks(state.word),
       # The 3 candidate words, only to the drawer while choosing.
-      word_choices: if(is_drawer and state.phase == :turn and state.word == nil, do: state.word_choices, else: []),
+      word_choices:
+        if(is_drawer and state.phase == :turn and state.word == nil,
+          do: state.word_choices,
+          else: []
+        ),
       guessed: MapSet.to_list(state.guessed),
       scores: state.scores,
       # Absolute deadline (ms epoch) so every client agrees on
@@ -188,7 +192,8 @@ defmodule Mixchamb.MiniGame.Pictionary do
         register_correct(state, user_id, alias_label)
 
       true ->
-        {:ok, state, [{:feed, %{type: "wrong", user_id: user_id, alias: alias_label, text: text}}]}
+        {:ok, state,
+         [{:feed, %{type: "wrong", user_id: user_id, alias: alias_label, text: text}}]}
     end
   end
 

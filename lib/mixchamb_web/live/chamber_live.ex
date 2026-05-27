@@ -1235,8 +1235,7 @@ defmodule MixchambWeb.ChamberLive do
   # Low-frequency game event: reload the per-user view (scoreboard,
   # phase, blanks, drawer, deadline, stroke snapshot).
   def handle_info({:minigame, :changed}, socket) do
-    {:noreply,
-     assign(socket, :minigame_state, load_minigame_state(socket.assigns.chamber))}
+    {:noreply, assign(socket, :minigame_state, load_minigame_state(socket.assigns.chamber))}
   end
 
   # Transient guess-feed line — pushed straight to the client, never
