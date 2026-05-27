@@ -375,24 +375,28 @@ re-debated each pass.
   way to prove the registry with a cheap second + third game.
 - **Trivia.** Preset/host question sets with correct answers +
   timed rounds + a leaderboard. Moderate; another registry game.
-- **Audio cues.** Correct-guess blip + time-up buzzer + game-over
-  fanfare via `assets/vue/lib/audio.ts` (the `playReveal` /
-  `playVoteBlip` pattern).
-- **Progressive letter reveal.** Reveal one blank letter every X
-  seconds as the timer drains (§4).
-- **Close-guess "so close!"** private hint on edit-distance-1 /
-  plural near-misses (§4).
-- **Custom word pack.** Host pastes words in `:lobby` (`:custom`
-  pack). Persisting a team's pack across sessions needs auth — wait
-  for the auth milestone (`../BRAINSTORM-v4.md` §7).
-- **Save the drawing.** Opt-in "keep this masterpiece" → a small
-  gallery. Needs the first bit of minigame persistence; everything
-  else stays ephemeral.
-- **Keyboard shortcuts** (poker's pattern): `1`–`8` pick brush
-  color, `[` / `]` brush size, `E` eraser, `Z` undo, `Enter`
-  submits a guess.
-- **Reconnect grace for the drawer.** If the drawer drops, hold the
-  turn for ~5s before ending it, in case they're just refreshing.
+- ✅ **Audio cues** _(shipped)_. Correct-guess blip + time-up buzzer +
+  game-over fanfare in `assets/vue/lib/audio.ts` (`playGuessCorrect` /
+  `playTimeUp` / `playGameOver`), wired in PictionaryStage +
+  MiniGameBoard.
+- ⬜ **Progressive letter reveal.** Reveal one blank letter every X
+  seconds as the timer drains (§4). _Deferred — needs the server to
+  stream partial-word state on a sub-turn timer._
+- ✅ **Close-guess "so close!"** _(shipped)_. `Pictionary.near?/2`
+  (plural / Levenshtein ≤1); near-miss emits a "close" feed with the
+  text withheld from the room.
+- ✅ **Custom word pack** _(shipped, ephemeral)_. Host pastes words in
+  the lobby (`"custom"` pack, `config.custom_words`); the view sends
+  only a count. Persisting a team's pack across sessions still needs
+  the auth milestone (`../BRAINSTORM-v4.md` §7).
+- ⬜ **Save the drawing.** Opt-in "keep this masterpiece" → a small
+  gallery. _Deferred — needs the first bit of minigame persistence._
+- ✅ **Keyboard shortcuts** _(shipped)_: `1`–`8` brush color, `[` / `]`
+  brush size, `E` eraser, `Z` undo (DrawingCanvas); `Enter` submits a
+  guess (GuessFeed form).
+- ⬜ **Reconnect grace for the drawer.** Hold the turn ~5s before
+  ending it if the drawer drops. _Deferred — host Skip already
+  recovers a stuck turn; `State.sync_presence` ends it immediately._
 
 ## Ready-to-build checklist — _Built_
 
