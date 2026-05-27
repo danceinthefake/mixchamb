@@ -146,9 +146,12 @@ defmodule Mixchamb.MiniGame.Pictionary do
       # The actual secret — only ever sent to the drawer (their turn)
       # or to everyone once the turn is revealed.
       word: if(show_word?, do: state.word),
-      # Length-as-blanks: one count per space-separated token. Safe to
-      # send to everyone — it's lengths, not letters (spec §4).
-      blanks: blanks(state.word),
+      # Masked word: spaces preserved, hidden letters as "_", and any
+      # progressively-revealed letters filled in (spec §4 + §9). Only
+      # revealed letters reach a guesser — never the whole word.
+      masked: masked_string(state, show_word?),
+      # Drawer dropped and is in the reconnect-grace window.
+      drawer_away: state.drawer_away,
       # The 3 candidate words, only to the drawer while choosing.
       word_choices:
         if(is_drawer and state.phase == :turn and state.word == nil,
@@ -190,7 +193,11 @@ defmodule Mixchamb.MiniGame.Pictionary do
           | word: word,
             word_choices: [],
             turn_deadline: deadline,
-            used_words: [word | state.used_words]
+            used_words: [word | state.used_words],
+            # Shuffle the letter positions so progressive reveal doesn't
+            # always hand out the prefix (spec §9).
+            reveal_order: letter_positions(word) |> Enum.shuffle(),
+            revealed: 0
         }
 
         {:ok, new_state, [:changed]}
@@ -284,7 +291,7 @@ defmodule Mixchamb.MiniGame.Pictionary do
         do: Map.update(state.scores, state.drawer_id, drawer_points, &(&1 + drawer_points)),
         else: state.scores
 
-    %{state | phase: :turn_reveal, turn_deadline: nil, scores: scores}
+    %{state | phase: :turn_reveal, turn_deadline: nil, scores: scores, drawer_away: false}
   end
 
   # Rotate to the next drawer; wrap → next round; past last round →
@@ -319,7 +326,10 @@ defmodule Mixchamb.MiniGame.Pictionary do
         guessed: MapSet.new(),
         strokes: [],
         turn_deadline: nil,
-        turn_token: state.turn_token + 1
+        turn_token: state.turn_token + 1,
+        drawer_away: false,
+        revealed: 0,
+        reveal_order: []
     }
   end
 
@@ -341,12 +351,63 @@ defmodule Mixchamb.MiniGame.Pictionary do
     expected != MapSet.new() and MapSet.subset?(expected, guessed)
   end
 
-  defp blanks(nil), do: []
-
-  defp blanks(word) when is_binary(word) do
+  # Grapheme indices of the non-space letters, for progressive reveal.
+  defp letter_positions(word) do
     word
-    |> String.split(~r/\s+/, trim: true)
-    |> Enum.map(&String.length/1)
+    |> String.graphemes()
+    |> Enum.with_index()
+    |> Enum.reject(fn {c, _} -> c == " " end)
+    |> Enum.map(fn {_, i} -> i end)
+  end
+
+  # Build the masked word string: spaces kept, hidden letters "_",
+  # revealed (or all, for the drawer / reveal phase) shown.
+  defp masked_string(%State{word: nil}, _show_all?), do: ""
+
+  defp masked_string(%State{word: word}, true), do: mask(word, :all)
+
+  defp masked_string(%State{word: word, reveal_order: order, revealed: n}, false) do
+    mask(word, order |> Enum.take(n) |> MapSet.new())
+  end
+
+  defp mask(word, :all) do
+    word
+    |> String.graphemes()
+    |> Enum.map(fn
+      " " -> " "
+      c -> c
+    end)
+    |> Enum.join()
+  end
+
+  defp mask(word, %MapSet{} = revealed) do
+    word
+    |> String.graphemes()
+    |> Enum.with_index()
+    |> Enum.map(fn
+      {" ", _} -> " "
+      {c, i} -> if MapSet.member?(revealed, i), do: c, else: "_"
+    end)
+    |> Enum.join()
+  end
+
+  @doc """
+  How many letters progressive reveal will ultimately show this turn —
+  about half, and never the whole word. Words of 3 letters or fewer
+  reveal nothing (one letter would give too much away). Exposed for the
+  GenServer's reveal timer.
+  """
+  def reveal_cap(%State{reveal_order: order}) do
+    n = length(order)
+    if n <= 3, do: 0, else: div(n, 2)
+  end
+
+  @doc """
+  Milliseconds between letter reveals — the turn split into `cap + 1`
+  slices so the last letter lands near the end. Exposed for the timer.
+  """
+  def reveal_interval_ms(%State{config: %{turn_seconds: secs}} = state) do
+    div(secs * 1000, reveal_cap(state) + 1)
   end
 
   @doc """

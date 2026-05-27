@@ -49,7 +49,11 @@ export type MiniGameView = {
   is_drawer: boolean
   is_choosing: boolean
   word: string | null
-  blanks: number[]
+  // Masked word: spaces kept, hidden letters "_", progressively-
+  // revealed letters filled in. Guessers never receive the full word.
+  masked: string
+  // Drawer dropped + inside the reconnect-grace window.
+  drawer_away: boolean
   word_choices: string[]
   guessed: string[]
   scores: Record<string, number>

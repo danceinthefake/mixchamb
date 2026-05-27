@@ -25,6 +25,10 @@ defmodule Mixchamb.Chambers.Server do
   # next drawer (spec §2 "auto-advances after a short delay"). The
   # host can advance early via "Next".
   @minigame_reveal_advance_ms 6_000
+  # How long to hold a turn open when the drawer drops, in case they're
+  # just refreshing (spec §9 reconnect-grace). If they're still gone
+  # when this elapses, the turn ends and they leave the rotation.
+  @minigame_drawer_grace_ms 5_000
   # Grace window during which the chamber must see a non-creator
   # join. If `activated_at` is still NULL when this elapses, the
   # GenServer deletes the chamber row and shuts itself down.
@@ -534,7 +538,9 @@ defmodule Mixchamb.Chambers.Server do
         hosts: hosts,
         poker_session: poker_session,
         retro_state: retro_state,
-        minigame_state: minigame_state
+        minigame_state: minigame_state,
+        # turn_token of an in-flight drawer reconnect-grace hold, or nil.
+        minigame_grace: nil
       })
 
     {:ok, state}
@@ -1393,24 +1399,46 @@ defmodule Mixchamb.Chambers.Server do
     end
   end
 
-  def handle_cast({:minigame_presence_sync, present}, %{minigame_state: mg} = state)
-      when not is_nil(mg) do
-    case State.sync_presence(mg, present) do
-      {:drawer_left, pruned} ->
-        # Drawer vanished mid-turn → end the turn (reveal), then the
-        # normal advance path rotates past them next.
-        commit_minigame(state, mg, MiniGameRegistry.module(mg.game).advance(pruned), [:changed])
+  def handle_cast({:minigame_presence_sync, present}, %{minigame_state: %State{} = mg} = state)
+      when mg.phase in [:turn, :turn_reveal] do
+    drawer_present? = mg.drawer_id in present
+    grace_active? = state.minigame_grace == mg.turn_token
 
-      {:roster_changed, pruned} ->
-        commit_minigame(state, mg, pruned, [:changed])
+    cond do
+      # Drawer dropped mid-turn → start the reconnect-grace hold. Mark
+      # them away (the room sees "reconnecting…"); don't prune them yet
+      # or stop the clock — they may be back in a few seconds (spec §9).
+      mg.phase == :turn and not drawer_present? and not grace_active? ->
+        Process.send_after(
+          self(),
+          {:minigame_drawer_grace, mg.turn_token},
+          @minigame_drawer_grace_ms
+        )
 
-      :noop ->
-        {:noreply, state}
+        commit_minigame(%{state | minigame_grace: mg.turn_token}, mg, %{mg | drawer_away: true}, [
+          :changed
+        ])
+
+      # Drawer came back inside the window → resume the turn.
+      drawer_present? and grace_active? ->
+        commit_minigame(%{state | minigame_grace: nil}, mg, %{mg | drawer_away: false}, [:changed])
+
+      # Otherwise just prune any non-drawer who left (don't touch the
+      # drawer while a grace hold is pending).
+      true ->
+        pruned = State.prune_players(mg, present)
+
+        if pruned.players == mg.players,
+          do: {:noreply, state},
+          else: commit_minigame(state, mg, pruned, [:changed])
     end
   end
 
-  # Mini-game cast against a non-minigame chamber: silent no-op.
+  # Mini-game cast against a non-minigame chamber, or lobby/gameover:
+  # nothing to reconcile.
   def handle_cast({:minigame_presence_sync, _}, state), do: {:noreply, state}
+
+  # Mini-game casts against a non-minigame chamber: silent no-op.
   def handle_cast({:minigame_select_game, _, _}, state), do: {:noreply, state}
   def handle_cast({:minigame_set_config, _, _}, state), do: {:noreply, state}
   def handle_cast({:minigame_start, _, _}, state), do: {:noreply, state}
@@ -1472,7 +1500,8 @@ defmodule Mixchamb.Chambers.Server do
        | activity: activity,
          poker_session: poker_session,
          retro_state: retro_state,
-         minigame_state: minigame_state
+         minigame_state: minigame_state,
+         minigame_grace: nil
      }}
   end
 
@@ -1578,6 +1607,57 @@ defmodule Mixchamb.Chambers.Server do
   end
 
   def handle_info({:minigame_reveal_advance, _token}, state), do: {:noreply, state}
+
+  # Reconnect-grace expiry: the drawer never came back → drop them from
+  # the rotation and end the turn (spec §9). Guarded on the grace still
+  # being active for this turn (a return cleared `minigame_grace`).
+  def handle_info(
+        {:minigame_drawer_grace, token},
+        %{minigame_state: %State{turn_token: token, phase: :turn} = mg, minigame_grace: token} =
+          state
+      ) do
+    pruned = %{
+      mg
+      | players: Enum.reject(mg.players, &(&1 == mg.drawer_id)),
+        drawer_away: false
+    }
+
+    commit_minigame(
+      %{state | minigame_grace: nil},
+      mg,
+      MiniGameRegistry.module(mg.game).advance(pruned),
+      [:changed]
+    )
+  end
+
+  def handle_info({:minigame_drawer_grace, _token}, state), do: {:noreply, state}
+
+  # Progressive letter reveal: drip one more letter, then reschedule
+  # until the per-turn cap. Token + phase + word guard drops stale
+  # ticks from a turn that already ended.
+  def handle_info(
+        {:minigame_reveal_letter, token},
+        %{minigame_state: %State{turn_token: token, phase: :turn, word: word} = mg} = state
+      )
+      when not is_nil(word) do
+    if mg.revealed < Mixchamb.MiniGame.Pictionary.reveal_cap(mg) do
+      new_mg = %{mg | revealed: mg.revealed + 1}
+
+      if new_mg.revealed < Mixchamb.MiniGame.Pictionary.reveal_cap(mg) do
+        Process.send_after(
+          self(),
+          {:minigame_reveal_letter, token},
+          Mixchamb.MiniGame.Pictionary.reveal_interval_ms(mg)
+        )
+      end
+
+      commit_minigame(state, mg, new_mg, [:changed])
+    else
+      {:noreply, state}
+    end
+  end
+
+  def handle_info({:minigame_reveal_letter, _token}, state), do: {:noreply, state}
 
   def handle_info(:bump_activity, %{chamber_id: chamber_id, dirty?: dirty?} = state) do
     # If notes came in this minute, flush a single DB write to
@@ -1696,6 +1776,16 @@ defmodule Mixchamb.Chambers.Server do
     if entering_clock?(old_mg, new_mg) do
       delay = max(0, new_mg.turn_deadline - System.system_time(:millisecond))
       Process.send_after(self(), {:minigame_expire, new_mg.turn_token}, delay)
+
+      # Kick off progressive letter reveal for words long enough to
+      # have a cap (spec §9).
+      if Mixchamb.MiniGame.Pictionary.reveal_cap(new_mg) > 0 do
+        Process.send_after(
+          self(),
+          {:minigame_reveal_letter, new_mg.turn_token},
+          Mixchamb.MiniGame.Pictionary.reveal_interval_ms(new_mg)
+        )
+      end
     end
 
     if entering_reveal?(old_mg, new_mg) do

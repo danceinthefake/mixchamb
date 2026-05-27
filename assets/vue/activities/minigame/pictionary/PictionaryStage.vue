@@ -65,9 +65,6 @@ const timerPct = computed(() => {
   return Math.min(100, (secondsLeft.value / props.state.config.turn_seconds) * 100)
 })
 
-// --- Word / blanks rendering ---
-const blanksDisplay = computed(() => props.state.blanks.map((n) => "_".repeat(n)).join("   "))
-
 function chooseWord(word: string) {
   live.pushEvent("minigame_choose_word", { word })
 }
@@ -131,8 +128,16 @@ function chooseWord(word: string) {
       >
         {{ state.word }}
       </p>
-      <p v-else class="text-2xl font-mono tracking-[0.3em] select-none">
-        {{ blanksDisplay }}
+      <p v-else class="text-2xl font-mono tracking-[0.3em] select-none whitespace-pre">
+        {{ state.masked }}
+      </p>
+
+      <!-- Drawer dropped — turn held briefly for a reconnect (spec §9). -->
+      <p
+        v-if="state.drawer_away && !isReveal"
+        class="text-xs text-amber-500 dark:text-amber-400 italic"
+      >
+        ⏳ {{ drawerName }} disconnected — holding the turn…
       </p>
     </div>
 

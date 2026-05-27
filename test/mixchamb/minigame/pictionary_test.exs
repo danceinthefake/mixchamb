@@ -271,7 +271,7 @@ defmodule Mixchamb.MiniGame.PictionaryTest do
       assert drawer.is_drawer
       assert is_nil(guesser.word)
       refute guesser.is_drawer
-      assert guesser.blanks == [5]
+      assert guesser.masked == "_____"
     end
 
     test "word_choices only reach the drawer while choosing" do
@@ -287,14 +287,49 @@ defmodule Mixchamb.MiniGame.PictionaryTest do
       assert Pictionary.view(s, "p2").word == "apple"
     end
 
-    test "blanks split on spaces for multi-word answers" do
+    test "masked keeps spaces and underscores for hidden multi-word answers" do
       s = started(~w(p1 p2)) |> view_word("ice cream")
-      assert Pictionary.view(s, "p2").blanks == [3, 5]
+      assert Pictionary.view(s, "p2").masked == "___ _____"
+      # The drawer / reveal view shows it in full.
+      assert Pictionary.view(s, "p1").masked == "ice cream"
     end
 
     defp view_word(state, word) do
       state = %{state | word_choices: [word | state.word_choices]}
       choose(state, word)
+    end
+  end
+
+  describe "progressive letter reveal (spec §9)" do
+    test "reveal_cap is ~half the letters, never the whole word" do
+      s = started(~w(p1 p2)) |> view_word("scarecrow")
+      # 9 letters → cap 4 (never all 9).
+      assert Pictionary.reveal_cap(s) == 4
+      assert Pictionary.reveal_interval_ms(s) > 0
+    end
+
+    test "short words reveal nothing" do
+      s = started(~w(p1 p2)) |> view_word("ox")
+      assert Pictionary.reveal_cap(s) == 0
+    end
+
+    test "revealed letters fill into the guesser's mask; the rest stay hidden" do
+      s = started(~w(p1 p2)) |> view_word("planet")
+      # Reveal the first two positions of the (shuffled) reveal order.
+      s = %{s | revealed: 2}
+      masked = Pictionary.view(s, "p2").masked
+
+      assert String.length(masked) == 6
+      # Exactly two letters shown, four underscores — never the full word.
+      assert masked |> String.graphemes() |> Enum.count(&(&1 == "_")) == 4
+      refute masked == "planet"
+    end
+  end
+
+  describe "prune_players (reconnect-grace support)" do
+    test "keeps only present players, preserving order" do
+      s = started(~w(a b c))
+      assert State.prune_players(s, ~w(c a)).players == ~w(a c)
     end
   end
 

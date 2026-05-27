@@ -34,7 +34,10 @@ defmodule Mixchamb.MiniGame.State do
           scores: %{optional(String.t()) => integer()},
           turn_deadline: integer() | nil,
           turn_token: non_neg_integer(),
-          used_words: [String.t()]
+          used_words: [String.t()],
+          drawer_away: boolean(),
+          revealed: non_neg_integer(),
+          reveal_order: [non_neg_integer()]
         }
 
   defstruct game: nil,
@@ -53,7 +56,16 @@ defmodule Mixchamb.MiniGame.State do
             # Words already used this game, so the sampler doesn't
             # repeat within a game (spec §7). Server-only; never in a
             # client view.
-            used_words: []
+            used_words: [],
+            # Drawer dropped mid-turn and is inside the reconnect-grace
+            # window (spec §9). Surfaced in the view as a "reconnecting…"
+            # hint; cleared when they return or the turn ends.
+            drawer_away: false,
+            # Progressive letter reveal (spec §9): how many letters are
+            # revealed so far, and the (shuffled) order positions are
+            # revealed in. Both reset each turn.
+            revealed: 0,
+            reveal_order: []
 
   # Completed strokes kept for the late-joiner snapshot. A turn is
   # ~80s of one person drawing, so this is generous; the cap just
@@ -145,8 +157,17 @@ defmodule Mixchamb.MiniGame.State do
         strokes: [],
         scores: %{},
         turn_deadline: nil,
-        used_words: []
+        used_words: [],
+        drawer_away: false,
+        revealed: 0,
+        reveal_order: []
     }
+  end
+
+  @doc "Prune the rotation to `present_ids`, preserving order (spec §7)."
+  def prune_players(%State{} = state, present_ids) when is_list(present_ids) do
+    present = MapSet.new(present_ids)
+    %{state | players: Enum.filter(state.players, &MapSet.member?(present, &1))}
   end
 
   @doc """
