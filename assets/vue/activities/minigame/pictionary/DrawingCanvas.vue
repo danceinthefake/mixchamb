@@ -198,7 +198,14 @@ function pointFromEvent(e: PointerEvent): [number, number] {
 function onPointerDown(e: PointerEvent) {
   if (!props.isDrawer || props.frozen) return
   e.preventDefault()
-  canvas.value!.setPointerCapture(e.pointerId)
+  // Capture so a drag that leaves the canvas still tracks. Guarded —
+  // some pointers (synthetic, already-released) reject capture, and a
+  // throw here would abort the stroke.
+  try {
+    canvas.value!.setPointerCapture(e.pointerId)
+  } catch {
+    /* capture optional */
+  }
   drawing = true
   curSeq = ++seqCounter
   curStroke = {

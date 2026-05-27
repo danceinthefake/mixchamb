@@ -40,14 +40,15 @@ Code map (planned):
   broadcasts)
 - `assets/vue/activities/minigame/` (component split per §8)
 
-Status: **Built** (2026-05-27). The design below was approved and
-implemented in full — framework + Pictionary v1, including the §7
-edge cases. Section tags below read _Proposed_ historically; the
-"Ready-to-build checklist" at the end tracks what actually shipped.
+Status: **Built + Locked** (2026-05-27). The design below was approved
+and implemented in full — framework + Pictionary v1, including the §7
+edge cases. Sections are tagged _Locked_; the "Ready-to-build
+checklist" at the end tracks what shipped, and §9 marks which polish
+items landed vs stayed deferred.
 
 ---
 
-## 1. The framework — game registry & session lifecycle — _Proposed_
+## 1. The framework — game registry & session lifecycle — _Locked_
 
 **Decision:** A minigame session is a thin shell around one game
 drawn from a registry. The framework owns: the **lobby** (game
@@ -101,7 +102,7 @@ simple — no ready-check or join/leave-the-game sub-state. Late
 joiners become spectators for the current game and players on the
 next (§7).
 
-## 2. Pictionary game flow — phase machine — _Proposed_
+## 2. Pictionary game flow — phase machine — _Locked_
 
 **Decision:** Turn-based. One **drawer** per turn draws a secret
 word on a shared canvas; everyone else races to guess it via text
@@ -140,7 +141,7 @@ chain bookkeeping + album playback). It's the framework's natural
 second game (§9), reusing the §3 canvas primitive but a different
 session shape.
 
-## 3. The drawing surface — real-time stroke streaming — _Proposed_
+## 3. The drawing surface — real-time stroke streaming — _Locked_
 
 This is the one genuinely new primitive. Everything else reuses
 poker/retro patterns.
@@ -188,7 +189,7 @@ coords break the moment two clients have different canvas widths
 `mousemove` would flood PubSub. Both are the standard fixes and the
 reason the "heaviest option" is still a few days, not a rewrite.
 
-## 4. Words & guessing — _Proposed_
+## 4. Words & guessing — _Locked_
 
 **Decision:** The drawer is assigned a secret **word** from the
 session's **word pack**; everyone else sees the word's **length as
@@ -222,7 +223,7 @@ standard hint that helps guessers converge without giving the word
 away. Progressive letter reveal (one letter every X seconds) is a
 nice escalation but adds timer-coupled state — polish (§9).
 
-## 5. Scoring — _Proposed_
+## 5. Scoring — _Locked_
 
 **Decision:** Both guessers and the drawer score; the scoreboard is
 ephemeral (`%{user_id => points}`), reset on Play-again.
@@ -242,7 +243,7 @@ first and the last guesser equal and removes the race tension that
 makes Pictionary fun. Time-scaling with a floor keeps later correct
 guesses worth attempting.
 
-## 6. Server-side state shape — _Proposed_
+## 6. Server-side state shape — _Locked_
 
 **Decision:** One ephemeral struct, same null/cleared semantics as
 `PokerSession` and retro's `EphemeralState`. `nil` when
@@ -298,7 +299,7 @@ events from §3 plus the framework/game events here):
 (`:stroke` / `:stroke_end` / `:undo` / `:clear` from §3 round out
 the set.)
 
-## 7. Edge cases — _Proposed_
+## 7. Edge cases — _Locked_
 
 | Case | Handling |
 |---|---|
@@ -318,7 +319,7 @@ the set.)
 | **Word pack exhausted in a long game** | Words are sampled without repeat within a game; if the pack runs dry, it refills (repeats allowed) rather than ending early. |
 | **Stroke flood beyond the cap** | Oldest strokes drop (§6); live viewers already rendered them, only the late-joiner snapshot is lossy — acceptable for a transient game. |
 
-## 8. Vue component split — _Proposed_
+## 8. Vue component split — _Locked_
 
 **Decision:** Framework components at the top of
 `assets/vue/activities/minigame/`, game-specific components nested
@@ -357,7 +358,7 @@ already covers non-music activities (poker shipped this — see
 gate heading branches to "Tap to join the game" and unlocks the
 AudioContext so correct-guess / time-up cues (§9) can play.
 
-## 9. Polish + nice-to-haves (not blocking v1) — _Proposed_
+## 9. Polish + nice-to-haves (not blocking v1) — _Locked_
 
 Sized and considered, explicitly deferred so they don't get
 re-debated each pass.
