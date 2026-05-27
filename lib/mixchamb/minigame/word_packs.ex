@@ -84,11 +84,16 @@ defmodule Mixchamb.MiniGame.WordPacks do
   smaller than `count` (spec §7 pack-exhausted refill).
   """
   def sample(pack, count, used \\ []) when is_binary(pack) and is_integer(count) do
-    all = words(pack)
+    sample_from(words(pack), count, used)
+  end
+
+  @doc """
+  Same no-repeat-then-refill draw as `sample/3`, but from an arbitrary
+  word list — used for the host's `:custom` pack (spec §9).
+  """
+  def sample_from(all, count, used \\ []) when is_list(all) and is_integer(count) do
     remaining = all -- used
-
     pool = if length(remaining) >= count, do: remaining, else: all
-
     pool |> Enum.shuffle() |> Enum.take(count)
   end
 end

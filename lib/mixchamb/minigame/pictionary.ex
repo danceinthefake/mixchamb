@@ -35,16 +35,41 @@ defmodule Mixchamb.MiniGame.Pictionary do
 
   @impl true
   def default_config do
-    %{word_pack: WordPacks.default(), turn_seconds: 80, round_count: 2}
+    %{word_pack: WordPacks.default(), turn_seconds: 80, round_count: 2, custom_words: []}
   end
 
   @impl true
   def sanitize_config(current, partial) when is_map(current) and is_map(partial) do
     current
-    |> apply_config(partial, "word_pack", :word_pack, &(WordPacks.valid?(&1) && &1))
+    |> apply_config(partial, "word_pack", :word_pack, &valid_pack/1)
     |> apply_config(partial, "turn_seconds", :turn_seconds, &clamp_turn_seconds/1)
     |> apply_config(partial, "round_count", :round_count, &clamp_round_count/1)
+    |> apply_custom_words(partial)
   end
+
+  # Preset pack id, or the host's "custom" list.
+  defp valid_pack("custom"), do: "custom"
+  defp valid_pack(p) when is_binary(p), do: if(WordPacks.valid?(p), do: p, else: false)
+  defp valid_pack(_), do: false
+
+  # Host-pasted custom words: trim, drop blanks + over-long entries,
+  # dedupe, cap. Stored in config; never echoed to the client in full
+  # (the view sends only a count) so guessers can't read the pack.
+  @custom_word_max_len 40
+  @custom_word_cap 200
+  defp apply_custom_words(config, %{"custom_words" => words}) when is_list(words) do
+    cleaned =
+      words
+      |> Enum.map(&to_string/1)
+      |> Enum.map(&String.trim/1)
+      |> Enum.reject(&(&1 == "" or String.length(&1) > @custom_word_max_len))
+      |> Enum.uniq()
+      |> Enum.take(@custom_word_cap)
+
+    Map.put(config, :custom_words, cleaned)
+  end
+
+  defp apply_custom_words(config, _), do: config
 
   defp apply_config(config, partial, str_key, atom_key, validate) do
     case Map.fetch(partial, str_key) do
@@ -105,7 +130,10 @@ defmodule Mixchamb.MiniGame.Pictionary do
       config: %{
         word_pack: state.config[:word_pack],
         turn_seconds: state.config[:turn_seconds],
-        round_count: state.config[:round_count]
+        round_count: state.config[:round_count],
+        # Count only — the custom words themselves never reach the
+        # client, or guessers could read the pack.
+        custom_word_count: length(state.config[:custom_words] || [])
       },
       round: state.round,
       round_count: state.config[:round_count],
@@ -191,6 +219,13 @@ defmodule Mixchamb.MiniGame.Pictionary do
       normalize(text) == normalize(word) ->
         register_correct(state, user_id, alias_label)
 
+      near?(normalize(text), normalize(word)) ->
+        # Near-miss: withhold the text (one edit from the answer —
+        # showing it to the room would leak the word). The guesser gets
+        # a private "so close!"; everyone else just "X was close".
+        {:ok, state,
+         [{:feed, %{type: "close", user_id: user_id, alias: alias_label, text: text}}]}
+
       true ->
         {:ok, state,
          [{:feed, %{type: "wrong", user_id: user_id, alias: alias_label, text: text}}]}
@@ -273,7 +308,7 @@ defmodule Mixchamb.MiniGame.Pictionary do
   # Set up a fresh turn for `drawer_id`: new word choices, cleared
   # guesses + canvas, clock not yet running (starts on choose_word).
   defp begin_turn(%State{} = state, drawer_id) do
-    choices = WordPacks.sample(state.config[:word_pack], @word_choice_count, state.used_words)
+    choices = sample_words(state)
 
     %{
       state
@@ -286,6 +321,17 @@ defmodule Mixchamb.MiniGame.Pictionary do
         turn_deadline: nil,
         turn_token: state.turn_token + 1
     }
+  end
+
+  # Draw the turn's word choices: the host's custom list when the
+  # "custom" pack is selected and non-empty, else the preset pack.
+  defp sample_words(%State{config: %{word_pack: "custom", custom_words: cw}} = state)
+       when cw != [] do
+    WordPacks.sample_from(cw, @word_choice_count, state.used_words)
+  end
+
+  defp sample_words(%State{} = state) do
+    WordPacks.sample(state.config[:word_pack], @word_choice_count, state.used_words)
   end
 
   # Every non-drawer player has a correct guess. Spectators (late
@@ -313,6 +359,46 @@ defmodule Mixchamb.MiniGame.Pictionary do
     text
     |> String.downcase()
     |> String.replace(~r/[^\p{L}\p{N}]/u, "")
+  end
+
+  @doc """
+  Near-miss test on two already-normalized strings (spec §4 "so
+  close!"): a singular/plural difference or a single-character edit
+  (Levenshtein ≤ 1). `false` for an exact match — that's handled as a
+  correct guess upstream. Exposed for tests.
+  """
+  def near?(a, b) when is_binary(a) and is_binary(b) do
+    cond do
+      a == "" or b == "" -> false
+      a == b -> false
+      a == b <> "s" or b == a <> "s" -> true
+      true -> levenshtein(a, b) <= 1
+    end
+  end
+
+  # Standard Levenshtein over graphemes, two-row DP. Words are short,
+  # so this is cheap and clearer than a banded ≤1 special case.
+  defp levenshtein(a, b) do
+    graphemes_b = String.graphemes(b)
+
+    a
+    |> String.graphemes()
+    |> Enum.with_index(1)
+    |> Enum.reduce(Enum.to_list(0..length(graphemes_b)), fn {ca, i}, prev ->
+      {row, _diag} =
+        graphemes_b
+        |> Enum.with_index()
+        |> Enum.reduce({[i], i - 1}, fn {cb, j}, {cur, diag} ->
+          cost = if ca == cb, do: 0, else: 1
+          deletion = Enum.at(prev, j + 1) + 1
+          insertion = hd(cur) + 1
+          substitution = diag + cost
+          {[Enum.min([deletion, insertion, substitution]) | cur], Enum.at(prev, j + 1)}
+        end)
+
+      Enum.reverse(row)
+    end)
+    |> List.last()
   end
 
   defp now_ms, do: System.system_time(:millisecond)

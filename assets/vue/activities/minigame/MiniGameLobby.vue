@@ -4,6 +4,7 @@
 // chamber's floating presence panel ("Here"), so the lobby doesn't
 // duplicate it — it just keeps the "need 2 players" / "waiting" hint.
 
+import { ref } from "vue"
 import type { MiniGameConfig } from "./MiniGameBoard.vue"
 
 const props = defineProps<{
@@ -15,7 +16,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   "select-game": [game: string]
-  "set-config": [config: Record<string, string | number>]
+  "set-config": [config: Record<string, string | number | string[]>]
 }>()
 
 // v1 registry: one game. Listed as cards so a second game (Gartic
@@ -33,6 +34,7 @@ const WORD_PACKS = [
   { id: "animals", label: "Animals" },
   { id: "movies", label: "Movies" },
   { id: "office", label: "Office" },
+  { id: "custom", label: "Custom" },
 ]
 const TURN_SECONDS = [60, 80, 120]
 const ROUND_COUNTS = [1, 2, 3, 4, 5]
@@ -40,6 +42,19 @@ const ROUND_COUNTS = [1, 2, 3, 4, 5]
 function setConfig(key: string, value: string | number) {
   if (!props.is_host) return
   emit("set-config", { [key]: value })
+}
+
+// Custom-pack textarea: a host-local draft (the server only echoes a
+// count, never the words, so it can't be re-synced — re-type after a
+// reload). Saving splits on newlines and ships the list to the server.
+const customDraft = ref("")
+function saveCustom() {
+  if (!props.is_host) return
+  const words = customDraft.value
+    .split(/\r?\n/)
+    .map((w) => w.trim())
+    .filter(Boolean)
+  emit("set-config", { custom_words: words })
 }
 </script>
 
@@ -83,6 +98,32 @@ function setConfig(key: string, value: string | number) {
           <option v-for="p in WORD_PACKS" :key="p.id" :value="p.id">{{ p.label }}</option>
         </select>
       </label>
+
+      <!-- Custom word list (host only). One word/phrase per line. The
+           server keeps the words secret (sends back only a count). -->
+      <div v-if="config.word_pack === 'custom' && is_host" class="space-y-1">
+        <textarea
+          v-model="customDraft"
+          rows="4"
+          placeholder="One word or phrase per line&#10;e.g. rubber duck&#10;merge conflict"
+          class="w-full bg-background border border-input rounded-md px-2 py-1.5 text-xs font-mono outline-none focus:border-accent-minigame/60 resize-y"
+        ></textarea>
+        <div class="flex items-center justify-between">
+          <span class="text-[11px] text-muted-foreground">
+            {{ config.custom_word_count }} word{{ config.custom_word_count === 1 ? "" : "s" }} saved
+          </span>
+          <button
+            type="button"
+            @click="saveCustom"
+            class="px-2 py-1 text-xs rounded-md bg-accent-minigame/90 text-white hover:bg-accent-minigame transition-colors cursor-pointer font-medium"
+          >
+            Save words
+          </button>
+        </div>
+      </div>
+      <p v-else-if="config.word_pack === 'custom'" class="text-[11px] text-muted-foreground italic">
+        {{ config.custom_word_count }} custom words set by the host.
+      </p>
 
       <label class="flex items-center justify-between gap-3 text-sm">
         <span class="text-muted-foreground">Turn timer</span>

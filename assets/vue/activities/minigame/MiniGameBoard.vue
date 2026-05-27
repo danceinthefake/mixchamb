@@ -23,6 +23,9 @@ export type MiniGameConfig = {
   word_pack: string
   turn_seconds: number
   round_count: number
+  // Number of host-pasted custom words (the words themselves never
+  // reach the client). 0 unless the "custom" pack has entries.
+  custom_word_count: number
 }
 
 export type Stroke = {

@@ -20,7 +20,7 @@ const live = useLiveVue()
 
 type FeedEntry = {
   id: number
-  type: "wrong" | "correct"
+  type: "wrong" | "correct" | "close"
   user_id: string
   alias: string
   text?: string
@@ -42,7 +42,12 @@ watch(
 
 live.handleEvent(
   "minigame_feed",
-  (payload: { type: "wrong" | "correct"; user_id: string; alias: string; text?: string }) => {
+  (payload: {
+    type: "wrong" | "correct" | "close"
+    user_id: string
+    alias: string
+    text?: string
+  }) => {
     feed.value.push({
       id: nextId++,
       type: payload.type,
@@ -84,10 +89,21 @@ const placeholder = computed(() => {
       <p
         v-for="e in feed"
         :key="e.id"
-        :class="e.type === 'correct' ? 'text-accent-minigame font-semibold' : ''"
+        :class="[
+          e.type === 'correct' ? 'text-accent-minigame font-semibold' : '',
+          e.type === 'close' && e.isSelf ? 'text-amber-500 dark:text-amber-400' : '',
+        ]"
       >
         <template v-if="e.type === 'correct'">
           ✦ {{ e.isSelf ? "You" : e.alias }} guessed it!
+        </template>
+        <!-- Near-miss: the guesser gets the encouragement (text shown
+             only to them); everyone else just sees they were close. -->
+        <template v-else-if="e.type === 'close' && e.isSelf">
+          🔥 So close! “{{ e.text }}”
+        </template>
+        <template v-else-if="e.type === 'close'">
+          <span class="text-muted-foreground italic">{{ e.alias }} was close…</span>
         </template>
         <template v-else>
           <span class="text-muted-foreground">{{ e.isSelf ? "You" : e.alias }}:</span>

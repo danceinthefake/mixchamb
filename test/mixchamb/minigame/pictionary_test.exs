@@ -22,7 +22,14 @@ defmodule Mixchamb.MiniGame.PictionaryTest do
       s = State.new()
       assert s.game == "pictionary"
       assert s.phase == :lobby
-      assert s.config == %{word_pack: "general", turn_seconds: 80, round_count: 2}
+
+      assert s.config == %{
+               word_pack: "general",
+               turn_seconds: 80,
+               round_count: 2,
+               custom_words: []
+             }
+
       assert s.players == []
       assert s.scores == %{}
     end
@@ -350,6 +357,66 @@ defmodule Mixchamb.MiniGame.PictionaryTest do
       assert Pictionary.normalize("Ice Cream!") == "icecream"
       assert Pictionary.normalize("spider-man") == "spiderman"
       assert Pictionary.normalize("  Hello,  World  ") == "helloworld"
+    end
+  end
+
+  describe "near?/2 (close-guess)" do
+    test "single edit + plural are near; exact + far are not" do
+      assert Pictionary.near?("rabit", "rabbit")
+      assert Pictionary.near?("cats", "cat")
+      assert Pictionary.near?("hose", "house")
+      refute Pictionary.near?("cat", "cat")
+      refute Pictionary.near?("dog", "cat")
+      refute Pictionary.near?("", "cat")
+    end
+
+    test "a near-miss guess emits a 'close' feed (text withheld from the room)" do
+      s = started(~w(p1 p2)) |> force_word("rabbit")
+
+      {:ok, ^s, [{:feed, feed}]} =
+        Pictionary.handle_action(s, {:guess, "rabit"}, %{user_id: "p2", alias: "P2"})
+
+      assert feed.type == "close"
+      assert feed.user_id == "p2"
+      # The text is carried (the guesser sees it privately) but the
+      # type marks it so the room view withholds it.
+      assert feed.text == "rabit"
+    end
+  end
+
+  describe "custom word pack" do
+    test "sanitize cleans, dedupes, and caps the pasted list" do
+      {:ok, s} = State.select_game(State.new(), "pictionary")
+      {:ok, s} = State.set_config(s, %{"word_pack" => "custom"})
+      assert s.config[:word_pack] == "custom"
+
+      {:ok, s} =
+        State.set_config(s, %{
+          "custom_words" => ["  Cat ", "cat", "", "dog", String.duplicate("x", 99)]
+        })
+
+      # trimmed + de-duped ("Cat"/"cat" → "Cat","cat" are distinct after
+      # trim only; blanks + the 99-char entry dropped)
+      assert "Cat" in s.config[:custom_words]
+      assert "dog" in s.config[:custom_words]
+      refute "" in s.config[:custom_words]
+      refute Enum.any?(s.config[:custom_words], &(String.length(&1) > 40))
+    end
+
+    test "turn draws words from the custom list when selected + non-empty" do
+      {:ok, s} = State.set_config(State.new(), %{"word_pack" => "custom"})
+      {:ok, s} = State.set_config(s, %{"custom_words" => ~w(alpha bravo charlie delta)})
+      {:ok, s} = State.start(s, ~w(p1 p2))
+
+      assert Enum.all?(s.word_choices, &(&1 in ~w(alpha bravo charlie delta)))
+    end
+
+    test "the view sends a custom_word_count, never the words" do
+      {:ok, s} = State.set_config(State.new(), %{"word_pack" => "custom"})
+      {:ok, s} = State.set_config(s, %{"custom_words" => ~w(secretword another)})
+      view = Pictionary.view(s, "p1")
+      assert view.config.custom_word_count == 2
+      refute Map.has_key?(view.config, :custom_words)
     end
   end
 end
