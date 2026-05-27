@@ -154,21 +154,24 @@ function deleteComment(comment: RetroComment) {
             @keydown.enter.exact.prevent="commitEdit"
             @keydown.escape="cancelEdit"
           ></textarea>
-          <div class="flex justify-end gap-2 text-[10px]">
-            <button
-              type="button"
-              class="text-muted-foreground hover:text-foreground"
-              @click="cancelEdit"
-            >
-              cancel
-            </button>
-            <button
-              type="button"
-              class="font-medium rounded-md bg-accent-bass text-background px-2 py-0.5 hover:bg-accent-bass/90"
-              @click="commitEdit"
-            >
-              save
-            </button>
+          <div class="flex items-center justify-between gap-2 text-[10px]">
+            <span class="text-muted-foreground tabular-nums">{{ editDraft.length }}/280</span>
+            <div class="flex gap-2">
+              <button
+                type="button"
+                class="text-muted-foreground hover:text-foreground"
+                @click="cancelEdit"
+              >
+                cancel
+              </button>
+              <button
+                type="button"
+                class="font-medium rounded-md bg-accent-bass text-background px-2 py-0.5 hover:bg-accent-bass/90"
+                @click="commitEdit"
+              >
+                save
+              </button>
+            </div>
           </div>
         </div>
       </div>

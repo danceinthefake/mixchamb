@@ -1,11 +1,16 @@
 import { describe, it, expect, vi, afterEach } from "vitest"
 
-const { pushEventMock } = vi.hoisted(() => ({
+const { pushEventMock, playVoteBlipMock } = vi.hoisted(() => ({
   pushEventMock: vi.fn(),
+  playVoteBlipMock: vi.fn(),
 }))
 
 vi.mock("live_vue", () => ({
   useLiveVue: () => ({ pushEvent: pushEventMock }),
+}))
+
+vi.mock("../lib/audio", () => ({
+  playVoteBlip: playVoteBlipMock,
 }))
 
 import { mount, enableAutoUnmount } from "@vue/test-utils"
@@ -46,6 +51,7 @@ const baseProps = {
 describe("RetroCard", () => {
   afterEach(() => {
     pushEventMock.mockReset()
+    playVoteBlipMock.mockReset()
   })
 
   it("renders card body + author", () => {
@@ -112,18 +118,20 @@ describe("RetroCard", () => {
     expect(w.find("[aria-label='Vote for this card']").exists()).toBe(true)
   })
 
-  it("pushes retro_vote on click when not voted", async () => {
+  it("pushes retro_vote on click when not voted + plays the cast cue", async () => {
     const w = mount(RetroCard, { props: { ...baseProps, phase: "voting" } })
     await w.get("[aria-label='Vote for this card']").trigger("click")
     expect(pushEventMock).toHaveBeenCalledWith("retro_vote", { card_id: "card1" })
+    expect(playVoteBlipMock).toHaveBeenCalledOnce()
   })
 
-  it("pushes retro_withdraw_vote when already voted", async () => {
+  it("pushes retro_withdraw_vote when already voted + stays silent", async () => {
     const w = mount(RetroCard, {
       props: { ...baseProps, phase: "voting", is_my_vote: true },
     })
     await w.get("[aria-label='Withdraw vote']").trigger("click")
     expect(pushEventMock).toHaveBeenCalledWith("retro_withdraw_vote", { card_id: "card1" })
+    expect(playVoteBlipMock).not.toHaveBeenCalled()
   })
 
   it("vote button disabled at cap when not yet voted on this card", () => {

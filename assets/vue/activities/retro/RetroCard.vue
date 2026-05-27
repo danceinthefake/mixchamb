@@ -7,6 +7,7 @@
 import { computed, ref } from "vue"
 import { useLiveVue } from "live_vue"
 import { SmilePlus } from "lucide-vue-next"
+import { playVoteBlip } from "../../lib/audio"
 import RetroActionRow from "./RetroActionRow.vue"
 import RetroComments from "./RetroComments.vue"
 import type { RetroCard as RetroCardT, RetroActionItem, RetroPhase } from "./RetroBoard.vue"
@@ -159,6 +160,8 @@ function toggleVote() {
     live.pushEvent("retro_withdraw_vote", { card_id: props.card.id })
   } else if (props.votes_remaining > 0) {
     live.pushEvent("retro_vote", { card_id: props.card.id })
+    // Local-only cue for the positive action; silent on withdraw.
+    void playVoteBlip()
   }
 }
 
@@ -192,6 +195,9 @@ function focusForDiscussion() {
       @keydown.enter.exact.prevent="commitEdit"
       @keydown.escape="cancelEdit"
     ></textarea>
+    <div v-if="editing" class="flex justify-end text-[10px] text-muted-foreground tabular-nums">
+      {{ editDraft.length }}/280
+    </div>
 
     <div class="flex items-center justify-between gap-2 text-[10px] text-muted-foreground">
       <span class="truncate">

@@ -2244,8 +2244,8 @@ defmodule MixchambWeb.ChamberLive do
 
     <%!-- Past retros disclosure — retro chambers only, hidden
          when there's no history yet. Shows session title (or
-         "Untitled retro") + archived date. v1 is list-only;
-         click-to-view a past retro is a polish iteration.
+         "Untitled retro") + archived date; each entry links to
+         its read-only permalink at /archives/retros/:id.
          Caller passes [] for non-retro chambers (default). --%>
     <details
       :if={@chamber.activity == "retro" and @past_retros != []}

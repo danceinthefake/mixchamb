@@ -502,6 +502,28 @@ export async function playReveal(): Promise<void> {
   setTimeout(() => voice.dispose(), 2500)
 }
 
+// ── Retro vote-cast cue ────────────────────────────────────────────
+// A single soft "blip" the local voter hears when they cast a vote
+// (silent on withdraw — the cue marks the positive action). Quieter
+// and shorter than the poker reveal arpeggio so rapid voting doesn't
+// turn into a melody. Like playReveal, it's standalone (retro has no
+// instrument to register) and gated by the same gesture requirement —
+// fails silently if the AudioContext hasn't been unlocked yet.
+export async function playVoteBlip(): Promise<void> {
+  try {
+    await ensureStarted()
+  } catch {
+    return
+  }
+  const voice = new Synth({
+    oscillator: { type: "triangle" },
+    envelope: { attack: 0.004, decay: 0.08, sustain: 0, release: 0.12 },
+    volume: -18,
+  }).toDestination()
+  voice.triggerAttackRelease("A5", "32n", toneNow())
+  setTimeout(() => voice.dispose(), 600)
+}
+
 // Drum-kit voicing: the wire format only carries these strings,
 // shared between the engine in `lib/audio/drums.ts` and the
 // UI pad definitions in `assets/vue/instruments/DrumPad.vue`.

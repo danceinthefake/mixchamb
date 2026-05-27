@@ -130,6 +130,9 @@ function deleteRow() {
         @keydown.enter.exact.prevent="commitEdit"
         @keydown.escape="cancelEdit"
       ></textarea>
+      <div class="flex justify-end text-[10px] text-muted-foreground tabular-nums">
+        {{ editDraft.body.length }}/280
+      </div>
       <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
         <input
           v-model="editDraft.assignee_alias"

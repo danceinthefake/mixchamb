@@ -376,22 +376,27 @@ unchanged, no event sequencing yet.
 - Preset column templates (SSC / MSG / 4Ls)
 - Keyboard shortcuts (1–4 add to column, Enter submits, etc.)
 
-**Real-world gaps surfaced by use (not in spec):**
+**Real-world gaps surfaced by use (not in spec) — all closed:**
 
-- Past-retros disclosure is list-only — no click-to-view of
-  archived content
-- Edit mode has no live char counter (only add forms do)
-- No vote-cast cue (poker has reveal chime, retro is silent)
-- Vote button toggle is "click to vote / click again to
-  withdraw" with no visible hint
+- ✅ **Click-to-view archived content.** Each past-retros entry
+  links to its read-only permalink at `/archives/retros/:id`
+  (`RetroLive` renders the full board).
+- ✅ **Edit-mode char counter.** The three edit textareas (card,
+  action item, comment) now show a live `n/280` counter,
+  matching the add forms.
+- ✅ **Vote-cast cue.** Casting a vote plays a soft one-shot blip
+  (`playVoteBlip` in `lib/audio.ts`, mirroring poker's
+  `playReveal`); silent on withdraw, local-only.
+- ✅ **Vote-withdraw hint.** The voting panel shows "Tap a vote
+  chip again to withdraw and re-spend", and the vote button's
+  `aria-label` toggles Vote / Withdraw.
 
 Final estimate vs reality: planned ~6 working days, shipped in
-two focused sessions (one for v1, a second close-the-gaps pass
-after audit surfaced the three locked-section misses). §11
-polish items + the real-world gaps above remain on a v2
-backlog — they're not blocking the ✅ since the spec
-explicitly defers polish, and the real-world items surfaced
-only during build.
+three focused sessions (v1, a close-the-gaps pass after audit
+surfaced the three locked-section misses, then a third pass
+closing the four real-world gaps above). The §11 polish items
+remain a deliberate v2 backlog — they don't block the ✅ since
+the spec explicitly defers polish.
 
 ---
 

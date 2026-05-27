@@ -89,3 +89,11 @@ describe("playReveal (poker chime)", () => {
     // Don't actually invoke — Tone synth wiring throws in happy-dom.
   })
 })
+
+describe("playVoteBlip (retro vote cue)", () => {
+  it("exists as an importable function", async () => {
+    const { playVoteBlip } = await import("../lib/audio")
+    expect(typeof playVoteBlip).toBe("function")
+    // Don't actually invoke — Tone synth wiring throws in happy-dom.
+  })
+})
