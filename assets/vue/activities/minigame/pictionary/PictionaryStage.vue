@@ -7,6 +7,7 @@
 
 import { computed, onUnmounted, ref, watch } from "vue"
 import { useLiveVue } from "live_vue"
+import { playGuessCorrect, playTimeUp } from "../../../lib/audio"
 import type { MiniGameView } from "../MiniGameBoard.vue"
 import DrawingCanvas from "./DrawingCanvas.vue"
 import GuessFeed from "./GuessFeed.vue"
@@ -43,6 +44,21 @@ onUnmounted(() => window.clearInterval(ticker))
 const secondsLeft = computed(() => {
   if (!props.state.deadline) return null
   return Math.max(0, Math.ceil((props.state.deadline - now.value) / 1000))
+})
+
+// Time-up buzzer: fire once when the clock reaches 0 while the turn is
+// still live (an early all-guessed/skip end flips the phase first, so
+// this only catches genuine timeouts).
+watch(secondsLeft, (now, prev) => {
+  if (now === 0 && prev !== null && prev > 0 && props.state.phase === "turn") {
+    void playTimeUp()
+  }
+})
+
+// Correct-guess blip — the whole room hears it (the drawer doesn't
+// mount GuessFeed, so the cue lives here, on the always-mounted stage).
+live.handleEvent("minigame_feed", (payload: { type: string }) => {
+  if (payload.type === "correct") void playGuessCorrect()
 })
 const timerPct = computed(() => {
   if (secondsLeft.value === null) return 0

@@ -17,6 +17,7 @@
 
 import { onMounted, onUnmounted, ref, watch } from "vue"
 import { useLiveVue } from "live_vue"
+import { isTypingInForm } from "../../../lib/utils"
 import type { Stroke } from "../MiniGameBoard.vue"
 
 const props = defineProps<{
@@ -263,16 +264,45 @@ function clearCanvas() {
   live.pushEvent("minigame_clear", {})
 }
 
+// Drawer keyboard shortcuts: 1-8 pick a colour, [ / ] shrink/grow the
+// brush, E toggle eraser, Z undo. Ignored when typing in a field or
+// when this client isn't the active drawer.
+function onKeydown(e: KeyboardEvent) {
+  if (!props.isDrawer || props.frozen || isTypingInForm(e)) return
+  const k = e.key
+  if (k >= "1" && k <= "8" && Number(k) <= PALETTE.length) {
+    color.value = PALETTE[Number(k) - 1]
+    erasing.value = false
+  } else if (k === "[") {
+    sizeIdx.value = Math.max(0, sizeIdx.value - 1)
+    erasing.value = false
+  } else if (k === "]") {
+    sizeIdx.value = Math.min(SIZES.length - 1, sizeIdx.value + 1)
+    erasing.value = false
+  } else if (k === "e" || k === "E") {
+    erasing.value = !erasing.value
+  } else if (k === "z" || k === "Z") {
+    undo()
+  } else {
+    return
+  }
+  e.preventDefault()
+}
+
 let ro: ResizeObserver | undefined
+let keyAbort: AbortController | undefined
 onMounted(() => {
   resize()
   ro = new ResizeObserver(resize)
   if (wrapper.value) ro.observe(wrapper.value)
   raf = requestAnimationFrame(render)
+  keyAbort = new AbortController()
+  window.addEventListener("keydown", onKeydown, { signal: keyAbort.signal })
 })
 onUnmounted(() => {
   cancelAnimationFrame(raf)
   ro?.disconnect()
+  keyAbort?.abort()
 })
 </script>
 
@@ -329,6 +359,7 @@ onUnmounted(() => {
       <button
         type="button"
         @click="erasing = !erasing"
+        title="Eraser (E)"
         class="px-2 py-1 text-xs rounded-md border cursor-pointer hover:bg-accent transition-colors"
         :class="erasing ? 'border-accent-minigame bg-accent-minigame/10' : 'border-border'"
       >
@@ -339,6 +370,7 @@ onUnmounted(() => {
         <button
           type="button"
           @click="undo"
+          title="Undo last stroke (Z)"
           class="px-2 py-1 text-xs rounded-md border border-border hover:bg-accent cursor-pointer transition-colors"
         >
           Undo
@@ -352,5 +384,15 @@ onUnmounted(() => {
         </button>
       </div>
     </div>
+
+    <!-- Inline shortcut hint (keys are shown inline, never in a
+         separate cheatsheet). Hidden on touch where there's no
+         keyboard. -->
+    <p
+      v-if="isDrawer && !frozen"
+      class="hidden sm:block text-[10px] text-muted-foreground font-mono"
+    >
+      1–8 colour · [ ] size · E eraser · Z undo
+    </p>
   </div>
 </template>

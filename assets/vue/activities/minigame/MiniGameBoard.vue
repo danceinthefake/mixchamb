@@ -9,8 +9,9 @@
 // push back as Phoenix events. The chamber GenServer broadcasts on
 // every change, so every player's board re-renders within ~50ms.
 
-import { computed } from "vue"
+import { computed, watch } from "vue"
 import { useLiveVue } from "live_vue"
+import { playGameOver } from "../../lib/audio"
 import MiniGameLobby from "./MiniGameLobby.vue"
 import MiniGameScoreboard from "./MiniGameScoreboard.vue"
 import MiniGameHostControls from "./MiniGameHostControls.vue"
@@ -89,6 +90,11 @@ const nameOf = computed(() => {
 })
 
 const drawerName = computed(() => nameOf.value(state.value?.drawer_id ?? null))
+
+// Celebratory fanfare the moment the game ends.
+watch(phase, (next, prev) => {
+  if (next === "gameover" && prev && prev !== "gameover") void playGameOver()
+})
 </script>
 
 <template>

@@ -524,6 +524,69 @@ export async function playVoteBlip(): Promise<void> {
   setTimeout(() => voice.dispose(), 600)
 }
 
+// ── Mini-game (Pictionary) cues ────────────────────────────────────
+// Standalone one-shots like playReveal / playVoteBlip — no instrument
+// to register against, gated by the same gesture requirement, fail
+// silently if the AudioContext hasn't been unlocked.
+
+// Bright two-note rise the room hears on any correct guess.
+export async function playGuessCorrect(): Promise<void> {
+  try {
+    await ensureStarted()
+  } catch {
+    return
+  }
+  const voice = new Synth({
+    oscillator: { type: "triangle" },
+    envelope: { attack: 0.004, decay: 0.09, sustain: 0, release: 0.14 },
+    volume: -15,
+  }).toDestination()
+  const start = toneNow()
+  voice.triggerAttackRelease("E5", "32n", start)
+  voice.triggerAttackRelease("B5", "16n", start + 0.09)
+  setTimeout(() => voice.dispose(), 900)
+}
+
+// Low descending buzzer when a turn runs out of time.
+export async function playTimeUp(): Promise<void> {
+  try {
+    await ensureStarted()
+  } catch {
+    return
+  }
+  const voice = new Synth({
+    oscillator: { type: "sawtooth" },
+    envelope: { attack: 0.006, decay: 0.2, sustain: 0.1, release: 0.2 },
+    volume: -20,
+  }).toDestination()
+  const start = toneNow()
+  voice.triggerAttackRelease("A3", "16n", start)
+  voice.triggerAttackRelease("E3", "8n", start + 0.16)
+  setTimeout(() => voice.dispose(), 1200)
+}
+
+// Celebratory rising arpeggio at game over.
+export async function playGameOver(): Promise<void> {
+  try {
+    await ensureStarted()
+  } catch {
+    return
+  }
+  const voice = new Synth({
+    oscillator: { type: "sine" },
+    envelope: { attack: 0.005, decay: 0.14, sustain: 0.25, release: 0.6 },
+    volume: -13,
+  }).toDestination()
+  const start = toneNow()
+  voice.triggerAttackRelease("C5", "16n", start)
+  voice.triggerAttackRelease("E5", "16n", start + 0.12)
+  voice.triggerAttackRelease("G5", "16n", start + 0.24)
+  voice.triggerAttackRelease("C6", "16n", start + 0.36)
+  voice.triggerAttackRelease("G5", "16n", start + 0.5)
+  voice.triggerAttackRelease("C6", "4n", start + 0.62)
+  setTimeout(() => voice.dispose(), 2800)
+}
+
 // Drum-kit voicing: the wire format only carries these strings,
 // shared between the engine in `lib/audio/drums.ts` and the
 // UI pad definitions in `assets/vue/instruments/DrumPad.vue`.
