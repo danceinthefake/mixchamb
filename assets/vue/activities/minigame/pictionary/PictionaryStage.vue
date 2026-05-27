@@ -31,6 +31,7 @@ let ticker: number | undefined
 watch(
   () => props.state.deadline,
   (deadline) => {
+    if (typeof window === "undefined") return
     window.clearInterval(ticker)
     if (deadline) {
       now.value = Date.now()

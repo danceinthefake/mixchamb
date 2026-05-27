@@ -1,13 +1,13 @@
 <script setup lang="ts">
-// Top-level Vue island for a mini-game chamber. Mounted by
-// Chamber.vue when `chamber.activity === "minigame"`. The mini-game
-// is a *framework* (features/mini-game.md §1): this board owns the
-// lobby / scoreboard / host-control shell and phase-routes the
-// middle to the chosen game's stage component (v1: Pictionary).
+// Top-level Vue island for a mini-game chamber. Mounted by Chamber.vue
+// when `chamber.activity === "minigame"`. The mini-game is a
+// *framework* (features/mini-game.md §1): this board owns the lobby +
+// host-control shell and routes the middle to the chosen game's stage
+// (Pictionary or Gartic Phone).
 //
-// State flows in from the LiveView (source of truth); user actions
-// push back as Phoenix events. The chamber GenServer broadcasts on
-// every change, so every player's board re-renders within ~50ms.
+// State flows in from the LiveView; user actions push back as Phoenix
+// events. The chamber GenServer broadcasts on every change, so every
+// player's board re-renders within ~50ms.
 
 import { computed, watch } from "vue"
 import { useLiveVue } from "live_vue"
@@ -16,6 +16,7 @@ import MiniGameLobby from "./MiniGameLobby.vue"
 import MiniGameScoreboard from "./MiniGameScoreboard.vue"
 import MiniGameHostControls from "./MiniGameHostControls.vue"
 import PictionaryStage from "./pictionary/PictionaryStage.vue"
+import GarticStage from "./gartic_phone/GarticStage.vue"
 
 export type MiniGamePhase = "lobby" | "turn" | "turn_reveal" | "gameover"
 
@@ -23,8 +24,6 @@ export type MiniGameConfig = {
   word_pack: string
   turn_seconds: number
   round_count: number
-  // Number of host-pasted custom words (the words themselves never
-  // reach the client). 0 unless the "custom" pack has entries.
   custom_word_count: number
 }
 
@@ -35,11 +34,9 @@ export type Stroke = {
   width: number
 }
 
-// The per-user view shaped by the game's `view/2` on the server.
-// `word` is present only for the drawer (their turn) or once a turn
-// is revealed; guessers get `blanks` (per-token lengths) instead.
+// Pictionary per-user view.
 export type MiniGameView = {
-  game: string
+  game: "pictionary"
   phase: MiniGamePhase
   config: MiniGameConfig
   round: number
@@ -49,10 +46,7 @@ export type MiniGameView = {
   is_drawer: boolean
   is_choosing: boolean
   word: string | null
-  // Masked word: spaces kept, hidden letters "_", progressively-
-  // revealed letters filled in. Guessers never receive the full word.
   masked: string
-  // Drawer dropped + inside the reconnect-grace window.
   drawer_away: boolean
   word_choices: string[]
   guessed: string[]
@@ -62,6 +56,36 @@ export type MiniGameView = {
   turn_token: number
 }
 
+export type GarticEntry =
+  | { kind: "text"; by: string; text: string }
+  | { kind: "drawing"; by: string; strokes: Stroke[] }
+
+// Gartic Phone per-user view (private during play, public at album).
+export type GarticView = {
+  game: "gartic_phone"
+  phase: "lobby" | "play" | "album" | "gameover"
+  config?: { step_seconds: number }
+  // play
+  step?: number
+  total_steps?: number
+  player_count?: number
+  submitted_count?: number
+  deadline?: number | null
+  turn_token?: number
+  is_player?: boolean
+  my_kind?: "text" | "drawing" | null
+  prompt?: GarticEntry | null
+  submitted?: boolean
+  // album
+  total_books?: number
+  album_book?: number
+  album_page?: number
+  book_owner?: string
+  pages?: GarticEntry[]
+  // gameover
+  books?: { owner: string; pages: GarticEntry[] }[]
+}
+
 export type Participant = {
   user_id: string
   display_name: string
@@ -69,7 +93,7 @@ export type Participant = {
 }
 
 const props = defineProps<{
-  state: MiniGameView | null
+  state: MiniGameView | GarticView | null
   participants: Participant[]
   current_user_id: string
   is_host: boolean
@@ -77,17 +101,20 @@ const props = defineProps<{
 
 const live = useLiveVue()
 
-// A minigame chamber's GenServer always allocates a lobby at boot;
-// `null` only happens if mounted for a non-minigame chamber by
-// mistake. Render a calm empty state rather than crash children.
 const state = computed(() => props.state)
+const game = computed(() => state.value?.game ?? null)
+const phase = computed(() => state.value?.phase ?? null)
 
-const phase = computed<MiniGamePhase | null>(() => state.value?.phase ?? null)
-const inGame = computed(() => phase.value === "turn" || phase.value === "turn_reveal")
+// Narrowed views per game so the template stays type-safe.
+const pict = computed(() => (game.value === "pictionary" ? (state.value as MiniGameView) : null))
+const gartic = computed(() => (game.value === "gartic_phone" ? (state.value as GarticView) : null))
 
-// alias_or_name lookup for rendering players/drawer/scoreboard
-// without leaking raw ids. Falls back to a short id for a player
-// who's left (still on the scoreboard per spec §7).
+const pictPlaying = computed(
+  () => !!pict.value && (phase.value === "turn" || phase.value === "turn_reveal"),
+)
+const garticActive = computed(() => !!gartic.value && phase.value !== "lobby")
+
+// alias_or_name lookup for rendering players without leaking raw ids.
 const nameOf = computed(() => {
   const map = new Map(props.participants.map((p) => [p.user_id, p.alias || p.display_name]))
   return (id: string | null): string => {
@@ -96,9 +123,9 @@ const nameOf = computed(() => {
   }
 })
 
-const drawerName = computed(() => nameOf.value(state.value?.drawer_id ?? null))
+const drawerName = computed(() => nameOf.value(pict.value?.drawer_id ?? null))
 
-// Celebratory fanfare the moment the game ends.
+// Celebratory fanfare the moment any game ends.
 watch(phase, (next, prev) => {
   if (next === "gameover" && prev && prev !== "gameover") void playGameOver()
 })
@@ -110,21 +137,21 @@ watch(phase, (next, prev) => {
     class="minigame-scope w-full max-w-3xl mx-auto space-y-4"
     aria-label="Mini-game board"
   >
-    <!-- Header: game name + round/turn status -->
+    <!-- Header: game name + (Pictionary) round status + host controls -->
     <header class="flex items-center justify-between gap-3 flex-wrap">
       <div class="flex items-center gap-2">
         <span class="size-2.5 rounded-full bg-accent-minigame"></span>
         <h2 class="text-lg font-bold font-display tracking-tight">Mini-game</h2>
         <span
-          v-if="inGame"
+          v-if="pictPlaying"
           class="text-xs uppercase tracking-wider text-muted-foreground tabular-nums"
         >
-          Round {{ state.round }} / {{ state.round_count }}
+          Round {{ pict!.round }} / {{ pict!.round_count }}
         </span>
       </div>
       <MiniGameHostControls
         v-if="is_host"
-        :phase="state.phase"
+        :phase="phase ?? 'lobby'"
         :player_count="participants.length"
         @start="live.pushEvent('minigame_start', {})"
         @skip="live.pushEvent('minigame_skip', {})"
@@ -134,45 +161,43 @@ watch(phase, (next, prev) => {
       />
     </header>
 
-    <!-- Lobby: game picker + roster + config -->
+    <!-- Lobby: game picker + config -->
     <MiniGameLobby
       v-if="phase === 'lobby'"
-      :game="state.game"
-      :config="state.config"
+      :game="game ?? 'pictionary'"
+      :config="(state as any).config"
       :player_count="participants.length"
       :is_host="is_host"
       @select-game="(g) => live.pushEvent('minigame_select_game', { game: g })"
       @set-config="(c) => live.pushEvent('minigame_set_config', { config: c })"
     />
 
-    <!-- Active game: scoreboard strip on top, Pictionary stage below.
-         Single centered column so nothing lands under the floating
-         presence panel. -->
-    <div v-else-if="inGame" class="space-y-4">
+    <!-- Pictionary: scoreboard strip + stage -->
+    <div v-else-if="pictPlaying" class="space-y-4">
       <MiniGameScoreboard
-        :scores="state.scores"
-        :players="state.players"
-        :drawer_id="state.drawer_id"
-        :guessed="state.guessed"
+        :scores="pict!.scores"
+        :players="pict!.players"
+        :drawer_id="pict!.drawer_id"
+        :guessed="pict!.guessed"
         :name-of="nameOf"
       />
       <PictionaryStage
-        :state="state"
+        :state="pict!"
         :current_user_id="current_user_id"
         :drawer-name="drawerName"
         :name-of="nameOf"
       />
     </div>
 
-    <!-- Game over: final scoreboard -->
-    <div v-else-if="phase === 'gameover'" class="space-y-4">
+    <!-- Pictionary game over: final scoreboard -->
+    <div v-else-if="pict && phase === 'gameover'" class="space-y-4">
       <div class="text-center space-y-1">
         <p class="text-xs uppercase tracking-wider text-muted-foreground font-display">Game over</p>
         <h3 class="text-2xl font-bold font-display">Final scores</h3>
       </div>
       <MiniGameScoreboard
-        :scores="state.scores"
-        :players="state.players"
+        :scores="pict!.scores"
+        :players="pict!.players"
         :drawer_id="null"
         :guessed="[]"
         :name-of="nameOf"
@@ -182,6 +207,15 @@ watch(phase, (next, prev) => {
         Waiting for the host to play again or end the game.
       </p>
     </div>
+
+    <!-- Gartic Phone: play / album / gameover all live in the stage -->
+    <GarticStage
+      v-else-if="garticActive"
+      :state="gartic!"
+      :current_user_id="current_user_id"
+      :is_host="is_host"
+      :name-of="nameOf"
+    />
   </section>
 
   <section v-else class="max-w-md mx-auto text-center py-16 text-muted-foreground">

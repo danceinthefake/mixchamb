@@ -380,6 +380,18 @@ defmodule Mixchamb.Chambers.Server do
     do: GenServer.cast(via(slug), {:minigame_clear, user_id})
 
   @doc """
+  Submit a player's entry for the current step (Gartic Phone). `payload`
+  carries `\"text\"` or `\"strokes\"` depending on the step kind.
+  """
+  def minigame_submit(slug, user_id, payload)
+      when is_binary(user_id) and is_map(payload),
+      do: GenServer.cast(via(slug), {:minigame_submit, user_id, payload})
+
+  @doc "Host advances the Gartic Phone album to the next page/book."
+  def minigame_album_next(slug, user_id) when is_binary(user_id),
+    do: GenServer.cast(via(slug), {:minigame_album_next, user_id})
+
+  @doc """
   Reconcile the rotation with the live presence list — drives the
   drawer-left / player-left edge cases (spec §7). Cast by the host's
   LV on every presence change while in minigame mode.
@@ -1337,6 +1349,22 @@ defmodule Mixchamb.Chambers.Server do
     end
   end
 
+  # Gartic Phone: a player submits their step entry (anyone playing).
+  def handle_cast({:minigame_submit, user_id, payload}, %{minigame_state: mg} = state)
+      when not is_nil(mg) do
+    dispatch_action(state, mg, {:submit, payload}, %{user_id: user_id})
+  end
+
+  # Gartic Phone: host advances the album.
+  def handle_cast({:minigame_album_next, user_id}, %{minigame_state: mg} = state)
+      when not is_nil(mg) do
+    if host?(state, user_id) do
+      dispatch_action(state, mg, :album_next, %{user_id: user_id})
+    else
+      {:noreply, state}
+    end
+  end
+
   def handle_cast({:minigame_next, user_id}, %{minigame_state: %State{phase: phase} = mg} = state)
       when not is_nil(mg) and phase == :turn_reveal do
     if host?(state, user_id) do
@@ -1447,6 +1475,8 @@ defmodule Mixchamb.Chambers.Server do
   def handle_cast({:minigame_guess, _, _, _}, state), do: {:noreply, state}
   def handle_cast({:minigame_skip, _}, state), do: {:noreply, state}
   def handle_cast({:minigame_next, _}, state), do: {:noreply, state}
+  def handle_cast({:minigame_submit, _, _}, state), do: {:noreply, state}
+  def handle_cast({:minigame_album_next, _}, state), do: {:noreply, state}
   def handle_cast({:minigame_stroke, _, _}, state), do: {:noreply, state}
   def handle_cast({:minigame_stroke_end, _, _}, state), do: {:noreply, state}
   def handle_cast({:minigame_undo, _}, state), do: {:noreply, state}
@@ -1659,6 +1689,17 @@ defmodule Mixchamb.Chambers.Server do
 
   def handle_info({:minigame_reveal_letter, _token}, state), do: {:noreply, state}
 
+  # Gartic Phone step timer: time's up for this step → fill stragglers
+  # and advance (to the next step or the album). Token-guarded.
+  def handle_info(
+        {:minigame_step_expire, token},
+        %{minigame_state: %State{turn_token: token, phase: :play} = mg} = state
+      ) do
+    commit_minigame(state, mg, MiniGameRegistry.module(mg.game).advance(mg), [:changed])
+  end
+
+  def handle_info({:minigame_step_expire, _token}, state), do: {:noreply, state}
+
   def handle_info(:bump_activity, %{chamber_id: chamber_id, dirty?: dirty?} = state) do
     # If notes came in this minute, flush a single DB write to
     # update last_activity_at. If nothing happened, skip the write
@@ -1794,6 +1835,15 @@ defmodule Mixchamb.Chambers.Server do
         {:minigame_reveal_advance, new_mg.turn_token},
         @minigame_reveal_advance_ms
       )
+    end
+
+    # Gartic Phone per-step clock: each new step bumps turn_token and
+    # carries a fresh deadline; schedule its expiry.
+    if new_mg.game == "gartic_phone" and new_mg.phase == :play and
+         not is_nil(new_mg.turn_deadline) and
+         (is_nil(old_mg) or old_mg.turn_token != new_mg.turn_token) do
+      delay = max(0, new_mg.turn_deadline - System.system_time(:millisecond))
+      Process.send_after(self(), {:minigame_step_expire, new_mg.turn_token}, delay)
     end
 
     :ok

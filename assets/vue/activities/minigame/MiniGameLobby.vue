@@ -5,11 +5,12 @@
 // duplicate it — it just keeps the "need 2 players" / "waiting" hint.
 
 import { ref } from "vue"
-import type { MiniGameConfig } from "./MiniGameBoard.vue"
 
 const props = defineProps<{
   game: string
-  config: MiniGameConfig
+  // Shape differs per game (Pictionary: word_pack/turn_seconds/…;
+  // Gartic: step_seconds), so keep it loose at the lobby.
+  config: Record<string, any>
   player_count: number
   is_host: boolean
 }>()
@@ -27,6 +28,11 @@ const GAMES = [
     label: "Pictionary",
     blurb: "Draw a secret word; everyone else races the clock to guess it.",
   },
+  {
+    key: "gartic_phone",
+    label: "Gartic Phone",
+    blurb: "Write → draw → describe down a chain, then watch the books unravel.",
+  },
 ]
 
 const WORD_PACKS = [
@@ -38,6 +44,7 @@ const WORD_PACKS = [
 ]
 const TURN_SECONDS = [60, 80, 120]
 const ROUND_COUNTS = [1, 2, 3, 4, 5]
+const STEP_SECONDS = [45, 60, 90]
 
 function setConfig(key: string, value: string | number) {
   if (!props.is_host) return
@@ -148,6 +155,26 @@ function saveCustom() {
           <option v-for="r in ROUND_COUNTS" :key="r" :value="r">{{ r }}</option>
         </select>
       </label>
+    </div>
+
+    <!-- Per-game config (Gartic Phone) -->
+    <div v-if="game === 'gartic_phone'" class="rounded-xl border bg-card/60 p-4 space-y-3">
+      <p class="text-xs uppercase tracking-wider text-muted-foreground font-display">Setup</p>
+      <label class="flex items-center justify-between gap-3 text-sm">
+        <span class="text-muted-foreground">Time per step</span>
+        <select
+          :value="config.step_seconds"
+          :disabled="!is_host"
+          @change="(e) => setConfig('step_seconds', Number((e.target as HTMLSelectElement).value))"
+          class="px-2 py-1 text-sm rounded-md border bg-card disabled:opacity-60 cursor-pointer"
+        >
+          <option v-for="s in STEP_SECONDS" :key="s" :value="s">{{ s }}s</option>
+        </select>
+      </label>
+      <p class="text-[11px] text-muted-foreground">
+        One round per player: write a phrase, draw the one you're handed, describe the next… then
+        the whole chain is revealed.
+      </p>
     </div>
 
     <!-- Start gate / waiting hint -->

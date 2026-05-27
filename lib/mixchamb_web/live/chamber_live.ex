@@ -995,6 +995,27 @@ defmodule MixchambWeb.ChamberLive do
     {:noreply, socket}
   end
 
+  # Gartic Phone: submit this step's entry (text or drawing strokes).
+  def handle_event("minigame_submit", payload, socket) when is_map(payload) do
+    Mixchamb.Chambers.Server.minigame_submit(
+      socket.assigns.chamber_slug,
+      socket.assigns.current_user.id,
+      Map.drop(payload, ["_target"])
+    )
+
+    {:noreply, socket}
+  end
+
+  # Gartic Phone: host advances the album.
+  def handle_event("minigame_album_next", _params, socket) do
+    Mixchamb.Chambers.Server.minigame_album_next(
+      socket.assigns.chamber_slug,
+      socket.assigns.current_user.id
+    )
+
+    {:noreply, socket}
+  end
+
   # Drawing relay. The GenServer enforces drawer-only / mid-turn;
   # these high-frequency events never reload the per-user view.
   def handle_event("minigame_stroke", payload, socket) when is_map(payload) do

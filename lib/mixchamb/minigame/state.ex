@@ -37,7 +37,8 @@ defmodule Mixchamb.MiniGame.State do
           used_words: [String.t()],
           drawer_away: boolean(),
           revealed: non_neg_integer(),
-          reveal_order: [non_neg_integer()]
+          reveal_order: [non_neg_integer()],
+          game_state: map()
         }
 
   defstruct game: nil,
@@ -65,7 +66,11 @@ defmodule Mixchamb.MiniGame.State do
             # revealed so far, and the (shuffled) order positions are
             # revealed in. Both reset each turn.
             revealed: 0,
-            reveal_order: []
+            reveal_order: [],
+            # Generic per-game state bag for games beyond Pictionary
+            # (Pictionary predates this and uses the dedicated fields
+            # above; Gartic Phone keeps its books/step/etc. here).
+            game_state: %{}
 
   # Completed strokes kept for the late-joiner snapshot. A turn is
   # ~80s of one person drawing, so this is generous; the cap just
@@ -160,7 +165,8 @@ defmodule Mixchamb.MiniGame.State do
         used_words: [],
         drawer_away: false,
         revealed: 0,
-        reveal_order: []
+        reveal_order: [],
+        game_state: %{}
     }
   end
 

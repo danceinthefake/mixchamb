@@ -26,6 +26,10 @@ const props = defineProps<{
   frozen: boolean // :turn_reveal — canvas locked
   turnToken: number
   current_user_id: string
+  // Local mode (Gartic Phone): draw on a private surface — no live
+  // relay over PubSub; the parent grabs the strokes on submit via the
+  // exposed getStrokes(). Default false = Pictionary's shared canvas.
+  local?: boolean
 }>()
 
 const live = useLiveVue()
@@ -99,10 +103,15 @@ function cloneStroke(s: Stroke): Stroke {
   }
 }
 
+// Expose the current strokes so a local-mode parent (Gartic) can grab
+// them on submit.
+defineExpose({ getStrokes: () => completed.map(cloneStroke) })
+
 // --- Live relay from the server (other clients' strokes). The drawer
-// skips its own echo — it already rendered locally. ---
+// skips its own echo — it already rendered locally. Skipped entirely
+// in local mode (private surface, no relay). ---
 live.handleEvent("minigame_relay", ({ kind, payload }: { kind: string; payload: any }) => {
-  if (payload?.from === props.current_user_id) return
+  if (props.local || payload?.from === props.current_user_id) return
 
   switch (kind) {
     case "stroke": {
@@ -228,7 +237,7 @@ function onPointerMove(e: PointerEvent) {
 }
 
 function flushBatch() {
-  if (!curStroke) return
+  if (props.local || !curStroke) return
   const fresh = curStroke.points.slice(sentUpTo)
   if (fresh.length === 0) return
   live.pushEvent("minigame_stroke", {
@@ -246,12 +255,15 @@ function onPointerUp() {
   drawing = false
   flushBatch()
   // Authoritative full stroke for the snapshot buffer + self-heal.
-  live.pushEvent("minigame_stroke_end", {
-    seq: curSeq,
-    points: curStroke.points,
-    color: curStroke.color,
-    width: curStroke.width,
-  })
+  // Local mode keeps the stroke private (no relay) — submitted later.
+  if (!props.local) {
+    live.pushEvent("minigame_stroke_end", {
+      seq: curSeq,
+      points: curStroke.points,
+      color: curStroke.color,
+      width: curStroke.width,
+    })
+  }
   completed.push({ points: curStroke.points, color: curStroke.color, width: curStroke.width })
   curStroke = null
   dirty = true
@@ -261,14 +273,14 @@ function undo() {
   if (!props.isDrawer) return
   completed.pop()
   dirty = true
-  live.pushEvent("minigame_undo", {})
+  if (!props.local) live.pushEvent("minigame_undo", {})
 }
 function clearCanvas() {
   if (!props.isDrawer) return
   completed = []
   inProgress.clear()
   dirty = true
-  live.pushEvent("minigame_clear", {})
+  if (!props.local) live.pushEvent("minigame_clear", {})
 }
 
 // Drawer keyboard shortcuts: 1-8 pick a colour, [ / ] shrink/grow the
