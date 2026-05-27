@@ -30,14 +30,17 @@ const secondaryBtn =
 
 <template>
   <div class="flex items-center gap-2">
-    <template v-if="phase === 'lobby'">
-      <span v-if="!canStart" class="text-[11px] text-muted-foreground italic">
-        Need 2+ players
-      </span>
-      <button type="button" :disabled="!canStart" @click="$emit('start')" :class="primaryBtn">
-        Start game
-      </button>
-    </template>
+    <!-- Start is gated <2 players; the lobby column explains why, so
+         no duplicate hint here. -->
+    <button
+      v-if="phase === 'lobby'"
+      type="button"
+      :disabled="!canStart"
+      @click="$emit('start')"
+      :class="primaryBtn"
+    >
+      Start game
+    </button>
 
     <button v-else-if="phase === 'turn'" type="button" @click="$emit('skip')" :class="secondaryBtn">
       Skip turn

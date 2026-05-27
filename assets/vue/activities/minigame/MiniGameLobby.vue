@@ -1,17 +1,16 @@
 <script setup lang="ts">
 // Lobby (features/mini-game.md §1): host picks a game from the
-// registry, sets per-game config, and sees the roster. Everyone
-// present at Start becomes a player. Non-hosts see a read-only view
-// and a "waiting for the host" line.
+// registry and sets per-game config. The roster lives in the
+// chamber's floating presence panel ("Here"), so the lobby doesn't
+// duplicate it — it just keeps the "need 2 players" / "waiting" hint.
 
-import type { MiniGameConfig, Participant } from "./MiniGameBoard.vue"
+import type { MiniGameConfig } from "./MiniGameBoard.vue"
 
 const props = defineProps<{
   game: string
   config: MiniGameConfig
-  participants: Participant[]
+  player_count: number
   is_host: boolean
-  nameOf: (id: string | null) => string
 }>()
 
 const emit = defineEmits<{
@@ -45,102 +44,77 @@ function setConfig(key: string, value: string | number) {
 </script>
 
 <template>
-  <div class="grid sm:grid-cols-[1fr_260px] gap-4 items-start">
-    <!-- Game picker -->
-    <div class="space-y-3">
-      <p class="text-xs uppercase tracking-wider text-muted-foreground font-display">
-        Choose a game
-      </p>
-      <div class="grid gap-2">
-        <button
-          v-for="g in GAMES"
-          :key="g.key"
-          type="button"
-          :disabled="!is_host"
-          :aria-pressed="game === g.key"
-          @click="emit('select-game', g.key)"
-          class="text-left rounded-xl border p-4 transition-all"
-          :class="[
-            game === g.key
-              ? 'border-accent-minigame/60 bg-accent-minigame/10 ring-1 ring-accent-minigame/40'
-              : 'bg-card hover:bg-accent border-border',
-            is_host ? 'cursor-pointer' : 'cursor-default',
-          ]"
-        >
-          <div class="font-semibold font-display">{{ g.label }}</div>
-          <div class="text-sm text-muted-foreground">{{ g.blurb }}</div>
-        </button>
-      </div>
+  <div class="max-w-xl mx-auto space-y-3">
+    <p class="text-xs uppercase tracking-wider text-muted-foreground font-display">Choose a game</p>
 
-      <!-- Per-game config (Pictionary) -->
-      <div v-if="game === 'pictionary'" class="rounded-xl border bg-card/60 p-4 space-y-3">
-        <p class="text-xs uppercase tracking-wider text-muted-foreground font-display">Setup</p>
-
-        <label class="flex items-center justify-between gap-3 text-sm">
-          <span class="text-muted-foreground">Word pack</span>
-          <select
-            :value="config.word_pack"
-            :disabled="!is_host"
-            @change="(e) => setConfig('word_pack', (e.target as HTMLSelectElement).value)"
-            class="px-2 py-1 text-sm rounded-md border bg-card disabled:opacity-60 cursor-pointer"
-          >
-            <option v-for="p in WORD_PACKS" :key="p.id" :value="p.id">{{ p.label }}</option>
-          </select>
-        </label>
-
-        <label class="flex items-center justify-between gap-3 text-sm">
-          <span class="text-muted-foreground">Turn timer</span>
-          <select
-            :value="config.turn_seconds"
-            :disabled="!is_host"
-            @change="
-              (e) => setConfig('turn_seconds', Number((e.target as HTMLSelectElement).value))
-            "
-            class="px-2 py-1 text-sm rounded-md border bg-card disabled:opacity-60 cursor-pointer"
-          >
-            <option v-for="s in TURN_SECONDS" :key="s" :value="s">{{ s }}s</option>
-          </select>
-        </label>
-
-        <label class="flex items-center justify-between gap-3 text-sm">
-          <span class="text-muted-foreground">Rounds</span>
-          <select
-            :value="config.round_count"
-            :disabled="!is_host"
-            @change="(e) => setConfig('round_count', Number((e.target as HTMLSelectElement).value))"
-            class="px-2 py-1 text-sm rounded-md border bg-card disabled:opacity-60 cursor-pointer"
-          >
-            <option v-for="r in ROUND_COUNTS" :key="r" :value="r">{{ r }}</option>
-          </select>
-        </label>
-      </div>
-    </div>
-
-    <!-- Roster -->
-    <div class="rounded-xl border bg-card/60 p-4 space-y-2">
-      <div class="flex items-center justify-between">
-        <p class="text-xs uppercase tracking-wider text-muted-foreground font-display">Players</p>
-        <span class="text-xs text-muted-foreground tabular-nums">{{ participants.length }}</span>
-      </div>
-      <ul class="space-y-1">
-        <li
-          v-for="p in participants"
-          :key="p.user_id"
-          class="flex items-center gap-2 text-sm py-0.5"
-        >
-          <span class="size-1.5 rounded-full bg-accent-minigame shrink-0"></span>
-          <span class="truncate">{{ p.alias || p.display_name }}</span>
-        </li>
-      </ul>
-      <p
-        v-if="participants.length < 2"
-        class="text-[11px] text-muted-foreground italic pt-1 border-t border-border/60"
+    <div class="grid gap-2">
+      <button
+        v-for="g in GAMES"
+        :key="g.key"
+        type="button"
+        :disabled="!is_host"
+        :aria-pressed="game === g.key"
+        @click="emit('select-game', g.key)"
+        class="text-left rounded-xl border p-4 transition-all"
+        :class="[
+          game === g.key
+            ? 'border-accent-minigame/60 bg-accent-minigame/10 ring-1 ring-accent-minigame/40'
+            : 'bg-card hover:bg-accent border-border',
+          is_host ? 'cursor-pointer' : 'cursor-default',
+        ]"
       >
-        Need at least 2 players to start. Share the chamber link to invite more.
-      </p>
-      <p v-else-if="!is_host" class="text-[11px] text-muted-foreground italic pt-1">
-        Waiting for the host to start the game.
-      </p>
+        <div class="font-semibold font-display">{{ g.label }}</div>
+        <div class="text-sm text-muted-foreground">{{ g.blurb }}</div>
+      </button>
     </div>
+
+    <!-- Per-game config (Pictionary) -->
+    <div v-if="game === 'pictionary'" class="rounded-xl border bg-card/60 p-4 space-y-3">
+      <p class="text-xs uppercase tracking-wider text-muted-foreground font-display">Setup</p>
+
+      <label class="flex items-center justify-between gap-3 text-sm">
+        <span class="text-muted-foreground">Word pack</span>
+        <select
+          :value="config.word_pack"
+          :disabled="!is_host"
+          @change="(e) => setConfig('word_pack', (e.target as HTMLSelectElement).value)"
+          class="px-2 py-1 text-sm rounded-md border bg-card disabled:opacity-60 cursor-pointer"
+        >
+          <option v-for="p in WORD_PACKS" :key="p.id" :value="p.id">{{ p.label }}</option>
+        </select>
+      </label>
+
+      <label class="flex items-center justify-between gap-3 text-sm">
+        <span class="text-muted-foreground">Turn timer</span>
+        <select
+          :value="config.turn_seconds"
+          :disabled="!is_host"
+          @change="(e) => setConfig('turn_seconds', Number((e.target as HTMLSelectElement).value))"
+          class="px-2 py-1 text-sm rounded-md border bg-card disabled:opacity-60 cursor-pointer"
+        >
+          <option v-for="s in TURN_SECONDS" :key="s" :value="s">{{ s }}s</option>
+        </select>
+      </label>
+
+      <label class="flex items-center justify-between gap-3 text-sm">
+        <span class="text-muted-foreground">Rounds</span>
+        <select
+          :value="config.round_count"
+          :disabled="!is_host"
+          @change="(e) => setConfig('round_count', Number((e.target as HTMLSelectElement).value))"
+          class="px-2 py-1 text-sm rounded-md border bg-card disabled:opacity-60 cursor-pointer"
+        >
+          <option v-for="r in ROUND_COUNTS" :key="r" :value="r">{{ r }}</option>
+        </select>
+      </label>
+    </div>
+
+    <!-- Start gate / waiting hint -->
+    <p v-if="player_count < 2" class="text-xs text-muted-foreground italic text-center pt-1">
+      Need at least 2 players to start. Share the chamber link to invite more.
+    </p>
+    <p v-else-if="!is_host" class="text-xs text-muted-foreground italic text-center pt-1">
+      Waiting for the host to start the game.
+    </p>
   </div>
 </template>

@@ -94,7 +94,7 @@ const drawerName = computed(() => nameOf.value(state.value?.drawer_id ?? null))
 <template>
   <section
     v-if="state"
-    class="minigame-scope max-w-5xl mx-auto w-full px-3 sm:px-4 lg:pr-64 py-4 space-y-4"
+    class="minigame-scope w-full max-w-3xl mx-auto space-y-4"
     aria-label="Mini-game board"
   >
     <!-- Header: game name + round/turn status -->
@@ -126,26 +126,27 @@ const drawerName = computed(() => nameOf.value(state.value?.drawer_id ?? null))
       v-if="phase === 'lobby'"
       :game="state.game"
       :config="state.config"
-      :participants="participants"
+      :player_count="participants.length"
       :is_host="is_host"
-      :name-of="nameOf"
       @select-game="(g) => live.pushEvent('minigame_select_game', { game: g })"
       @set-config="(c) => live.pushEvent('minigame_set_config', { config: c })"
     />
 
-    <!-- Active game: Pictionary stage + live scoreboard -->
-    <div v-else-if="inGame" class="grid lg:grid-cols-[1fr_240px] gap-4 items-start">
-      <PictionaryStage
-        :state="state"
-        :current_user_id="current_user_id"
-        :drawer-name="drawerName"
-        :name-of="nameOf"
-      />
+    <!-- Active game: scoreboard strip on top, Pictionary stage below.
+         Single centered column so nothing lands under the floating
+         presence panel. -->
+    <div v-else-if="inGame" class="space-y-4">
       <MiniGameScoreboard
         :scores="state.scores"
         :players="state.players"
         :drawer_id="state.drawer_id"
         :guessed="state.guessed"
+        :name-of="nameOf"
+      />
+      <PictionaryStage
+        :state="state"
+        :current_user_id="current_user_id"
+        :drawer-name="drawerName"
         :name-of="nameOf"
       />
     </div>
