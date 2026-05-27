@@ -80,6 +80,7 @@
      Tailwind picks up bg-accent-poker / text-accent-poker /
      bg-success / text-success etc. at build time. */
   --color-accent-poker: var(--accent-poker);
+  --color-accent-minigame: var(--accent-minigame);
   --color-success: var(--success);
 
   /* Brand typography. Display = Space Grotesk (wordmark + headings).
@@ -153,6 +154,10 @@
      future activities pick their own token. See UI.md
      "Activity palette" sub-section. */
   --accent-poker: oklch(0.78 0.13 215);
+  /* Mini-game: violet — sits between the gradient's pink start and
+     cyan poker so the activity chrome reads as its own playful
+     identity. */
+  --accent-minigame: oklch(0.62 0.2 310);
 
   /* Success/confirmation accent — the green end of the brand
      gradient (#b5e651). Used for completed states, positive
@@ -215,6 +220,7 @@
      gradient hues as light mode, slightly tuned for legibility
      against the deep mixchamb dark background. */
   --accent-poker: oklch(0.80 0.13 215);
+  --accent-minigame: oklch(0.7 0.2 310);
   --success: oklch(0.88 0.20 125);
 }
 

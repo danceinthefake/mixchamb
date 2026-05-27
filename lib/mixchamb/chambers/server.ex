@@ -17,7 +17,14 @@ defmodule Mixchamb.Chambers.Server do
   """
   use GenServer
 
+  alias Mixchamb.MiniGame.State
+  alias Mixchamb.MiniGame.Registry, as: MiniGameRegistry
+
   @max_recent 200
+  # How long a revealed turn lingers before auto-advancing to the
+  # next drawer (spec §2 "auto-advances after a short delay"). The
+  # host can advance early via "Next".
+  @minigame_reveal_advance_ms 6_000
   # Grace window during which the chamber must see a non-creator
   # join. If `activated_at` is still NULL when this elapses, the
   # GenServer deletes the chamber row and shuts itself down.
@@ -296,6 +303,92 @@ defmodule Mixchamb.Chambers.Server do
   """
   def poker_state(slug), do: GenServer.call(via(slug), :poker_state)
 
+  # --- Mini-game API --------------------------------------------
+  # All casts are silent no-ops when the chamber isn't in "minigame"
+  # mode (minigame_state is nil) — same fall-through shape as poker.
+  # Host-gated actions (start / play-again / end / skip / next /
+  # game-pick / config) check `state.hosts` inside the handler.
+  # Low-frequency game events broadcast `{:minigame, :changed}` so
+  # every LV reloads its per-user view; high-frequency drawing
+  # strokes take the separate relay path (`{:minigame_relay, …}`),
+  # which never touches the reloadable view (spec §3).
+
+  @doc "Lobby: host picks a game from the registry."
+  def minigame_select_game(slug, user_id, game)
+      when is_binary(user_id) and is_binary(game),
+      do: GenServer.cast(via(slug), {:minigame_select_game, user_id, game})
+
+  @doc "Lobby: host edits per-game config (string-keyed partial map)."
+  def minigame_set_config(slug, user_id, partial)
+      when is_binary(user_id) and is_map(partial),
+      do: GenServer.cast(via(slug), {:minigame_set_config, user_id, partial})
+
+  @doc "Host starts the game from the current roster `player_ids` (≥2)."
+  def minigame_start(slug, user_id, player_ids)
+      when is_binary(user_id) and is_list(player_ids),
+      do: GenServer.cast(via(slug), {:minigame_start, user_id, player_ids})
+
+  @doc "Host resets to a fresh lobby (Play-again / End)."
+  def minigame_to_lobby(slug, user_id) when is_binary(user_id),
+    do: GenServer.cast(via(slug), {:minigame_to_lobby, user_id})
+
+  @doc "Drawer picks one of their three candidate words; the clock starts."
+  def minigame_choose_word(slug, user_id, word)
+      when is_binary(user_id) and is_binary(word),
+      do: GenServer.cast(via(slug), {:minigame_choose_word, user_id, word})
+
+  @doc "A guesser submits a guess. `alias_label` is shown in the feed."
+  def minigame_guess(slug, user_id, alias_label, text)
+      when is_binary(user_id) and is_binary(alias_label) and is_binary(text),
+      do: GenServer.cast(via(slug), {:minigame_guess, user_id, alias_label, text})
+
+  @doc "Host skips the current turn straight to reveal."
+  def minigame_skip(slug, user_id) when is_binary(user_id),
+    do: GenServer.cast(via(slug), {:minigame_skip, user_id})
+
+  @doc "Host advances from a reveal to the next turn (or game over)."
+  def minigame_next(slug, user_id) when is_binary(user_id),
+    do: GenServer.cast(via(slug), {:minigame_next, user_id})
+
+  @doc """
+  Relay a live in-progress stroke batch from the drawer to everyone
+  else. Not buffered — only the visual stream. `payload` carries
+  `from` (drawer id) so clients skip echoing it back to the drawer.
+  """
+  def minigame_stroke(slug, user_id, payload)
+      when is_binary(user_id) and is_map(payload),
+      do: GenServer.cast(via(slug), {:minigame_stroke, user_id, payload})
+
+  @doc """
+  Finalize a stroke: relay the authoritative full stroke (self-heals
+  any dropped batches) and buffer it for late-joiner snapshots.
+  """
+  def minigame_stroke_end(slug, user_id, stroke)
+      when is_binary(user_id) and is_map(stroke),
+      do: GenServer.cast(via(slug), {:minigame_stroke_end, user_id, stroke})
+
+  @doc "Drawer undoes their last completed stroke."
+  def minigame_undo(slug, user_id) when is_binary(user_id),
+    do: GenServer.cast(via(slug), {:minigame_undo, user_id})
+
+  @doc "Drawer clears the canvas."
+  def minigame_clear(slug, user_id) when is_binary(user_id),
+    do: GenServer.cast(via(slug), {:minigame_clear, user_id})
+
+  @doc """
+  Reconcile the rotation with the live presence list — drives the
+  drawer-left / player-left edge cases (spec §7). Cast by the host's
+  LV on every presence change while in minigame mode.
+  """
+  def minigame_presence_sync(slug, present_ids) when is_list(present_ids),
+    do: GenServer.cast(via(slug), {:minigame_presence_sync, present_ids})
+
+  @doc """
+  Synchronously read the current MiniGame.State (or `nil` outside
+  "minigame" activity). Used by LV mount + late joiners.
+  """
+  def minigame_state(slug), do: GenServer.call(via(slug), :minigame_state)
+
   @doc """
   Swap the chamber's active activity. Creates a new PokerSession
   on switch-to-poker; clears it on switch-away. Broadcasts
@@ -419,6 +512,15 @@ defmodule Mixchamb.Chambers.Server do
         id -> MapSet.new([id])
       end
 
+    # Mini-game is fully ephemeral like poker: allocate a fresh
+    # lobby when the chamber is running "minigame", nil otherwise.
+    # A GenServer restart drops any in-progress game back to the
+    # lobby — acceptable for transient fun (spec §6).
+    minigame_state =
+      if activity == "minigame" do
+        Mixchamb.MiniGame.State.new()
+      end
+
     state =
       Map.merge(state, %{
         events: [],
@@ -431,7 +533,8 @@ defmodule Mixchamb.Chambers.Server do
         creator_user_id: creator_user_id,
         hosts: hosts,
         poker_session: poker_session,
-        retro_state: retro_state
+        retro_state: retro_state,
+        minigame_state: minigame_state
       })
 
     {:ok, state}
@@ -1157,10 +1260,180 @@ defmodule Mixchamb.Chambers.Server do
     end
   end
 
+  # --- Mini-game cast handlers -----------------------------------
+  # Shape mirrors poker/retro: pattern-match a non-nil
+  # `minigame_state` (chamber is in minigame mode), delegate the
+  # transition to the framework / game module, broadcast + reschedule
+  # timers on success, and silently no-op when the result is an
+  # `{:error, _}` or the chamber isn't in minigame mode.
+
+  def handle_cast({:minigame_select_game, user_id, game}, %{minigame_state: mg} = state)
+      when not is_nil(mg) do
+    if host?(state, user_id) do
+      case State.select_game(mg, game) do
+        {:ok, new_mg} -> commit_minigame(state, mg, new_mg, [:changed])
+        {:error, _} -> {:noreply, state}
+      end
+    else
+      {:noreply, state}
+    end
+  end
+
+  def handle_cast({:minigame_set_config, user_id, partial}, %{minigame_state: mg} = state)
+      when not is_nil(mg) do
+    if host?(state, user_id) do
+      case State.set_config(mg, partial) do
+        {:ok, new_mg} -> commit_minigame(state, mg, new_mg, [:changed])
+        {:error, _} -> {:noreply, state}
+      end
+    else
+      {:noreply, state}
+    end
+  end
+
+  def handle_cast({:minigame_start, user_id, player_ids}, %{minigame_state: mg} = state)
+      when not is_nil(mg) do
+    if host?(state, user_id) do
+      case State.start(mg, player_ids) do
+        {:ok, new_mg} -> commit_minigame(state, mg, new_mg, [:changed])
+        {:error, _} -> {:noreply, state}
+      end
+    else
+      {:noreply, state}
+    end
+  end
+
+  def handle_cast({:minigame_to_lobby, user_id}, %{minigame_state: mg} = state)
+      when not is_nil(mg) do
+    if host?(state, user_id) do
+      commit_minigame(state, mg, State.to_lobby(mg), [:changed])
+    else
+      {:noreply, state}
+    end
+  end
+
+  def handle_cast({:minigame_choose_word, user_id, word}, %{minigame_state: mg} = state)
+      when not is_nil(mg) do
+    dispatch_action(state, mg, {:choose_word, word}, %{user_id: user_id})
+  end
+
+  def handle_cast({:minigame_guess, user_id, alias_label, text}, %{minigame_state: mg} = state)
+      when not is_nil(mg) do
+    dispatch_action(state, mg, {:guess, text}, %{user_id: user_id, alias: alias_label})
+  end
+
+  def handle_cast({:minigame_skip, user_id}, %{minigame_state: mg} = state)
+      when not is_nil(mg) do
+    if host?(state, user_id) do
+      dispatch_action(state, mg, :skip, %{user_id: user_id})
+    else
+      {:noreply, state}
+    end
+  end
+
+  def handle_cast({:minigame_next, user_id}, %{minigame_state: %State{phase: phase} = mg} = state)
+      when not is_nil(mg) and phase == :turn_reveal do
+    if host?(state, user_id) do
+      commit_minigame(state, mg, MiniGameRegistry.module(mg.game).advance(mg), [:changed])
+    else
+      {:noreply, state}
+    end
+  end
+
+  # --- Drawing stroke relay (spec §3) ---
+  # Only the current drawer may emit, and only mid-turn. The live
+  # batch is broadcast straight through (not buffered); stroke_end /
+  # undo / clear also mutate the late-joiner snapshot buffer.
+
+  def handle_cast({:minigame_stroke, user_id, payload}, %{minigame_state: mg} = state)
+      when not is_nil(mg) do
+    if drawing?(mg, user_id) do
+      broadcast_minigame(state.slug, {:minigame_relay, :stroke, Map.put(payload, "from", user_id)})
+    end
+
+    {:noreply, state}
+  end
+
+  def handle_cast({:minigame_stroke_end, user_id, stroke}, %{minigame_state: mg} = state)
+      when not is_nil(mg) do
+    if drawing?(mg, user_id) do
+      new_mg = State.push_stroke(mg, stroke)
+
+      broadcast_minigame(
+        state.slug,
+        {:minigame_relay, :stroke_end, Map.put(stroke, "from", user_id)}
+      )
+
+      {:noreply, %{state | minigame_state: new_mg}}
+    else
+      {:noreply, state}
+    end
+  end
+
+  def handle_cast({:minigame_undo, user_id}, %{minigame_state: mg} = state)
+      when not is_nil(mg) do
+    if drawing?(mg, user_id) do
+      broadcast_minigame(state.slug, {:minigame_relay, :undo, %{"from" => user_id}})
+      {:noreply, %{state | minigame_state: State.pop_stroke(mg)}}
+    else
+      {:noreply, state}
+    end
+  end
+
+  def handle_cast({:minigame_clear, user_id}, %{minigame_state: mg} = state)
+      when not is_nil(mg) do
+    if drawing?(mg, user_id) do
+      broadcast_minigame(state.slug, {:minigame_relay, :clear, %{"from" => user_id}})
+      {:noreply, %{state | minigame_state: State.clear_strokes(mg)}}
+    else
+      {:noreply, state}
+    end
+  end
+
+  def handle_cast({:minigame_presence_sync, present}, %{minigame_state: mg} = state)
+      when not is_nil(mg) do
+    case State.sync_presence(mg, present) do
+      {:drawer_left, pruned} ->
+        # Drawer vanished mid-turn → end the turn (reveal), then the
+        # normal advance path rotates past them next.
+        commit_minigame(state, mg, MiniGameRegistry.module(mg.game).advance(pruned), [:changed])
+
+      {:roster_changed, pruned} ->
+        commit_minigame(state, mg, pruned, [:changed])
+
+      :noop ->
+        {:noreply, state}
+    end
+  end
+
+  # Mini-game cast against a non-minigame chamber: silent no-op.
+  def handle_cast({:minigame_presence_sync, _}, state), do: {:noreply, state}
+  def handle_cast({:minigame_select_game, _, _}, state), do: {:noreply, state}
+  def handle_cast({:minigame_set_config, _, _}, state), do: {:noreply, state}
+  def handle_cast({:minigame_start, _, _}, state), do: {:noreply, state}
+  def handle_cast({:minigame_to_lobby, _}, state), do: {:noreply, state}
+  def handle_cast({:minigame_choose_word, _, _}, state), do: {:noreply, state}
+  def handle_cast({:minigame_guess, _, _, _}, state), do: {:noreply, state}
+  def handle_cast({:minigame_skip, _}, state), do: {:noreply, state}
+  def handle_cast({:minigame_next, _}, state), do: {:noreply, state}
+  def handle_cast({:minigame_stroke, _, _}, state), do: {:noreply, state}
+  def handle_cast({:minigame_stroke_end, _, _}, state), do: {:noreply, state}
+  def handle_cast({:minigame_undo, _}, state), do: {:noreply, state}
+  def handle_cast({:minigame_clear, _}, state), do: {:noreply, state}
+
   def handle_cast({:set_activity, activity}, state) do
     poker_session =
       case activity do
         "poker" -> state.poker_session || Mixchamb.Chambers.PokerSession.new()
+        _ -> nil
+      end
+
+    # Mini-game state, like poker, is fully ephemeral and reset on
+    # every switch: flipping to "minigame" allocates a fresh lobby,
+    # switching away clears it (drawings + scores gone, spec §7).
+    minigame_state =
+      case activity do
+        "minigame" -> Mixchamb.MiniGame.State.new()
         _ -> nil
       end
 
@@ -1191,7 +1464,13 @@ defmodule Mixchamb.Chambers.Server do
     )
 
     {:noreply,
-     %{state | activity: activity, poker_session: poker_session, retro_state: retro_state}}
+     %{
+       state
+       | activity: activity,
+         poker_session: poker_session,
+         retro_state: retro_state,
+         minigame_state: minigame_state
+     }}
   end
 
   @impl true
@@ -1221,6 +1500,10 @@ defmodule Mixchamb.Chambers.Server do
 
   def handle_call(:retro_state, _from, state) do
     {:reply, state.retro_state, state}
+  end
+
+  def handle_call(:minigame_state, _from, state) do
+    {:reply, state.minigame_state, state}
   end
 
   def handle_call(:hosts, _from, state) do
@@ -1269,6 +1552,29 @@ defmodule Mixchamb.Chambers.Server do
 
     {:noreply, state}
   end
+
+  # Per-turn timer expiry. Guarded by `turn_token` + `:turn` phase so
+  # a stale timer (the turn already ended via all-guessed or a host
+  # skip) is ignored.
+  def handle_info(
+        {:minigame_expire, token},
+        %{minigame_state: %State{turn_token: token, phase: :turn, word: word} = mg} = state
+      )
+      when not is_nil(word) do
+    commit_minigame(state, mg, MiniGameRegistry.module(mg.game).advance(mg), [:changed])
+  end
+
+  def handle_info({:minigame_expire, _token}, state), do: {:noreply, state}
+
+  # Auto-advance a revealed turn to the next drawer. Same token guard.
+  def handle_info(
+        {:minigame_reveal_advance, token},
+        %{minigame_state: %State{turn_token: token, phase: :turn_reveal} = mg} = state
+      ) do
+    commit_minigame(state, mg, MiniGameRegistry.module(mg.game).advance(mg), [:changed])
+  end
+
+  def handle_info({:minigame_reveal_advance, _token}, state), do: {:noreply, state}
 
   def handle_info(:bump_activity, %{chamber_id: chamber_id, dirty?: dirty?} = state) do
     # If notes came in this minute, flush a single DB write to
@@ -1337,6 +1643,76 @@ defmodule Mixchamb.Chambers.Server do
       Mixchamb.Chambers.topic(slug),
       message
     )
+  end
+
+  # --- Mini-game helpers -----------------------------------------
+
+  defp broadcast_minigame(slug, message) do
+    Phoenix.PubSub.broadcast(Mixchamb.PubSub, Mixchamb.Chambers.topic(slug), message)
+  end
+
+  defp host?(state, user_id), do: MapSet.member?(state.hosts, user_id)
+
+  # The drawer may emit strokes only while actively drawing (their
+  # turn, word chosen). Guards the relay against non-drawers and
+  # stray strokes outside a turn.
+  defp drawing?(%State{phase: :turn, drawer_id: drawer_id, word: word}, user_id)
+       when not is_nil(word),
+       do: user_id == drawer_id
+
+  defp drawing?(_mg, _user_id), do: false
+
+  # Run a game-module action, then broadcast its effects + reschedule
+  # timers. `{:error, _}` leaves state untouched.
+  defp dispatch_action(state, mg, action, ctx) do
+    case MiniGameRegistry.module(mg.game).handle_action(mg, action, ctx) do
+      {:ok, new_mg, effects} -> commit_minigame(state, mg, new_mg, effects)
+      {:error, _} -> {:noreply, state}
+    end
+  end
+
+  # Apply a low-frequency state transition: fan out the effects
+  # (`:changed` → per-user view reload; `{:feed, _}` → transient
+  # guess-feed line) and (re)schedule the per-turn timers based on
+  # the old→new transition.
+  defp commit_minigame(state, old_mg, new_mg, effects) do
+    Enum.each(effects, fn
+      :changed -> broadcast_minigame(state.slug, {:minigame, :changed})
+      {:feed, payload} -> broadcast_minigame(state.slug, {:minigame_feed, payload})
+    end)
+
+    schedule_minigame_timers(old_mg, new_mg)
+
+    {:noreply, %{state | minigame_state: new_mg}}
+  end
+
+  # Clock starts when the drawer picks a word (deadline nil→set);
+  # a turn that enters reveal schedules its auto-advance. Both are
+  # token-guarded on fire, so over-scheduling is harmless.
+  defp schedule_minigame_timers(old_mg, %State{} = new_mg) do
+    if entering_clock?(old_mg, new_mg) do
+      delay = max(0, new_mg.turn_deadline - System.system_time(:millisecond))
+      Process.send_after(self(), {:minigame_expire, new_mg.turn_token}, delay)
+    end
+
+    if entering_reveal?(old_mg, new_mg) do
+      Process.send_after(
+        self(),
+        {:minigame_reveal_advance, new_mg.turn_token},
+        @minigame_reveal_advance_ms
+      )
+    end
+
+    :ok
+  end
+
+  defp entering_clock?(old, new) do
+    new.phase == :turn and not is_nil(new.turn_deadline) and
+      (is_nil(old) or is_nil(old.turn_deadline))
+  end
+
+  defp entering_reveal?(old, new) do
+    new.phase == :turn_reveal and (is_nil(old) or old.phase != :turn_reveal)
   end
 
   # "Live" = non-nil EphemeralState pointing at a session that

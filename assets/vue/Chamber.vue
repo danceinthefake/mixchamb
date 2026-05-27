@@ -31,6 +31,7 @@ import SulingPad from "@/instruments/SulingPad.vue"
 import KendangPad from "@/instruments/KendangPad.vue"
 import PokerBoard from "@/activities/poker/PokerBoard.vue"
 import RetroBoard from "@/activities/retro/RetroBoard.vue"
+import MiniGameBoard from "@/activities/minigame/MiniGameBoard.vue"
 import {
   ensureStarted,
   play,
@@ -57,7 +58,7 @@ const props = defineProps<{
   // (tap-to-enter audio gate, FX bus, master volume). Defaults
   // to "music" so legacy chambers without the column behave
   // identically to v3.
-  activity: "music" | "poker" | "retro"
+  activity: "music" | "poker" | "retro" | "minigame"
   // How many people are presently in the chamber. Used by music
   // mode to render the "Quiet here — start a chord…" hint when
   // the user is alone, mirroring the poker board's
@@ -96,6 +97,13 @@ const props = defineProps<{
   // permalink the moment they archive without hunting through
   // the past-retros disclosure.
   retro_last_archived?: { id: string; title: string | null; archived_at: string | null } | null
+  // Mini-game-specific. `minigame_state` is the per-user view from
+  // the chosen game's `view/2` (drawer sees the secret word,
+  // guessers see blanks) — `null` outside "minigame" activity.
+  // `minigame_participants` is the live roster (same shape poker
+  // uses) for rendering player names + the lobby.
+  minigame_state?: import("./activities/minigame/MiniGameBoard.vue").MiniGameView | null
+  minigame_participants?: import("./activities/minigame/MiniGameBoard.vue").Participant[]
   current_user_id?: string
   current_user_alias?: string
   is_host?: boolean
@@ -572,6 +580,14 @@ live.handleEvent("play_remote_note", async (payload: RemoteNote) => {
     :last_archived="props.retro_last_archived ?? null"
     :current_user_id="props.current_user_id ?? ''"
     :current_user_alias="props.current_user_alias ?? ''"
+    :is_host="props.is_host ?? false"
+  />
+
+  <MiniGameBoard
+    v-else-if="props.activity === 'minigame'"
+    :state="props.minigame_state ?? null"
+    :participants="props.minigame_participants ?? []"
+    :current_user_id="props.current_user_id ?? ''"
     :is_host="props.is_host ?? false"
   />
 </template>

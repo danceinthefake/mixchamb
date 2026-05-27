@@ -9,8 +9,8 @@
 ![Vue coverage](https://raw.githubusercontent.com/danceinthefake/mixchamb/badges/badges/vue-coverage.svg)
 
 Real-time collaborative chambers for small teams — pick an
-activity (music jam, planning poker, retrospective), share the
-link, work together. Built on **Vue + Elixir + Phoenix +
+activity (music jam, planning poker, retrospective, mini-game),
+share the link, work together. Built on **Vue + Elixir + Phoenix +
 LiveView**.
 
 > WebSocket fan-out, hot-restartable chambers, cross-node
@@ -20,11 +20,11 @@ LiveView**.
 
 ## What's in the box
 
-### Three activities, one chamber shell
+### Four activities, one chamber shell
 
 Each chamber runs a single activity. The chamber itself — the
 slug, the URL, the per-slug GenServer, the Presence panel — is
-shared across all three; the activity decides what happens
+shared across all of them; the activity decides what happens
 *inside* it.
 
 - **Music jam** — pick from seven client-side synthesised
@@ -39,6 +39,12 @@ shared across all three; the activity decides what happens
   optional voting → discuss + capture action items → archive.
   Archived retros live permanently at `/archives/retros/:id`,
   decoupled from the (ephemeral) chamber that hosted them.
+- **Mini-game** — a registry of small synchronous games behind one
+  lobby / roster / scoreboard shell. v1 ships **Pictionary**: one
+  drawer streams strokes on a shared canvas (normalized coords,
+  ~50ms batching over the chamber's PubSub), everyone else races a
+  timer to guess; time-scaled scoring, drawer rotation, fully
+  ephemeral. A second game is a module + Vue stage + registry entry.
 
 ### Music chambers + audio character
 
@@ -74,8 +80,9 @@ DSP. Every pad shows its keyboard shortcut inline (hidden below
 
 ### Realtime fan-out
 
-One fabric for all three activities — the music notes, the poker
-votes, and the retro cards all ride the same chamber topic.
+One fabric for every activity — the music notes, the poker votes,
+the retro cards, and the mini-game's drawing strokes + guesses all
+ride the same chamber topic.
 
 - **Phoenix.PubSub** fans events from the acting client to every
   other connected user on the chamber's topic. For music jams,
@@ -152,8 +159,8 @@ mix phx.server   # start the server (Phoenix on 4000, Vite on 5173)
 Visit [`http://localhost:4000`](http://localhost:4000). The
 landing page is the activity picker: **Chaos chamber** drops you
 straight into the public music room; **Music chamber**,
-**Planning poker**, and **Retrospective** each spin up a private
-chamber with a sharable link.
+**Planning poker**, **Retrospective**, and **Mini-game** each spin
+up a private chamber with a sharable link.
 
 ### Useful commands
 

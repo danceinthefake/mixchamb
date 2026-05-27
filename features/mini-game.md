@@ -40,9 +40,10 @@ Code map (planned):
   broadcasts)
 - `assets/vue/activities/minigame/` (component split per §8)
 
-All sections below are **Proposed** — design calls awaiting a lock
-pass. The previous specs flipped to _Locked_ only after the repo
-owner reviewed; this doc is the first-draft for that review.
+Status: **Built** (2026-05-27). The design below was approved and
+implemented in full — framework + Pictionary v1, including the §7
+edge cases. Section tags below read _Proposed_ historically; the
+"Ready-to-build checklist" at the end tracks what actually shipped.
 
 ---
 
@@ -393,46 +394,50 @@ re-debated each pass.
 - **Reconnect grace for the drawer.** If the drawer drops, hold the
   turn for ~5s before ending it, in case they're just refreshing.
 
-## Ready-to-build checklist — _Proposed_
+## Ready-to-build checklist — _Built_
 
-Implementation order I'd recommend, sized in working-day units.
-**Nothing built yet** — these are the plan, not progress.
+Implementation order, sized in working-day units. **All steps built
+and verified** (Elixir unit tests for the rules engine + a 3-browser
+Playwright smoke; see end of section).
 
-1. ⬜ **Activity enum + lobby skeleton** — add `"minigame"` to
-   `chambers.activity` allowed values (code-side, no DB constraint,
-   same as poker/retro). Landing-page "Mini-game" card +
-   `MiniGameBoard.vue` rendering a `:lobby` with the game picker
-   (one entry) + roster. (~half-day.)
-2. ⬜ **Game behaviour + registry + `MiniGameState`** — the
-   `Game` behaviour, registry, ephemeral struct, and `Chambers.Server`
-   integration (`minigame_*` casts, `set_activity` clearing, broadcast
-   helper). Pure-Elixir, unit-testable without the canvas. (~1 day.)
-3. ⬜ **Pictionary game module** — turn rotation, word assignment +
-   3-choice, guess normalization + correctness, scoring, timer /
-   phase advance, per-user `view/2` (drawer sees word). Heavily
-   unit-tested — this is the rules engine. (~1–1.5 days.)
-4. ⬜ **`DrawingCanvas.vue`** — pointer handlers, normalized coords,
-   stroke batching + `seq`, replay of a stroke list, live-follow of
-   batches, tools (palette / sizes / eraser / undo / clear). The
-   tightest piece; build + vitest the batching/replay logic in
-   isolation against a fake emit. (~1.5 days.)
-5. ⬜ **`PictionaryStage` + `GuessFeed` + `Scoreboard`** — wire the
-   canvas, blanks/word display, guess feed, and live scoreboard to
-   the `minigame_*` events. (~1 day.)
-6. ⬜ **Host controls + config** — Start (gate <2 players) / Skip /
+1. ✅ **Activity enum + lobby skeleton** — `"minigame"` added to
+   `Chamber.activities()`; landing-page "Mini-game" card + in-chamber
+   activity chip + `--accent-minigame` token; `MiniGameBoard.vue`
+   renders the `:lobby` (game picker + roster + config).
+2. ✅ **Game behaviour + registry + `MiniGameState`** — `MiniGame.Game`
+   behaviour, `MiniGame.Registry`, `MiniGame.State` ephemeral struct,
+   and `Chambers.Server` integration (`minigame_*` casts, `set_activity`
+   clearing, broadcast helper, token-guarded turn timers). Pure-Elixir,
+   unit-tested without the canvas.
+3. ✅ **Pictionary game module** — turn rotation, word assignment +
+   3-choice, guess normalization + correctness, time-scaled scoring,
+   timer / phase advance, per-user `view/2` (drawer sees word).
+   Heavily unit-tested (the rules engine).
+4. ✅ **`DrawingCanvas.vue`** — pointer handlers, normalized coords,
+   ~50ms stroke batching + `seq`, snapshot replay, live-follow of
+   relayed batches, tools (palette / sizes / eraser / undo / clear).
+5. ✅ **`PictionaryStage` + `GuessFeed` + `MiniGameScoreboard`** —
+   canvas + blanks/word banner + timer, guess feed (withheld winning
+   text), live scoreboard wired to the `minigame_*` events.
+6. ✅ **Host controls + config** — Start (gated <2 players) / Skip /
    Next / Play-again / End; `:lobby` config (pack / timer / rounds).
-   (~half-day.)
-7. ⬜ **Smoke test** — 3-browser Playwright at
-   `~/danceinthefake/tmp/mixchamb_minigame_smoke.mjs`: lobby →
-   start → drawer draws (assert strokes replay on the other two) →
-   a guesser guesses right (assert lockout + score + withheld text)
-   → timer/skip → reveal (assert word + scores) → next turn rotates
-   drawer → game over → play again. (~half-day.)
+7. ✅ **Smoke test** — 3-browser Playwright at
+   `~/danceinthefake/tmp/mixchamb_minigame_smoke.mjs`: lobby → start →
+   drawer draws (strokes replay on the other two) → guesser guesses
+   right (lockout + score + withheld text) → all-guessed reveal (word
+   + scores) → next turn rotates drawer → game over → play again.
+   **17/17 assertions pass.**
 
-Total estimate: **~5–6 working days** — roughly double poker/retro,
-driven by the canvas (step 4) and the rules engine (step 3). The
-framework scaffolding (steps 1–2) is reused by every future game, so
-game #2 should be far cheaper.
+The framework scaffolding (steps 1–2) is reused by every future game,
+so game #2 should be far cheaper.
+
+**Edge cases shipped (§7):** drawer-leave → auto-reveal + rotation
+prune, and non-drawer-leave → roster prune, via `State.sync_presence/2`
+(host-driven on every presence diff; unit-tested). Reconnect-grace
+remains deferred polish (§9).
+
+**Test surface:** `test/mixchamb/minigame/pictionary_test.exs`
+(32 tests, rules + state + presence sync) + the Playwright smoke above.
 
 ---
 

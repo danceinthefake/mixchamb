@@ -203,6 +203,37 @@ defmodule MixchambWeb.LandingLive do
                 />
               </div>
             </button>
+
+            <%!-- Mini-game: private, link-only. Activity = "minigame".
+                  A registry of small synchronous games sharing one
+                  lobby / roster / scoreboard shell; v1 ships
+                  Pictionary (live draw-and-guess). See
+                  features/mini-game.md. --%>
+            <button
+              phx-click="create_chamber"
+              phx-value-activity="minigame"
+              class="text-left rounded-2xl border bg-card hover:bg-accent transition-colors p-6 cursor-pointer space-y-3 group"
+            >
+              <div class="flex items-center gap-2">
+                <span class="size-2.5 rounded-full bg-accent-minigame"></span>
+                <span class="text-xs uppercase tracking-wider text-muted-foreground">
+                  Private · Mini-game
+                </span>
+              </div>
+              <h2 class="text-2xl font-bold tracking-tight font-display">
+                Mini-game
+              </h2>
+              <p class="text-sm text-muted-foreground">
+                Play together. v1 is Pictionary — one person draws a secret word on a shared canvas, everyone else races the clock to guess it, fastest scores most. Share the link, the team plays, the scoreboard settles it.
+              </p>
+              <div class="pt-2 text-sm font-medium text-foreground inline-flex items-center gap-1">
+                Start a mini-game
+                <.icon
+                  name="hero-arrow-right-mini"
+                  class="size-4 transition-transform group-hover:translate-x-0.5"
+                />
+              </div>
+            </button>
           </div>
 
           <%!-- Resume-where-you-left-off. Renders only when the
@@ -225,7 +256,8 @@ defmodule MixchambWeb.LandingLive do
                     <span class={[
                       "size-1.5 rounded-full shrink-0",
                       chamber.activity == "music" && "bg-primary",
-                      chamber.activity == "poker" && "bg-accent-poker"
+                      chamber.activity == "poker" && "bg-accent-poker",
+                      chamber.activity == "minigame" && "bg-accent-minigame"
                     ]}>
                     </span>
                     <span class="uppercase tracking-wider">
@@ -253,6 +285,7 @@ defmodule MixchambWeb.LandingLive do
   # template tight.
   defp recent_activity_label("music"), do: "Music"
   defp recent_activity_label("poker"), do: "Poker"
+  defp recent_activity_label("minigame"), do: "Mini-game"
   defp recent_activity_label(other), do: String.capitalize(other)
 
   defp recent_time_ago(%DateTime{} = dt) do

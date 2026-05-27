@@ -138,6 +138,9 @@ defmodule MixchambWeb.ChamberLive do
      |> assign(:presence_sheet_open, false)
      |> assign(:poker_session, load_poker_session(chamber))
      |> assign(:retro_session, load_retro_session(chamber))
+     # Ephemeral mini-game state (nil outside "minigame" activity).
+     # Late joiners / reconnects rebuild from this live snapshot.
+     |> assign(:minigame_state, load_minigame_state(chamber))
      # Past archived retro sessions for the chamber — newest-first.
      # Surfaced in the presence aside as a <details> disclosure
      # so the team can see how many retros they've run.
@@ -228,6 +231,15 @@ defmodule MixchambWeb.ChamberLive do
   end
 
   defp load_poker_session(_), do: nil
+
+  # Mini-game: pull the live ephemeral state from the chamber's
+  # GenServer. nil outside "minigame" activity — the template's
+  # `:if={@minigame_state}` checks stay uniform with poker/retro.
+  defp load_minigame_state(%{activity: "minigame", slug: slug}) do
+    Mixchamb.Chambers.Server.minigame_state(slug)
+  end
+
+  defp load_minigame_state(_), do: nil
 
   # Same shape for retro: pull the current non-archived session
   # for this chamber from the DB (with columns/cards/actions
@@ -887,6 +899,140 @@ defmodule MixchambWeb.ChamberLive do
     {:noreply, socket}
   end
 
+  # --- Mini-game events ------------------------------------------
+  # Each delegates to the chamber GenServer, which authoritatively
+  # gates host/drawer rules and broadcasts. The LV just routes +
+  # supplies identity (user_id, alias). See features/mini-game.md.
+
+  def handle_event("minigame_select_game", %{"game" => game}, socket)
+      when is_binary(game) do
+    Mixchamb.Chambers.Server.minigame_select_game(
+      socket.assigns.chamber_slug,
+      socket.assigns.current_user.id,
+      game
+    )
+
+    {:noreply, socket}
+  end
+
+  def handle_event("minigame_set_config", %{"config" => config}, socket)
+      when is_map(config) do
+    Mixchamb.Chambers.Server.minigame_set_config(
+      socket.assigns.chamber_slug,
+      socket.assigns.current_user.id,
+      config
+    )
+
+    {:noreply, socket}
+  end
+
+  def handle_event("minigame_start", _params, socket) do
+    player_ids = Enum.map(poker_participants(socket.assigns.presences), & &1.user_id)
+
+    Mixchamb.Chambers.Server.minigame_start(
+      socket.assigns.chamber_slug,
+      socket.assigns.current_user.id,
+      player_ids
+    )
+
+    {:noreply, socket}
+  end
+
+  # Play-again and End both reset to a fresh lobby in v1 (the lobby
+  # is the "no game running" screen). Separate events keep the wire
+  # honest if they ever diverge.
+  def handle_event(event, _params, socket)
+      when event in ["minigame_play_again", "minigame_end"] do
+    Mixchamb.Chambers.Server.minigame_to_lobby(
+      socket.assigns.chamber_slug,
+      socket.assigns.current_user.id
+    )
+
+    {:noreply, socket}
+  end
+
+  def handle_event("minigame_choose_word", %{"word" => word}, socket)
+      when is_binary(word) do
+    Mixchamb.Chambers.Server.minigame_choose_word(
+      socket.assigns.chamber_slug,
+      socket.assigns.current_user.id,
+      word
+    )
+
+    {:noreply, socket}
+  end
+
+  def handle_event("minigame_guess", %{"text" => text}, socket) when is_binary(text) do
+    user = socket.assigns.current_user
+
+    Mixchamb.Chambers.Server.minigame_guess(
+      socket.assigns.chamber_slug,
+      user.id,
+      user.alias || user.display_name,
+      text
+    )
+
+    {:noreply, socket}
+  end
+
+  def handle_event("minigame_skip", _params, socket) do
+    Mixchamb.Chambers.Server.minigame_skip(
+      socket.assigns.chamber_slug,
+      socket.assigns.current_user.id
+    )
+
+    {:noreply, socket}
+  end
+
+  def handle_event("minigame_next", _params, socket) do
+    Mixchamb.Chambers.Server.minigame_next(
+      socket.assigns.chamber_slug,
+      socket.assigns.current_user.id
+    )
+
+    {:noreply, socket}
+  end
+
+  # Drawing relay. The GenServer enforces drawer-only / mid-turn;
+  # these high-frequency events never reload the per-user view.
+  def handle_event("minigame_stroke", payload, socket) when is_map(payload) do
+    Mixchamb.Chambers.Server.minigame_stroke(
+      socket.assigns.chamber_slug,
+      socket.assigns.current_user.id,
+      payload
+    )
+
+    {:noreply, socket}
+  end
+
+  def handle_event("minigame_stroke_end", stroke, socket) when is_map(stroke) do
+    Mixchamb.Chambers.Server.minigame_stroke_end(
+      socket.assigns.chamber_slug,
+      socket.assigns.current_user.id,
+      stroke
+    )
+
+    {:noreply, socket}
+  end
+
+  def handle_event("minigame_undo", _params, socket) do
+    Mixchamb.Chambers.Server.minigame_undo(
+      socket.assigns.chamber_slug,
+      socket.assigns.current_user.id
+    )
+
+    {:noreply, socket}
+  end
+
+  def handle_event("minigame_clear", _params, socket) do
+    Mixchamb.Chambers.Server.minigame_clear(
+      socket.assigns.chamber_slug,
+      socket.assigns.current_user.id
+    )
+
+    {:noreply, socket}
+  end
+
   # Mobile presence sheet open/close. The desktop aside stays
   # always-visible at `lg:` and up; this flag only drives the
   # `lg:hidden` overlay that mirrors the same content for phones.
@@ -930,6 +1076,16 @@ defmodule MixchambWeb.ChamberLive do
   @impl true
   def handle_info(%Phoenix.Socket.Broadcast{event: "presence_diff"}, socket) do
     presences = Presence.list(presence_topic(socket.assigns.chamber_slug))
+
+    # Mini-game rotation reconciliation (spec §7). Only the host casts
+    # so the drawer-left / player-left handling runs once, not once
+    # per client; with no host present the game freezes, as designed.
+    if socket.assigns.chamber.activity == "minigame" and socket.assigns.is_host do
+      Mixchamb.Chambers.Server.minigame_presence_sync(
+        socket.assigns.chamber_slug,
+        Map.keys(presences)
+      )
+    end
 
     {:noreply,
      socket
@@ -1074,6 +1230,27 @@ defmodule MixchambWeb.ChamberLive do
   # local `activity` assign matches the DB, then reload the
   # activity-specific session assigns (poker fresh / nil; retro
   # rehydrated from DB if a session exists).
+  # Low-frequency game event: reload the per-user view (scoreboard,
+  # phase, blanks, drawer, deadline, stroke snapshot).
+  def handle_info({:minigame, :changed}, socket) do
+    {:noreply,
+     assign(socket, :minigame_state, load_minigame_state(socket.assigns.chamber))}
+  end
+
+  # Transient guess-feed line — pushed straight to the client, never
+  # part of reloadable state (spec §4).
+  def handle_info({:minigame_feed, payload}, socket) do
+    {:noreply, push_event(socket, "minigame_feed", payload)}
+  end
+
+  # Drawing relay — strokes / undo / clear from the drawer. Pushed to
+  # every client; the canvas skips events whose `from` is itself (the
+  # drawer already rendered locally, same self-skip as note replay).
+  def handle_info({:minigame_relay, kind, payload}, socket) do
+    {:noreply,
+     push_event(socket, "minigame_relay", %{kind: Atom.to_string(kind), payload: payload})}
+  end
+
   def handle_info({:activity_changed, _activity}, socket) do
     chamber = Chambers.find_by_slug(socket.assigns.chamber_slug)
 
@@ -1082,6 +1259,7 @@ defmodule MixchambWeb.ChamberLive do
      |> assign(:chamber, chamber)
      |> assign(:poker_session, load_poker_session(chamber))
      |> assign(:retro_session, load_retro_session(chamber))
+     |> assign(:minigame_state, load_minigame_state(chamber))
      |> assign(:past_retros, load_past_retros(chamber))}
   end
 
@@ -1271,6 +1449,7 @@ defmodule MixchambWeb.ChamberLive do
   defp activity_label("music"), do: "Music"
   defp activity_label("poker"), do: "Poker"
   defp activity_label("retro"), do: "Retro"
+  defp activity_label("minigame"), do: "Mini-game"
 
   # Active-state class for each activity chip. Music carries the
   # brand pink (--primary); poker carries cyan (--accent-poker);
@@ -1286,11 +1465,17 @@ defmodule MixchambWeb.ChamberLive do
   defp activity_chip_active_class("retro"),
     do: "bg-accent-bass/15 text-accent-bass border-accent-bass/40"
 
+  defp activity_chip_active_class("minigame"),
+    do: "bg-accent-minigame/15 text-accent-minigame border-accent-minigame/40"
+
   defp chamber_og_title(%{activity: "poker"} = chamber),
     do: "Planning poker · #{chamber.title} · mixchamb"
 
   defp chamber_og_title(%{activity: "retro"} = chamber),
     do: "Retro · #{chamber.title} · mixchamb"
+
+  defp chamber_og_title(%{activity: "minigame"} = chamber),
+    do: "Mini-game · #{chamber.title} · mixchamb"
 
   defp chamber_og_title(chamber),
     do: "Jamming in #{chamber.title} · mixchamb"
@@ -1301,6 +1486,10 @@ defmodule MixchambWeb.ChamberLive do
 
   defp chamber_og_description(%{activity: "retro"} = chamber) do
     "Join the retrospective in #{chamber.title}. Brainstorm, optionally vote, leave with action items — anyone with the link can join."
+  end
+
+  defp chamber_og_description(%{activity: "minigame"} = chamber) do
+    "Join the mini-game in #{chamber.title}. Draw and guess, race the clock, climb the scoreboard — anyone with the link can join."
   end
 
   defp chamber_og_description(chamber) do
@@ -1335,6 +1524,15 @@ defmodule MixchambWeb.ChamberLive do
   # so only the current user's own card is sent to the client; the
   # rest of the room sees just a "this user has voted" signal until
   # the host reveals. On `:revealed`, every value is exposed.
+  # Mini-game per-user view: delegate to the chosen game's `view/2`
+  # so the drawer sees the secret word while guessers see only
+  # blanks (spec §1). nil outside minigame mode.
+  defp minigame_view(nil, _user_id), do: nil
+
+  defp minigame_view(%Mixchamb.MiniGame.State{} = state, user_id) do
+    Mixchamb.MiniGame.Registry.module(state.game).view(state, user_id)
+  end
+
   defp poker_view(nil, _user_id), do: nil
 
   defp poker_view(session, user_id) do
@@ -1859,6 +2057,8 @@ defmodule MixchambWeb.ChamberLive do
               retro_discussing_card_id={@retro_discussing_card_id}
               retro_participant_aliases={retro_participant_aliases(@presences)}
               retro_last_archived={retro_last_archived(@past_retros)}
+              minigame_state={minigame_view(@minigame_state, @current_user.id)}
+              minigame_participants={poker_participants(@presences)}
               current_user_id={@current_user.id}
               current_user_alias={@current_user.alias || @current_user.display_name}
               is_host={@is_host}

@@ -30,7 +30,7 @@ defmodule Mixchamb.Chambers.Chamber do
   # activity here is half the work; the other half is the matching
   # branch in `Chamber.vue` (see features/planning-poker.md for the
   # pattern).
-  @activities ~w(music poker retro)
+  @activities ~w(music poker retro minigame)
   def activities, do: @activities
 
   schema "chambers" do
