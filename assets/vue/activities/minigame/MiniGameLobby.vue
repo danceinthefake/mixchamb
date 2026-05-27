@@ -67,28 +67,32 @@ function saveCustom() {
 
 <template>
   <div class="max-w-xl mx-auto space-y-3">
-    <p class="text-xs uppercase tracking-wider text-muted-foreground font-display">Choose a game</p>
+    <!-- Game picker — host only. Non-hosts see the "How to play" +
+         waiting hint below (the picker title already names the game). -->
+    <template v-if="is_host">
+      <p class="text-xs uppercase tracking-wider text-muted-foreground font-display">
+        Choose a game
+      </p>
 
-    <div class="grid gap-2">
-      <button
-        v-for="g in GAMES"
-        :key="g.key"
-        type="button"
-        :disabled="!is_host"
-        :aria-pressed="game === g.key"
-        @click="emit('select-game', g.key)"
-        class="text-left rounded-xl border p-4 transition-all"
-        :class="[
-          game === g.key
-            ? 'border-accent-minigame/60 bg-accent-minigame/10 ring-1 ring-accent-minigame/40'
-            : 'bg-card hover:bg-accent border-border',
-          is_host ? 'cursor-pointer' : 'cursor-default',
-        ]"
-      >
-        <div class="font-semibold font-display">{{ g.label }}</div>
-        <div class="text-sm text-muted-foreground">{{ g.blurb }}</div>
-      </button>
-    </div>
+      <div class="grid gap-2">
+        <button
+          v-for="g in GAMES"
+          :key="g.key"
+          type="button"
+          :aria-pressed="game === g.key"
+          @click="emit('select-game', g.key)"
+          class="text-left rounded-xl border p-4 transition-all cursor-pointer"
+          :class="
+            game === g.key
+              ? 'border-accent-minigame/60 bg-accent-minigame/10 ring-1 ring-accent-minigame/40'
+              : 'bg-card hover:bg-accent border-border'
+          "
+        >
+          <div class="font-semibold font-display">{{ g.label }}</div>
+          <div class="text-sm text-muted-foreground">{{ g.blurb }}</div>
+        </button>
+      </div>
+    </template>
 
     <!-- Per-game config (Pictionary) — host only -->
     <div v-if="game === 'pictionary' && is_host" class="rounded-xl border bg-card/60 p-4 space-y-3">
