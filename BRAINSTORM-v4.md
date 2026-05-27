@@ -21,16 +21,19 @@ distributed engineering teams:
 
 - **Planning poker** ✅ — estimate cards, reveal, discuss, re-vote
   _(shipped 2026-05-23; see `features/planning-poker.md`)_
-- **Standup** — round-robin updates, optional "yesterday / today /
-  blockers" structure, history
+- ~~**Standup**~~ — _dropped (2026-05-27): standups happen live on
+  Google Meet / Zoom; an async round-robin version is low value
+  (see §7)_
 - **Retrospective** ✅ — multi-column board (custom names; default
   Good / Bad / Start / Thanks), optional dot-voting, persisted
   action items _(v1 shipped 2026-05-25; spec at
   `features/retrospective.md`; §11 polish + real-world gaps
   documented in §6a)_
-- **Icebreaker** — prompts, polls, would-you-rather, etc.
+- ~~**Icebreaker**~~ — _dropped (2026-05-27): folded into Mini-game;
+  prompts / polls / would-you-rather are just small synchronous games_
 - **Mini-game** — small synchronous games (Pictionary-style, trivia,
-  Gartic Phone-ish)
+  Gartic Phone-ish; absorbs the icebreaker prompts / polls /
+  would-you-rather idea)
 - **Music** ✅ — the existing chamber experience (carried over from
   v1–v3)
 
@@ -58,7 +61,7 @@ What stays:
 What evolves:
 - `chambers.kind` field expands. Today: `"chaos"` / `"secret"` for
   music-only. Tomorrow: also carries the *activity* (`"music"` /
-  `"poker"` / `"standup"` / …). Either by reusing `kind` or adding
+  `"poker"` / `"retro"` / …). Either by reusing `kind` or adding
   a new `activity` field — see open question §5.
 - The Vue island in `Chamber.vue` swaps based on
   `chamber.activity`. Existing instrument pads are one branch of
@@ -90,8 +93,9 @@ What's music-specific and goes inert in non-music modes:
 5. **MVP scope = planning poker.** Music is already shipped.
    Planning poker is the first *new* activity, picked because it
    has the tightest mechanics, well-bounded scope, and the team
-   needs it weekly. Standup is more frequent but fiddlier on UX —
-   ships second.
+   needs it weekly. Standup looked like the runner-up here, but was
+   later dropped (see §7) — it's a live video-call ritual, not an
+   async chamber activity.
 6. **Sequencing requires login** (when it ships, later). Anonymous
    users can run single-activity chambers freely; only authenticated
    users can save event templates / run multi-activity sequences.
@@ -109,7 +113,7 @@ User journeys after the pivot:
   session," gets a chamber URL, shares it, others join. Same
   pattern that music already uses.
 - **Authenticated event-series** (later) — a logged-in user defines
-  a sequence ("standup → music → retro") and runs it; the host
+  a sequence ("music → retro") and runs it; the host
   advances the room between activities; participants follow.
 
 ## 5. Architectural decisions (2026-05-22, second pass)
@@ -410,29 +414,33 @@ the spec explicitly defers polish.
    which exercises the same architecture differently (persistent
    cards + actions vs. ephemeral poker votes) and surfaced what's
    load-bearing in the shared shell. Spec at
-   `features/retrospective.md`. Standup deferred — its
-   "yesterday / today / blockers" structure is closer in spirit
-   to poker's discrete-vote pattern, so we'd learn less by doing
-   it next.
-2. **Activity #3 — standup.** Now that the
-   ephemeral-poker / persisted-retro split has been exercised,
-   standup is the natural test of "structured round-robin
-   ceremony." Likely sits closer to poker (ephemeral state,
-   small per-user payload) but with a turn order to manage.
-3. **Add auth — magic link + OAuth Google.** Magic link is the
+   `features/retrospective.md`.
+2. **Add auth — magic link + OAuth Google.** Magic link is the
    low-friction default for the casual case; OAuth Google gives
    the team SSO. Either path lands on a real `users` row with
    `email`. The existing `anonymous_users` table stays as-is —
    the two identities co-exist (logged-in users still get a
    chamber-side display_name + alias; the difference is they can
    own event templates).
-4. **Add sequencing.** Logged-in user defines an "event template"
-   (`standup → music → retro`); host runs it from a chamber and
+3. **Add sequencing.** Logged-in user defines an "event template"
+   (`music → retro`); host runs it from a chamber and
    the "advance" button moves the room through the template
    (host-driven transitions, per §3.3). Schedule-driven and
    activity-driven transitions remain on the table for later.
-5. **Add activity #4, #5** at whatever cadence feels right.
+4. **Add more activities** at whatever cadence feels right.
    Each one extends the same `chamber.activity` switch pattern.
+   Mini-game (which absorbs the icebreaker idea) is the leading
+   candidate.
+
+**Dropped from the roadmap (2026-05-27):**
+
+- **Standup.** A round-robin "yesterday / today / blockers"
+  ceremony just duplicates what teams already do live on Google
+  Meet / Zoom — it's a video-call ritual, not something people
+  want to run async in a chamber. Low value for the build cost.
+- **Icebreaker.** Folded into Mini-game: prompts, polls, and
+  would-you-rather are small synchronous games, so a separate
+  activity would only fragment the same idea.
 
 ## 8. What this means for the existing music build
 

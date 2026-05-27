@@ -159,8 +159,8 @@ assets/vue/activities/poker/
 ```
 
 The folder convention mirrors `assets/vue/instruments/` for the
-seven existing instrument pads. When standup / retro /
-icebreaker land, each gets its own `activities/<name>/` sub-folder.
+seven existing instrument pads. When a new activity (e.g.
+mini-game) lands, each gets its own `activities/<name>/` sub-folder.
 
 The five-sub-component split (vs. one big file) keeps each region
 ~under 100 lines of HEEx + logic, testable in isolation, and

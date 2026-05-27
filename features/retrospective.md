@@ -468,8 +468,8 @@ assets/vue/activities/retro/
 
 The folder convention mirrors `assets/vue/activities/poker/` for
 the six-file poker split + `assets/vue/instruments/` for the
-seven-file instrument split. When standup / icebreaker /
-mini-game land, each gets its own `activities/<name>/` sub-folder.
+seven-file instrument split. When a new activity (e.g. mini-game)
+lands, each gets its own `activities/<name>/` sub-folder.
 
 **Why split vs. one big file:** keeps each region under ~150
 lines, testable in isolation via vitest, parallels the

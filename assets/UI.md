@@ -77,7 +77,6 @@ Each new activity gets one accent token that carries its primary affordances (bu
 | -------- | ------------------ | ------------------------------ | ----------------------------------- |
 | Music    | (uses Music palette) | per-instrument               | active                              |
 | Poker    | `accent-poker`     | cyan `oklch(0.78 0.13 215)`    | **active** — `#56d2e6` from the brand gradient. Tints the activity chip's poker-active state, the "vote pending" silhouette border, and the reveal panel's distribution bars |
-| Standup  | `accent-standup`   | —                              | reserved — not yet shipped          |
 | Retro    | `accent-retro`     | —                              | reserved — not yet shipped          |
 
 When a new activity ships, add one `oklch(...)` entry under `@theme inline` in `assets/css/app.css` and a row here. Don't introduce ad-hoc colors per component.
