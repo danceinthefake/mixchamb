@@ -48,3 +48,8 @@ config :phoenix_live_view,
 # Sort query params output of verified routes for robust url comparisons
 config :phoenix,
   sort_verified_routes_query_params: true
+
+# Sentry test mode: events are collected in-process via Sentry.Test
+# instead of being sent over the network. Lets tests assert that
+# errors are captured. See test/mixchamb/sentry_test.exs.
+config :sentry, test_mode: true
