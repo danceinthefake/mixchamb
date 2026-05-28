@@ -45,6 +45,10 @@ COPY assets assets
 
 RUN mix assets.deploy && mix compile
 
+# Bundle source for Sentry stack-trace context (no-op at runtime if
+# SENTRY_DSN is unset).
+RUN mix sentry.package_source_code
+
 COPY rel rel
 RUN mix release --overwrite
 

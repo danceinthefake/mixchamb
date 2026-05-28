@@ -1,5 +1,8 @@
 defmodule MixchambWeb.Endpoint do
   use Phoenix.Endpoint, otp_app: :mixchamb
+  # Reports exceptions raised in the Plug pipeline to Sentry. Wraps the
+  # endpoint, so it sits right under `use Phoenix.Endpoint`.
+  use Sentry.PlugCapture
   import PhoenixVite.Plug
 
   # The session will be stored in the cookie and signed,

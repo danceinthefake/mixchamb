@@ -10,6 +10,9 @@ defmodule MixchambWeb.Router do
     plug :put_secure_browser_headers
     plug MixchambWeb.Plugs.SecurityHeaders
     plug MixchambWeb.Plugs.EnsureAnonUser
+    # Attach request context (method, path, headers) to any Sentry
+    # event raised while handling the request.
+    plug Sentry.PlugContext
   end
 
   pipeline :api do
@@ -30,6 +33,7 @@ defmodule MixchambWeb.Router do
     plug MixchambWeb.Plugs.SecurityHeaders
     plug MixchambWeb.Plugs.EnsureAnonUser
     plug MixchambWeb.Plugs.AdminAuth
+    plug Sentry.PlugContext
   end
 
   # Lightweight, unauthenticated readiness probe for load balancers /

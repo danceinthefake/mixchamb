@@ -7,6 +7,16 @@ defmodule Mixchamb.Application do
 
   @impl true
   def start(_type, _args) do
+    # Route OTP crash reports (GenServer / LiveView / Task crashes,
+    # unhandled Plug errors that bubble up) to Sentry via the Erlang
+    # logger. Only attached when a DSN is configured (set in
+    # config/runtime.exs from SENTRY_DSN) — dev/test stay quiet.
+    if Application.get_env(:sentry, :dsn) do
+      :logger.add_handler(:sentry_handler, Sentry.LoggerHandler, %{
+        config: %{metadata: [:file, :line], capture_log_messages: false}
+      })
+    end
+
     # Public ETS counter for chamber-server restart counts. Each
     # `Mixchamb.Chambers.Server.init/1` bumps its slug's entry; the
     # supervisor LV reads it for the per-chamber Restarts column.

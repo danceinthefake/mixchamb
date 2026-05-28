@@ -124,3 +124,17 @@ if config_env() == :prod do
   #
   # Check `Plug.SSL` for all available options in `force_ssl`.
 end
+
+# Sentry error reporting. Reads SENTRY_DSN at runtime (the var every
+# deploy method already plumbs). When the DSN is blank/unset — dev,
+# test, or a deploy that opted out — Sentry no-ops and sends nothing,
+# so this is safe to evaluate in every environment.
+config :sentry,
+  dsn: System.get_env("SENTRY_DSN"),
+  environment_name: to_string(config_env()),
+  release: to_string(Application.spec(:mixchamb, :vsn)),
+  enable_source_code_context: true,
+  root_source_code_paths: [File.cwd!()],
+  # Don't capture every Logger.error as an event — only real crashes /
+  # explicit Sentry calls (the LoggerHandler reports crash reports).
+  capture_log_messages: false

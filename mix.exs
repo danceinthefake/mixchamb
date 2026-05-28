@@ -90,6 +90,11 @@ defmodule Mixchamb.MixProject do
       {:jason, "~> 1.2"},
       {:dns_cluster, "~> 0.2.0"},
       {:bandit, "~> 1.5"},
+      # Error reporting. SENTRY_DSN is plumbed through every deploy
+      # method; this is what actually reports to it. hackney is
+      # Sentry's default HTTP client.
+      {:sentry, "~> 10.8"},
+      {:hackney, "~> 1.20"},
       {:live_vue, "~> 1.2"},
       {:bcrypt_elixir, "~> 3.0"},
       {:igniter, "~> 0.5", only: [:dev]},
