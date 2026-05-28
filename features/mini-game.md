@@ -374,10 +374,11 @@ re-debated each pass.
   icebreaker bucket. Content-free: everyone writes two truths + a lie,
   the room guesses which is the fib (+10 spot / +5 fool). The third
   registry game; `Mixchamb.MiniGame.TwoTruths` + `two_truths/TwoTruthsStage.vue`
-  + a registry entry. Poll / would-you-rather remain easy future
-  additions in the same vote/reveal vein.
-- **Trivia.** Preset/host question sets with correct answers +
-  timed rounds + a leaderboard. Moderate; another registry game.
+  + a registry entry.
+- ❌ **Trivia / Poll / would-you-rather** — _dropped 2026-05-28_. Three
+  games cover the bucket; trivia would need authored question packs
+  and poll/WYR overlap with Two Truths in spirit. The registry's still
+  open if either is ever wanted later.
 - ✅ **Audio cues** _(shipped)_. Correct-guess blip + time-up buzzer +
   game-over fanfare in `assets/vue/lib/audio.ts` (`playGuessCorrect` /
   `playTimeUp` / `playGameOver`), wired in PictionaryStage +

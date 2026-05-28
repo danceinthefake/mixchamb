@@ -50,8 +50,8 @@ shared across all of them; the activity decides what happens
   - **Two Truths and a Lie** — everyone writes two truths + a lie; the
     room guesses the fib (+10 to spot, +5 to fool). No authored content.
 
-  All fully ephemeral. A fourth game is just a module + Vue stage +
-  registry entry — no framework changes.
+  All fully ephemeral. The registry stays open — a future game is just
+  a module + Vue stage + registry entry — no framework changes.
 
 ### Music chambers + audio character
 

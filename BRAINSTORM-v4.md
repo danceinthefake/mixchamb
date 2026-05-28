@@ -436,8 +436,9 @@ the spec explicitly defers polish.
    2026-05-27** — `features/mini-game.md`: a game-registry framework
    with **Pictionary** (live draw-and-guess), **Gartic Phone**
    (write→draw→describe chain + album), and **Two Truths and a Lie**
-   (spot the fib) as its first three games. A fourth (trivia, polls)
-   is just a module + Vue stage + registry entry — no framework change.
+   (spot the fib) as its first three games. Trivia / polls were
+   explicitly dropped from the backlog (`features/mini-game.md` §9);
+   the registry's still open if anything new comes along.
 
 **Dropped from the roadmap (2026-05-27):**
 
