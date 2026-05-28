@@ -524,6 +524,8 @@ live.handleEvent("play_remote_note", async (payload: RemoteNote) => {
           type="range"
           min="0"
           max="100"
+          aria-label="Master volume"
+          :aria-valuetext="`${volume}%`"
           class="brand-gradient-slider w-28"
         />
         <span class="text-xs tabular-nums font-mono text-muted-foreground w-9 text-right">
