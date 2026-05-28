@@ -6,8 +6,8 @@
 # Image tags below match the project's Elixir / Erlang versions.
 # If you bump versions later, update both ARGs and rebuild.
 ARG ELIXIR_VERSION=1.19.5
-ARG OTP_VERSION=28.0.1
-ARG DEBIAN_VERSION=bookworm-20250630-slim
+ARG OTP_VERSION=28.5.0.1
+ARG DEBIAN_VERSION=bookworm-20260518-slim
 
 ARG BUILDER_IMAGE="hexpm/elixir:${ELIXIR_VERSION}-erlang-${OTP_VERSION}-debian-${DEBIAN_VERSION}"
 ARG RUNNER_IMAGE="debian:${DEBIAN_VERSION}"

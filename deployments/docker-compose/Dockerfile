@@ -9,8 +9,8 @@
 
 # --- Build stage -------------------------------------------------
 ARG ELIXIR_VERSION=1.19.5
-ARG OTP_VERSION=28.0.1
-ARG DEBIAN_VERSION=bookworm-20240926-slim
+ARG OTP_VERSION=28.5.0.1
+ARG DEBIAN_VERSION=bookworm-20260518-slim
 ARG NODE_VERSION=24.14.1
 
 FROM hexpm/elixir:${ELIXIR_VERSION}-erlang-${OTP_VERSION}-debian-${DEBIAN_VERSION} AS build
