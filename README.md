@@ -191,7 +191,15 @@ npm run lint         # oxlint
 npm run format       # oxfmt — apply
 npm run format:check # oxfmt --check (read-only, used by CI)
 npm run check        # lint + format-check + test (the CI dry run)
+npm run test:e2e     # Playwright end-to-end (boots the app; covers
+                     #   music / poker / retro / all 3 mini-games)
+npm run test:e2e:ui  # same, with the Playwright UI runner
 ```
+
+E2E specs live in `e2e/` and drive the real app in a browser (multi-
+context for the multiplayer flows). They run as a separate CI job, not
+in the pre-commit hook. First run locally needs the browser:
+`npx playwright install chromium`.
 
 > **Heads up:** running `mix assets.build` writes a manifest that
 > the layout reads in production mode. In dev that breaks Vite's

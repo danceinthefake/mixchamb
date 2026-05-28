@@ -49,3 +49,9 @@ node_modules/
 # accumulate VPS hostnames, tunnel UUIDs, secret-rotation
 # scratchpads, etc. as the deploy gets real).
 /HOSTING.md
+
+# Playwright e2e artifacts
+/test-results/
+/playwright-report/
+/blob-report/
+/e2e/.cache/

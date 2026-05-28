@@ -144,6 +144,85 @@ jobs:
           if-no-files-found: error
           retention-days: 7
 
+  e2e:
+    name: E2E (Playwright)
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          # dev env (config/dev.exs) targets mixchamb_dev; the e2e
+          # suite drives the dev server, same as locally.
+          POSTGRES_DB: mixchamb_dev
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      MIX_ENV: dev
+      ADMIN_USER: admin
+      ADMIN_PASSWORD: test
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Elixir + OTP
+        uses: erlef/setup-beam@v1
+        with:
+          elixir-version: "1.19.5"
+          otp-version: "28.0.1"
+
+      - name: Cache deps + build
+        uses: actions/cache@v4
+        with:
+          path: |
+            deps
+            _build
+          key: ${{ runner.os }}-mix-dev-${{ hashFiles('**/mix.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-mix-dev-
+
+      - name: Install hex deps
+        run: |
+          mix local.hex --force
+          mix local.rebar --force
+          mix deps.get
+
+      - name: Set up Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: "24.14.1"
+          cache: "npm"
+
+      - name: Install JS deps
+        run: npm ci
+
+      - name: Set up the dev database
+        run: mix ecto.create && mix ecto.migrate
+
+      - name: Install Playwright browser
+        run: npx playwright install --with-deps chromium
+
+      # Playwright's webServer boots `mix phx.server` (dev, incl. the
+      # Vite watcher) and waits on /up before running the specs.
+      - name: Run E2E tests
+        run: npm run test:e2e
+
+      - name: Upload Playwright report
+        if: ${{ failure() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 7
+
   badges:
     name: Update coverage badges
     needs: [elixir, vue]
