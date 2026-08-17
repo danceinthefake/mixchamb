@@ -73,7 +73,7 @@ defmodule Mixchamb.MixProject do
       {:phoenix_live_reload, "~> 1.2", only: :dev},
       {:phoenix_live_view, "~> 1.1.0"},
       {:lazy_html, ">= 0.1.0", only: :test},
-      {:phoenix_live_dashboard, "~> 0.8.3"},
+      {:phoenix_live_dashboard, "~> 0.9.0"},
       # Powers LiveDashboard's "Ecto Stats" tab (Postgres-specific
       # queries: index usage, cache hit rate, locks, table sizes).
       {:ecto_psql_extras, "~> 0.8"},
