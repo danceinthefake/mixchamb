@@ -93,7 +93,7 @@ defmodule Mixchamb.MixProject do
       # Error reporting. SENTRY_DSN is plumbed through every deploy
       # method; this is what actually reports to it. hackney is
       # Sentry's default HTTP client.
-      {:sentry, "~> 10.8"},
+      {:sentry, "~> 13.5"},
       {:hackney, "~> 1.20"},
       {:live_vue, "~> 1.2"},
       {:bcrypt_elixir, "~> 3.0"},
