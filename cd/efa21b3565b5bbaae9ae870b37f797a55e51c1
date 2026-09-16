@@ -1,0 +1,36 @@
+lib/mixchamb_web/live/chamber_live/retro.ex
+  s_ae52c82cfbb39d::t_3954a508eab3ec 1-523,525-547
+  s_ae52c82cfbb39d::t_d6d29941ed9055 524
+lib/mixchamb_web/live/chamber_live/minigame.ex
+  s_ae52c82cfbb39d::t_3954a508eab3ec 1-9,11-201,203-207
+  s_ae52c82cfbb39d::t_d6d29941ed9055 202
+  s_ae52c82cfbb39d::t_168a219fa37d98 10
+lib/mixchamb_web/live/chamber_live/music.ex
+  s_ae52c82cfbb39d::t_3954a508eab3ec 1-397
+lib/mixchamb_web/live/chamber_live.ex
+  s_ae52c82cfbb39d::t_3954a508eab3ec 26,138-142,144-145,148-149,151-152,154-155,157-158,277-288,343-345,365-366,532-536,737,916-918,922-925
+  s_ae52c82cfbb39d::t_a4f246a3b790f6 108-112
+BRAINSTORM-v4.md
+  s_ae52c82cfbb39d::t_f0a4278cb98ccb 482
+lib/mixchamb_web/live/chamber_live/poker.ex
+  s_ae52c82cfbb39d::t_168a219fa37d98 124,126
+  s_ae52c82cfbb39d::t_3954a508eab3ec 1-123,125,127-159
+README.md
+  s_ae52c82cfbb39d::t_eb089a971c2e30 350-351
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "cdefa21b3565b5bbaae9ae870b37f797a55e51c1",
+  "prompts": {},
+  "sessions": {
+    "s_ae52c82cfbb39d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1de5c5ca-1395-4e73-b795-ed7057489ec8",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Hafidz Bahtiar <hafidz.bahtiar@hypefast.id>"
+    }
+  }
+}
