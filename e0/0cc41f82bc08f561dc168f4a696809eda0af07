@@ -1,0 +1,21 @@
+.github/workflows/ci.yml
+  s_ae52c82cfbb39d::t_6b8cac971cfe70 48,57,82,95,108,140,174,183,220,240,251,257
+deployments/linux-host/github-workflows/deploy.yml
+  s_ae52c82cfbb39d::t_853517888f7619 34,51,62
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "e00cc41f82bc08f561dc168f4a696809eda0af07",
+  "prompts": {},
+  "sessions": {
+    "s_ae52c82cfbb39d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1de5c5ca-1395-4e73-b795-ed7057489ec8",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Hafidz Bahtiar <hafidz.bahtiar@hypefast.id>"
+    }
+  }
+}
