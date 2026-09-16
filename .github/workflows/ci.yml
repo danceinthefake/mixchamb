@@ -45,7 +45,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Set up Elixir + OTP
         uses: erlef/setup-beam@v1
@@ -54,7 +54,7 @@ jobs:
           otp-version: "29.0.6"
 
       - name: Cache deps + build
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: |
             deps
@@ -79,7 +79,7 @@ jobs:
         run: mix coveralls.json
 
       - name: Upload Elixir coverage report
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: elixir-coverage
           path: cover/excoveralls.json
@@ -92,7 +92,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       # `package.json` pulls live_vue / phoenix / phoenix_html /
       # phoenix_live_view via `file:./deps/...`, which means those
@@ -105,7 +105,7 @@ jobs:
           otp-version: "29.0.6"
 
       - name: Cache mix deps
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: deps
           key: ${{ runner.os }}-mix-deps-${{ hashFiles('**/mix.lock') }}
@@ -137,7 +137,7 @@ jobs:
         run: npm run test:coverage
 
       - name: Upload Vue coverage report
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: vue-coverage
           path: coverage/coverage-summary.json
@@ -171,7 +171,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Set up Elixir + OTP
         uses: erlef/setup-beam@v1
@@ -180,7 +180,7 @@ jobs:
           otp-version: "29.0.6"
 
       - name: Cache deps + build
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: |
             deps
@@ -217,7 +217,7 @@ jobs:
 
       - name: Upload Playwright report
         if: ${{ failure() }}
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: playwright-report
           path: playwright-report/
@@ -237,7 +237,7 @@ jobs:
 
     steps:
       - name: Checkout main (badge script + assumptions)
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           # Full history needed for the orphan-branch dance below.
           fetch-depth: 0
@@ -248,13 +248,13 @@ jobs:
           node-version: "24.21.0"
 
       - name: Download Elixir coverage
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: elixir-coverage
           path: cover/
 
       - name: Download Vue coverage
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: vue-coverage
           path: coverage/
