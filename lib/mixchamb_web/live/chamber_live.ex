@@ -23,18 +23,8 @@ defmodule MixchambWeb.ChamberLive do
   import Bitwise
 
   alias MixchambWeb.Presence
+  alias MixchambWeb.ChamberLive.{Music, Poker, Retro, MiniGame}
   alias Mixchamb.Chambers
-
-  @instruments [:drums, :keyboard, :guitar, :bass, :pad, :suling, :kendang]
-  @switch_cooldown_ms 1_000
-
-  # Anti-flood guard on the `note` event. 20/sec/user is plenty of
-  # headroom for human play (a fast drummer is ~10 hits/sec) and
-  # caps automated spam decisively. Drops past the budget are
-  # silent client-side; the server emits a telemetry event so the
-  # admin Dashboard can show how many got shed.
-  @note_rate_max 20
-  @note_rate_window_ms 1_000
 
   @impl true
   def mount(%{"slug" => slug}, _session, socket) do
@@ -109,98 +99,18 @@ defmodule MixchambWeb.ChamberLive do
      |> assign(:og_title, chamber_og_title(chamber))
      |> assign(:og_description, chamber_og_description(chamber))
      |> assign(:og_url, url(~p"/chamber/#{slug}"))
-     |> assign(:instruments, @instruments)
-     # Default to the user's last-played instrument so a return
-     # visit doesn't always dump them on drums. Falls back to
-     # :drums when no preference is stored or the stored value
-     # is stale (no longer in @instruments). Music-only meaningful
-     # but the assign sticks around for non-music chambers too —
-     # it's just unused there.
-     |> assign(:current_instrument, last_instrument_for(user))
-     |> assign(:recorded_count, Chambers.recorded_event_count(chamber.id))
-     # True between Stop Recording and either Download or Reset.
-     # Drives a confirm dialog on Start Recording so the user
-     # doesn't lose a recording they haven't saved yet.
-     |> assign(:has_pending_audio, false)
-     # Initialize so the first switch is never blocked. BEAM's
-     # monotonic time can be a large negative integer at startup, so
-     # `0` here would make the cooldown check (`now - last_switch_at`)
-     # produce a negative result and reject every switch.
-     |> assign(:last_switch_at, System.monotonic_time(:millisecond) - @switch_cooldown_ms)
      |> assign(:presences, presences)
-     # Recent-hits feed shown in the presence aside. Each entry:
-     # %{ref:, user_name:, label:, instrument:}. Self-pruned via
-     # {:expire_hit, ref} send_after; also capped at 5 so a drum roll
-     # can't run away with the panel.
-     |> assign(:recent_hits, [])
      # Mobile-only sheet that surfaces the presence panel's controls
      # (alias editor, host badges, promote / demote / step-down) on
      # phones where the floating aside is `hidden lg:block`. Triggered
      # by tapping the dock's presence pill; default closed.
      |> assign(:presence_sheet_open, false)
-     |> assign(:poker_session, load_poker_session(chamber))
-     |> assign(:retro_session, load_retro_session(chamber))
-     # Ephemeral mini-game state (nil outside "minigame" activity).
-     # Late joiners / reconnects rebuild from this live snapshot.
-     |> assign(:minigame_state, load_minigame_state(chamber))
-     # Past archived retro sessions for the chamber — newest-first.
-     # Surfaced in the presence aside as a <details> disclosure
-     # so the team can see how many retros they've run.
-     |> assign(:past_retros, load_past_retros(chamber))
-     # Live vote tallies during :voting — kept here (not in
-     # retro_session, which only carries DB-persisted state) so
-     # the LV diff is cheap on every vote broadcast. Reset on
-     # phase exit. Same for my_votes (per-user vote set).
-     |> assign(:retro_tallies, %{})
-     |> assign(:retro_my_votes, MapSet.new())
-     # Host's highlighted card during :discuss. Surfaces the
-     # discussing-card focus from the GenServer ephemeral state.
-     # nil when nothing focused. Reset on phase exit.
-     |> assign(:retro_discussing_card_id, nil)
-     |> assign_hosts(chamber, user)
-     # Seed all three ephemeral assigns from the GenServer for
-     # late joiners / refreshes — without this, joining a chamber
-     # mid-:voting shows 0/3 votes spent and no live tallies until
-     # the next vote event.
-     |> seed_retro_ephemeral(chamber, user)}
+     |> Music.mount_assigns(chamber, user)
+     |> Poker.mount_assigns(chamber)
+     |> Retro.mount_assigns(chamber, user)
+     |> MiniGame.mount_assigns(chamber)
+     |> assign_hosts(chamber, user)}
   end
-
-  # Pulls the live EphemeralState off the chamber GenServer and
-  # seeds retro_tallies / retro_my_votes / retro_discussing_card_id
-  # so a fresh mount (late joiner, refresh, server-side LV
-  # reconnect) sees the same in-flight state as everyone else.
-  # No-op outside retro activity or before a session is started.
-  defp seed_retro_ephemeral(socket, %{activity: "retro", slug: slug}, %{id: user_id}) do
-    case Mixchamb.Chambers.Server.retro_state(slug) do
-      nil ->
-        socket
-
-      %_{} = rs ->
-        socket
-        |> assign(:retro_tallies, Mixchamb.Retro.EphemeralState.tally(rs))
-        |> assign(:retro_my_votes, Map.get(rs.votes, user_id, MapSet.new()))
-        |> assign(:retro_discussing_card_id, rs.discussing_card_id)
-    end
-  end
-
-  defp seed_retro_ephemeral(socket, _, _), do: socket
-
-  # Reads the user's stored last_instrument and normalises it back
-  # to an atom against the @instruments allow-list. Returns :drums
-  # when the field is nil, blank, or holds a stale value that's no
-  # longer in the list (e.g. an instrument we removed in a later
-  # release). String.to_existing_atom would crash on truly unknown
-  # strings, so we route through it with a try/rescue.
-  defp last_instrument_for(%{last_instrument: name}) when is_binary(name) and name != "" do
-    try do
-      atom = String.to_existing_atom(name)
-      if atom in @instruments, do: atom, else: :drums
-    rescue
-      ArgumentError -> :drums
-    end
-  end
-
-  defp last_instrument_for(_user), do: :drums
 
   # Compute the host set + is_host flag from the chamber server's
   # ephemeral state. Falls back to creator-only if the server hasn't
@@ -225,82 +135,28 @@ defmodule MixchambWeb.ChamberLive do
     |> assign(:is_host, is_host)
   end
 
-  # Pull the current PokerSession off the chamber's GenServer. Returns
-  # `nil` for non-poker chambers — the assign is still set so the
-  # template can render `:if={@poker_session}` checks uniformly.
-  defp load_poker_session(%{activity: "poker", slug: slug}) do
-    Mixchamb.Chambers.Server.poker_state(slug)
-  end
+  # ── Activity routing ─────────────────────────────────────────────
+  # Poker / retro / mini-game events are prefixed on the wire; music
+  # events predate the multi-activity split and keep their bare
+  # names. Everything else is chamber-shell (title, alias, hosts,
+  # activity switch) and handled below.
 
-  defp load_poker_session(_), do: nil
-
-  # Mini-game: pull the live ephemeral state from the chamber's
-  # GenServer. nil outside "minigame" activity — the template's
-  # `:if={@minigame_state}` checks stay uniform with poker/retro.
-  defp load_minigame_state(%{activity: "minigame", slug: slug}) do
-    Mixchamb.Chambers.Server.minigame_state(slug)
-  end
-
-  defp load_minigame_state(_), do: nil
-
-  # Same shape for retro: pull the current non-archived session
-  # for this chamber from the DB (with columns/cards/actions
-  # preloaded). Returns `nil` outside retro mode OR inside retro
-  # before the host has started a session.
-  defp load_retro_session(%{activity: "retro", id: chamber_id}) do
-    case Mixchamb.Retro.current_session(chamber_id) do
-      nil -> nil
-      session -> Mixchamb.Retro.load_session(session.id)
-    end
-  end
-
-  defp load_retro_session(_), do: nil
-
-  # Past archived retro sessions for this chamber, newest-first.
-  # Returns [] outside retro mode so the template can render the
-  # disclosure unconditionally without an `:if`.
-  defp load_past_retros(%{activity: "retro", id: chamber_id}) do
-    Mixchamb.Retro.list_archived_sessions(chamber_id)
-  end
-
-  defp load_past_retros(_), do: []
+  @music_events ~w(set_kind request_replay toggle_recording reset_recording
+                   audio_downloaded play_recording note switch_instrument)
 
   @impl true
-  def handle_event("set_kind", %{"kind" => kind}, socket) do
-    chamber = socket.assigns.chamber
-    user = socket.assigns.current_user
+  def handle_event("poker_" <> _ = event, params, socket),
+    do: Poker.handle_event(event, params, socket)
 
-    cond do
-      not can_change_kind?(chamber, user, socket.assigns[:current_admin]) ->
-        # Creators may change the kind on their own chamber; admins
-        # may change it on any chamber (including the singleton chaos
-        # chamber, which has no human creator they could ask). The
-        # picker isn't rendered for everyone else; this guard is
-        # for hand-crafted phx-events.
-        {:noreply, socket}
+  def handle_event("retro_" <> _ = event, params, socket),
+    do: Retro.handle_event(event, params, socket)
 
-      chamber.kind == kind ->
-        # Already on this kind — skip the DB write + broadcast.
-        {:noreply, socket}
+  def handle_event("minigame_" <> _ = event, params, socket),
+    do: MiniGame.handle_event(event, params, socket)
 
-      true ->
-        case Chambers.set_kind(chamber, kind) do
-          {:ok, updated} ->
-            Phoenix.PubSub.broadcast(
-              Mixchamb.PubSub,
-              Mixchamb.Chambers.topic(chamber.slug),
-              {:chamber_updated, updated}
-            )
+  def handle_event(event, params, socket) when event in @music_events,
+    do: Music.handle_event(event, params, socket)
 
-            {:noreply, assign(socket, :chamber, updated)}
-
-          {:error, _changeset} ->
-            {:noreply, put_flash(socket, :error, "Couldn't change the chamber type.")}
-        end
-    end
-  end
-
-  @impl true
   def handle_event("save_title", %{"title" => title}, socket) do
     chamber = socket.assigns.chamber
     user = socket.assigns.current_user
@@ -333,129 +189,6 @@ defmodule MixchambWeb.ChamberLive do
   end
 
   @impl true
-  def handle_event("request_replay", _params, socket) do
-    events = Mixchamb.Chambers.recent_events_within(socket.assigns.chamber_slug, 30)
-    {:noreply, push_event(socket, "replay_burst", events_to_replay_payload(events))}
-  end
-
-  @impl true
-  def handle_event("toggle_recording", _params, socket) do
-    chamber = socket.assigns.chamber
-    user = socket.assigns.current_user
-
-    # Only the creator may toggle. Picker isn't rendered for
-    # others, so the only path here is a hand-crafted phx-event.
-    if chamber.creator_user_id != user.id do
-      {:noreply, socket}
-    else
-      case Chambers.set_recording(chamber, !chamber.is_recording) do
-        {:ok, updated} ->
-          # Tell every subscribed client (including this LV) that
-          # the chamber row changed — `handle_info({:chamber_updated, _})`
-          # picks it up and re-renders the badge.
-          Phoenix.PubSub.broadcast(
-            Mixchamb.PubSub,
-            Mixchamb.Chambers.topic(chamber.slug),
-            {:chamber_updated, updated}
-          )
-
-          # Tell the creator's browser to start / stop tapping
-          # Tone.Recorder so the live jam can be exported as audio.
-          # push_event is per-socket, so only the creator (who
-          # just clicked the toggle) sees these — non-creators
-          # only get the chamber_updated broadcast.
-          event_name =
-            if updated.is_recording, do: "start_audio_capture", else: "stop_audio_capture"
-
-          socket =
-            socket
-            |> push_event(event_name, %{})
-            # Set the pending-audio flag based on the new state:
-            # turning REC off means a blob is about to land (pending),
-            # turning REC on means we just confirmed-and-replaced any
-            # previous blob (no longer pending).
-            |> assign(:has_pending_audio, not updated.is_recording)
-
-          {:noreply, assign(socket, :chamber, updated)}
-
-        {:error, _changeset} ->
-          {:noreply, put_flash(socket, :error, "Couldn't toggle recording.")}
-      end
-    end
-  end
-
-  @impl true
-  def handle_event("reset_recording", _params, socket) do
-    chamber = socket.assigns.chamber
-    user = socket.assigns.current_user
-
-    cond do
-      chamber.creator_user_id != user.id ->
-        {:noreply, socket}
-
-      chamber.is_recording ->
-        # Refuse while recording is still on — would race with the
-        # GenServer's batched flush. The button isn't rendered
-        # in this state; this guard catches hand-crafted events.
-        {:noreply, put_flash(socket, :error, "Stop recording before resetting.")}
-
-      true ->
-        {_count, _} = Chambers.delete_recorded_events(chamber.id)
-
-        {:noreply,
-         socket
-         |> assign(:recorded_count, 0)
-         |> assign(:has_pending_audio, false)
-         |> push_event("clear_audio_capture", %{})}
-    end
-  end
-
-  @impl true
-  def handle_event("audio_downloaded", _params, socket) do
-    # Vue's downloadLastRecording sends this so the LV can clear
-    # the pending-audio flag — the user has saved the file, so
-    # the overwrite-confirm on Start Recording shouldn't fire.
-    {:noreply, assign(socket, :has_pending_audio, false)}
-  end
-
-  @impl true
-  def handle_event("play_recording", _params, socket) do
-    chamber = socket.assigns.chamber
-    events = Chambers.recorded_events(chamber.id)
-    {:noreply, push_event(socket, "replay_burst", recorded_to_replay_payload(events))}
-  end
-
-  @impl true
-  def handle_event("note", payload, socket) do
-    user = socket.assigns.current_user
-    slug = socket.assigns.chamber_slug
-
-    case Mixchamb.RateLimiter.hit(
-           {:note, user.id, slug},
-           @note_rate_max,
-           @note_rate_window_ms
-         ) do
-      :ok ->
-        payload
-        |> Map.put("user_id", user.id)
-        |> Map.put("display_name", user.display_name)
-        |> Map.put("alias", user.alias)
-        |> then(&Mixchamb.Chambers.broadcast_note(slug, &1))
-
-        {:noreply, socket}
-
-      :rate_limited ->
-        :telemetry.execute(
-          [:mixchamb, :chamber, :note_dropped],
-          %{count: 1},
-          %{slug: slug, user_id: user.id}
-        )
-
-        {:noreply, socket}
-    end
-  end
-
-  @impl true
   def handle_event("set_alias", %{"alias" => value}, socket) do
     user = socket.assigns.current_user
     slug = socket.assigns.chamber_slug
@@ -473,407 +206,6 @@ defmodule MixchambWeb.ChamberLive do
       {:error, _changeset} ->
         {:noreply, put_flash(socket, :error, "Alias is too long (max 32 chars).")}
     end
-  end
-
-  @impl true
-  def handle_event("switch_instrument", %{"to" => to}, socket) do
-    instrument = String.to_existing_atom(to)
-    now = System.monotonic_time(:millisecond)
-
-    cond do
-      instrument not in @instruments ->
-        {:noreply, socket}
-
-      now - socket.assigns.last_switch_at < @switch_cooldown_ms ->
-        # Cooldown — ignore the request silently.
-        {:noreply, socket}
-
-      true ->
-        user = socket.assigns.current_user
-        slug = socket.assigns.chamber_slug
-
-        Presence.update(self(), presence_topic(slug), user.id, fn meta ->
-          %{meta | instrument: instrument}
-        end)
-
-        # Remember the pick so the next chamber the user enters
-        # opens on this instrument instead of the default drums.
-        # `set_last_instrument` is a no-op when the value didn't
-        # change, so coming back to the same pad doesn't burn
-        # a DB write per switch.
-        updated_user =
-          case Mixchamb.Accounts.set_last_instrument(user, Atom.to_string(instrument)) do
-            {:ok, u} -> u
-            {:error, _} -> user
-          end
-
-        {:noreply,
-         socket
-         |> assign(:current_user, updated_user)
-         |> assign(:current_instrument, instrument)
-         |> assign(:last_switch_at, now)}
-    end
-  end
-
-  # ── Poker events from the Vue island ─────────────────────────────
-  # Each one delegates to the chamber's GenServer; the server
-  # broadcasts on success and every client (including this one)
-  # picks the change up via the `{:poker, _, _}` handle_info below.
-
-  @impl true
-  def handle_event("poker_vote", %{"card" => card}, socket) when is_binary(card) do
-    Mixchamb.Chambers.Server.poker_vote(
-      socket.assigns.chamber_slug,
-      socket.assigns.current_user.id,
-      card
-    )
-
-    {:noreply, socket}
-  end
-
-  def handle_event("poker_withdraw_vote", _params, socket) do
-    Mixchamb.Chambers.Server.poker_withdraw_vote(
-      socket.assigns.chamber_slug,
-      socket.assigns.current_user.id
-    )
-
-    {:noreply, socket}
-  end
-
-  def handle_event("poker_reveal", _params, socket) do
-    if socket.assigns.is_host do
-      Mixchamb.Chambers.Server.poker_reveal(socket.assigns.chamber_slug)
-    end
-
-    {:noreply, socket}
-  end
-
-  def handle_event("poker_revote", _params, socket) do
-    if socket.assigns.is_host do
-      Mixchamb.Chambers.Server.poker_revote(socket.assigns.chamber_slug)
-    end
-
-    {:noreply, socket}
-  end
-
-  def handle_event("poker_next_round", params, socket) do
-    if socket.assigns.is_host do
-      story = Map.get(params, "story")
-      Mixchamb.Chambers.Server.poker_next_round(socket.assigns.chamber_slug, story)
-    end
-
-    {:noreply, socket}
-  end
-
-  def handle_event("poker_set_story", %{"story" => story}, socket) do
-    if socket.assigns.is_host do
-      Mixchamb.Chambers.Server.poker_set_story(socket.assigns.chamber_slug, story)
-    end
-
-    {:noreply, socket}
-  end
-
-  def handle_event("poker_set_deck", %{"deck" => deck}, socket) when is_binary(deck) do
-    if socket.assigns.is_host do
-      Mixchamb.Chambers.Server.poker_set_deck(
-        socket.assigns.chamber_slug,
-        String.to_existing_atom(deck)
-      )
-    end
-
-    {:noreply, socket}
-  end
-
-  # Host pastes a backlog into the queue editor. Payload is a list
-  # of strings; PokerSession trims + caps. Non-host attempts are
-  # silently dropped to keep the surface idempotent — the UI hides
-  # the editor for non-hosts already, this is belt-and-braces for
-  # hand-crafted phx events.
-  def handle_event("poker_set_queue", %{"queue" => queue}, socket) when is_list(queue) do
-    if socket.assigns.is_host do
-      Mixchamb.Chambers.Server.poker_set_queue(socket.assigns.chamber_slug, queue)
-    end
-
-    {:noreply, socket}
-  end
-
-  # --- Retro events from RetroBoard.vue ---------------------------
-  # Host-only: start_session / set_title / set_voting_enabled /
-  # rename_column / advance_phase / set_discussing. Anyone-in-chamber:
-  # add_card / update_card / delete_card / vote / withdraw_vote /
-  # add_action_item / update_action_item / delete_action_item.
-  # Server-side gates are authoritative (Chambers.Server checks
-  # state.hosts); the @is_host check here is fast-path UI only.
-
-  def handle_event("retro_start_session", _params, socket) do
-    if socket.assigns.is_host do
-      Mixchamb.Chambers.Server.retro_start_session(
-        socket.assigns.chamber_slug,
-        socket.assigns.current_user.id
-      )
-    end
-
-    {:noreply, socket}
-  end
-
-  def handle_event("retro_set_title", %{"title" => title}, socket) when is_binary(title) do
-    if socket.assigns.is_host do
-      Mixchamb.Chambers.Server.retro_set_title(
-        socket.assigns.chamber_slug,
-        socket.assigns.current_user.id,
-        title
-      )
-    end
-
-    {:noreply, socket}
-  end
-
-  def handle_event("retro_set_voting_enabled", %{"enabled" => enabled}, socket)
-      when is_boolean(enabled) do
-    if socket.assigns.is_host do
-      Mixchamb.Chambers.Server.retro_set_voting_enabled(
-        socket.assigns.chamber_slug,
-        socket.assigns.current_user.id,
-        enabled
-      )
-    end
-
-    {:noreply, socket}
-  end
-
-  def handle_event("retro_set_brainstorm_visible", %{"visible" => visible}, socket)
-      when is_boolean(visible) do
-    if socket.assigns.is_host do
-      Mixchamb.Chambers.Server.retro_set_brainstorm_visible(
-        socket.assigns.chamber_slug,
-        socket.assigns.current_user.id,
-        visible
-      )
-    end
-
-    {:noreply, socket}
-  end
-
-  def handle_event(
-        "retro_rename_column",
-        %{"column_id" => column_id, "name" => name},
-        socket
-      )
-      when is_binary(column_id) and is_binary(name) do
-    if socket.assigns.is_host do
-      Mixchamb.Chambers.Server.retro_rename_column(
-        socket.assigns.chamber_slug,
-        socket.assigns.current_user.id,
-        column_id,
-        name
-      )
-    end
-
-    {:noreply, socket}
-  end
-
-  def handle_event("retro_advance_phase", _params, socket) do
-    if socket.assigns.is_host do
-      Mixchamb.Chambers.Server.retro_advance_phase(
-        socket.assigns.chamber_slug,
-        socket.assigns.current_user.id
-      )
-    end
-
-    {:noreply, socket}
-  end
-
-  def handle_event(
-        "retro_add_card",
-        %{"column_id" => column_id, "body" => body},
-        socket
-      )
-      when is_binary(column_id) and is_binary(body) do
-    user = socket.assigns.current_user
-    # Snapshot both halves of the identity at card-create time
-    # (spec §3 + the "alias is additive on top of display_name"
-    # convention). When no alias is set, author_alias falls back
-    # to display_name so the card always has a non-nil primary
-    # label; author_display_name carries the noun-adj-NN handle
-    # separately for the two-piece render.
-    author_alias = user.alias || user.display_name
-
-    Mixchamb.Chambers.Server.retro_add_card(
-      socket.assigns.chamber_slug,
-      user.id,
-      column_id,
-      body,
-      author_alias,
-      user.display_name
-    )
-
-    {:noreply, socket}
-  end
-
-  def handle_event(
-        "retro_update_card",
-        %{"card_id" => card_id, "body" => body},
-        socket
-      )
-      when is_binary(card_id) and is_binary(body) do
-    Mixchamb.Chambers.Server.retro_update_card(
-      socket.assigns.chamber_slug,
-      socket.assigns.current_user.id,
-      card_id,
-      body
-    )
-
-    {:noreply, socket}
-  end
-
-  def handle_event("retro_delete_card", %{"card_id" => card_id}, socket)
-      when is_binary(card_id) do
-    Mixchamb.Chambers.Server.retro_delete_card(
-      socket.assigns.chamber_slug,
-      socket.assigns.current_user.id,
-      card_id
-    )
-
-    {:noreply, socket}
-  end
-
-  def handle_event("retro_vote", %{"card_id" => card_id}, socket) when is_binary(card_id) do
-    Mixchamb.Chambers.Server.retro_vote(
-      socket.assigns.chamber_slug,
-      socket.assigns.current_user.id,
-      card_id
-    )
-
-    {:noreply, socket}
-  end
-
-  def handle_event("retro_withdraw_vote", %{"card_id" => card_id}, socket)
-      when is_binary(card_id) do
-    Mixchamb.Chambers.Server.retro_withdraw_vote(
-      socket.assigns.chamber_slug,
-      socket.assigns.current_user.id,
-      card_id
-    )
-
-    {:noreply, socket}
-  end
-
-  def handle_event("retro_set_discussing", params, socket) do
-    card_id = Map.get(params, "card_id")
-
-    if socket.assigns.is_host do
-      Mixchamb.Chambers.Server.retro_set_discussing(
-        socket.assigns.chamber_slug,
-        socket.assigns.current_user.id,
-        card_id
-      )
-    end
-
-    {:noreply, socket}
-  end
-
-  def handle_event("retro_add_action_item", params, socket) do
-    user = socket.assigns.current_user
-
-    attrs =
-      params
-      |> Map.take(["body", "source_card_id", "assignee_alias", "due_date"])
-      |> Map.new(fn {k, v} -> {String.to_atom(k), v} end)
-      |> Map.put(:created_by_user_id, user.id)
-
-    Mixchamb.Chambers.Server.retro_add_action_item(socket.assigns.chamber_slug, attrs)
-
-    {:noreply, socket}
-  end
-
-  def handle_event(
-        "retro_update_action_item",
-        %{"action_id" => action_id} = params,
-        socket
-      )
-      when is_binary(action_id) do
-    attrs =
-      params
-      |> Map.take(["body", "assignee_alias", "due_date", "completed"])
-      |> Map.new(fn {k, v} -> {String.to_atom(k), v} end)
-
-    Mixchamb.Chambers.Server.retro_update_action_item(
-      socket.assigns.chamber_slug,
-      action_id,
-      attrs
-    )
-
-    {:noreply, socket}
-  end
-
-  def handle_event("retro_delete_action_item", %{"action_id" => action_id}, socket)
-      when is_binary(action_id) do
-    Mixchamb.Chambers.Server.retro_delete_action_item(socket.assigns.chamber_slug, action_id)
-    {:noreply, socket}
-  end
-
-  def handle_event(
-        "retro_toggle_reaction",
-        %{"card_id" => card_id, "emoji" => emoji},
-        socket
-      )
-      when is_binary(card_id) and is_binary(emoji) do
-    Mixchamb.Chambers.Server.retro_toggle_reaction(
-      socket.assigns.chamber_slug,
-      socket.assigns.current_user.id,
-      card_id,
-      emoji
-    )
-
-    {:noreply, socket}
-  end
-
-  def handle_event(
-        "retro_add_comment",
-        %{"card_id" => card_id, "body" => body},
-        socket
-      )
-      when is_binary(card_id) and is_binary(body) do
-    user = socket.assigns.current_user
-    author_alias = user.alias || user.display_name
-
-    Mixchamb.Chambers.Server.retro_add_comment(
-      socket.assigns.chamber_slug,
-      user.id,
-      card_id,
-      body,
-      author_alias,
-      user.display_name
-    )
-
-    {:noreply, socket}
-  end
-
-  def handle_event(
-        "retro_update_comment",
-        %{"comment_id" => comment_id, "body" => body},
-        socket
-      )
-      when is_binary(comment_id) and is_binary(body) do
-    Mixchamb.Chambers.Server.retro_update_comment(
-      socket.assigns.chamber_slug,
-      socket.assigns.current_user.id,
-      comment_id,
-      body
-    )
-
-    {:noreply, socket}
-  end
-
-  def handle_event("retro_delete_comment", %{"comment_id" => comment_id}, socket)
-      when is_binary(comment_id) do
-    Mixchamb.Chambers.Server.retro_delete_comment(
-      socket.assigns.chamber_slug,
-      socket.assigns.current_user.id,
-      comment_id
-    )
-
-    {:noreply, socket}
   end
 
   # Creator promotes another participant to co-host. Server enforces
@@ -896,161 +228,6 @@ defmodule MixchambWeb.ChamberLive do
       socket.assigns.chamber_slug,
       socket.assigns.current_user.id,
       target
-    )
-
-    {:noreply, socket}
-  end
-
-  # --- Mini-game events ------------------------------------------
-  # Each delegates to the chamber GenServer, which authoritatively
-  # gates host/drawer rules and broadcasts. The LV just routes +
-  # supplies identity (user_id, alias). See features/mini-game.md.
-
-  def handle_event("minigame_select_game", %{"game" => game}, socket)
-      when is_binary(game) do
-    Mixchamb.Chambers.Server.minigame_select_game(
-      socket.assigns.chamber_slug,
-      socket.assigns.current_user.id,
-      game
-    )
-
-    {:noreply, socket}
-  end
-
-  def handle_event("minigame_set_config", %{"config" => config}, socket)
-      when is_map(config) do
-    Mixchamb.Chambers.Server.minigame_set_config(
-      socket.assigns.chamber_slug,
-      socket.assigns.current_user.id,
-      config
-    )
-
-    {:noreply, socket}
-  end
-
-  def handle_event("minigame_start", _params, socket) do
-    player_ids = Enum.map(poker_participants(socket.assigns.presences), & &1.user_id)
-
-    Mixchamb.Chambers.Server.minigame_start(
-      socket.assigns.chamber_slug,
-      socket.assigns.current_user.id,
-      player_ids
-    )
-
-    {:noreply, socket}
-  end
-
-  # Play-again and End both reset to a fresh lobby in v1 (the lobby
-  # is the "no game running" screen). Separate events keep the wire
-  # honest if they ever diverge.
-  def handle_event(event, _params, socket)
-      when event in ["minigame_play_again", "minigame_end"] do
-    Mixchamb.Chambers.Server.minigame_to_lobby(
-      socket.assigns.chamber_slug,
-      socket.assigns.current_user.id
-    )
-
-    {:noreply, socket}
-  end
-
-  def handle_event("minigame_choose_word", %{"word" => word}, socket)
-      when is_binary(word) do
-    Mixchamb.Chambers.Server.minigame_choose_word(
-      socket.assigns.chamber_slug,
-      socket.assigns.current_user.id,
-      word
-    )
-
-    {:noreply, socket}
-  end
-
-  def handle_event("minigame_guess", %{"text" => text}, socket) when is_binary(text) do
-    user = socket.assigns.current_user
-
-    Mixchamb.Chambers.Server.minigame_guess(
-      socket.assigns.chamber_slug,
-      user.id,
-      user.alias || user.display_name,
-      text
-    )
-
-    {:noreply, socket}
-  end
-
-  def handle_event("minigame_skip", _params, socket) do
-    Mixchamb.Chambers.Server.minigame_skip(
-      socket.assigns.chamber_slug,
-      socket.assigns.current_user.id
-    )
-
-    {:noreply, socket}
-  end
-
-  def handle_event("minigame_next", _params, socket) do
-    Mixchamb.Chambers.Server.minigame_next(
-      socket.assigns.chamber_slug,
-      socket.assigns.current_user.id
-    )
-
-    {:noreply, socket}
-  end
-
-  # Gartic Phone: submit this step's entry (text or drawing strokes).
-  def handle_event("minigame_submit", payload, socket) when is_map(payload) do
-    Mixchamb.Chambers.Server.minigame_submit(
-      socket.assigns.chamber_slug,
-      socket.assigns.current_user.id,
-      Map.drop(payload, ["_target"])
-    )
-
-    {:noreply, socket}
-  end
-
-  # Gartic Phone: host advances the album.
-  def handle_event("minigame_album_next", _params, socket) do
-    Mixchamb.Chambers.Server.minigame_album_next(
-      socket.assigns.chamber_slug,
-      socket.assigns.current_user.id
-    )
-
-    {:noreply, socket}
-  end
-
-  # Drawing relay. The GenServer enforces drawer-only / mid-turn;
-  # these high-frequency events never reload the per-user view.
-  def handle_event("minigame_stroke", payload, socket) when is_map(payload) do
-    Mixchamb.Chambers.Server.minigame_stroke(
-      socket.assigns.chamber_slug,
-      socket.assigns.current_user.id,
-      payload
-    )
-
-    {:noreply, socket}
-  end
-
-  def handle_event("minigame_stroke_end", stroke, socket) when is_map(stroke) do
-    Mixchamb.Chambers.Server.minigame_stroke_end(
-      socket.assigns.chamber_slug,
-      socket.assigns.current_user.id,
-      stroke
-    )
-
-    {:noreply, socket}
-  end
-
-  def handle_event("minigame_undo", _params, socket) do
-    Mixchamb.Chambers.Server.minigame_undo(
-      socket.assigns.chamber_slug,
-      socket.assigns.current_user.id
-    )
-
-    {:noreply, socket}
-  end
-
-  def handle_event("minigame_clear", _params, socket) do
-    Mixchamb.Chambers.Server.minigame_clear(
-      socket.assigns.chamber_slug,
-      socket.assigns.current_user.id
     )
 
     {:noreply, socket}
@@ -1097,6 +274,18 @@ defmodule MixchambWeb.ChamberLive do
   end
 
   @impl true
+  def handle_info({:poker, _, _} = msg, socket), do: Poker.handle_info(msg, socket)
+  def handle_info({:poker, _, _, _, _} = msg, socket), do: Poker.handle_info(msg, socket)
+  def handle_info({:retro, _, _} = msg, socket), do: Retro.handle_info(msg, socket)
+  def handle_info({:retro, _, _, _} = msg, socket), do: Retro.handle_info(msg, socket)
+  def handle_info({:retro, _, _, _, _} = msg, socket), do: Retro.handle_info(msg, socket)
+  def handle_info({:retro, _, _, _, _, _} = msg, socket), do: Retro.handle_info(msg, socket)
+  def handle_info({:minigame, _} = msg, socket), do: MiniGame.handle_info(msg, socket)
+  def handle_info({:minigame_feed, _} = msg, socket), do: MiniGame.handle_info(msg, socket)
+  def handle_info({:minigame_relay, _, _} = msg, socket), do: MiniGame.handle_info(msg, socket)
+  def handle_info({:chamber_note, _} = msg, socket), do: Music.handle_info(msg, socket)
+  def handle_info({:expire_hit, _} = msg, socket), do: Music.handle_info(msg, socket)
+
   def handle_info(%Phoenix.Socket.Broadcast{event: "presence_diff"}, socket) do
     presences = Presence.list(presence_topic(socket.assigns.chamber_slug))
 
@@ -1126,111 +315,6 @@ defmodule MixchambWeb.ChamberLive do
      |> push_navigate(to: ~p"/")}
   end
 
-  # Any poker broadcast (vote_cast / withdrawn / revealed / cleared /
-  # story_changed / deck_changed) just re-pulls the authoritative
-  # session from the GenServer. One extra cast per broadcast — cheap,
-  # and avoids having to track per-event diffs against a stale local
-  # copy.
-  def handle_info({:poker, _evt, _payload}, socket) do
-    {:noreply, assign(socket, :poker_session, load_poker_session(socket.assigns.chamber))}
-  end
-
-  # Retro broadcasts — reload the full session from DB for the
-  # state-changing ones (card add/edit/delete, action add/edit/delete,
-  # phase change, voting toggle, title/column rename, session start).
-  # Vote events also reload (so the LV's view of vote tallies stays
-  # in sync); the per-card vote counts are denormalised on cards
-  # post-materialisation, but mid-voting we don't surface live tallies
-  # from this stub anyway. Wire shapes:
-  #   {:retro, :evt, payload}          (3-tuple)
-  #   {:retro, :evt, a, b}             (4-tuple — card_edited, column_renamed, vote_cast pre-tallies)
-  #   {:retro, :evt, user_id, card_id, tallies}  (5-tuple — vote_cast / vote_withdrawn)
-  def handle_info({:retro, :phase_changed, new_phase}, socket) do
-    chamber = socket.assigns.chamber
-
-    socket =
-      socket
-      |> assign(:retro_session, load_retro_session(chamber))
-      # Reset vote tallies + my-votes + discussing focus on every
-      # phase change. Entering :voting starts at zero; exiting
-      # :voting drops the now-stale ephemeral signals (the
-      # materialised counts come back on the reloaded session).
-      |> assign(:retro_tallies, %{})
-      |> assign(:retro_my_votes, MapSet.new())
-      |> assign(:retro_discussing_card_id, nil)
-
-    # Archive transition produces a new row in past_retros — reload
-    # the disclosure list. Other transitions don't touch that list.
-    socket =
-      if new_phase == :archived do
-        assign(socket, :past_retros, load_past_retros(chamber))
-      else
-        socket
-      end
-
-    {:noreply, socket}
-  end
-
-  def handle_info({:retro, :vote_cast, user_id, card_id, tallies}, socket) do
-    my_votes =
-      if user_id == socket.assigns.current_user.id do
-        MapSet.put(socket.assigns.retro_my_votes, card_id)
-      else
-        socket.assigns.retro_my_votes
-      end
-
-    {:noreply,
-     socket
-     |> assign(:retro_tallies, tallies)
-     |> assign(:retro_my_votes, my_votes)}
-  end
-
-  def handle_info({:retro, :vote_withdrawn, user_id, card_id, tallies}, socket) do
-    my_votes =
-      if user_id == socket.assigns.current_user.id do
-        MapSet.delete(socket.assigns.retro_my_votes, card_id)
-      else
-        socket.assigns.retro_my_votes
-      end
-
-    {:noreply,
-     socket
-     |> assign(:retro_tallies, tallies)
-     |> assign(:retro_my_votes, my_votes)}
-  end
-
-  # Discussing-focus is ephemeral GenServer state, not in the
-  # session DB row — handle it before the catch-all so we don't
-  # incur a session reload for what's just a card-id swap.
-  def handle_info({:retro, :discussing, card_id_or_nil}, socket) do
-    {:noreply, assign(socket, :retro_discussing_card_id, card_id_or_nil)}
-  end
-
-  # Catch-all retro broadcasts (card/action add/edit/delete, title,
-  # column rename, voting toggle, session start) all just reload
-  # the session. Cheap, avoids per-event patching against a stale
-  # local copy.
-  def handle_info({:retro, _evt, _payload}, socket) do
-    {:noreply, assign(socket, :retro_session, load_retro_session(socket.assigns.chamber))}
-  end
-
-  def handle_info({:retro, _evt, _a, _b}, socket) do
-    {:noreply, assign(socket, :retro_session, load_retro_session(socket.assigns.chamber))}
-  end
-
-  def handle_info({:retro, _evt, _a, _b, _c}, socket) do
-    {:noreply, assign(socket, :retro_session, load_retro_session(socket.assigns.chamber))}
-  end
-
-  # :reaction_toggled is the only 6-tuple broadcast (card_id +
-  # user_id + emoji + :added|:removed). Reloading the session
-  # is heavier than a per-card patch would be, but reaction
-  # volume is low (one click per intent) so the cost is fine
-  # and keeps the receive-side simple.
-  def handle_info({:retro, _evt, _a, _b, _c, _d}, socket) do
-    {:noreply, assign(socket, :retro_session, load_retro_session(socket.assigns.chamber))}
-  end
-
   # Co-host promotion / demotion fans out to everyone in the chamber.
   # Each client recomputes its own is_host flag — the host-only
   # controls in the template will re-render accordingly within a
@@ -1245,33 +329,10 @@ defmodule MixchambWeb.ChamberLive do
      |> assign(:is_host, MapSet.member?(hosts_set, user_id))}
   end
 
-  def handle_info({:poker, _evt, _a, _b, _c}, socket) do
-    {:noreply, assign(socket, :poker_session, load_poker_session(socket.assigns.chamber))}
-  end
-
   # Activity flipped by the host. Re-pull the chamber row so the
   # local `activity` assign matches the DB, then reload the
   # activity-specific session assigns (poker fresh / nil; retro
   # rehydrated from DB if a session exists).
-  # Low-frequency game event: reload the per-user view (scoreboard,
-  # phase, blanks, drawer, deadline, stroke snapshot).
-  def handle_info({:minigame, :changed}, socket) do
-    {:noreply, assign(socket, :minigame_state, load_minigame_state(socket.assigns.chamber))}
-  end
-
-  # Transient guess-feed line — pushed straight to the client, never
-  # part of reloadable state (spec §4).
-  def handle_info({:minigame_feed, payload}, socket) do
-    {:noreply, push_event(socket, "minigame_feed", payload)}
-  end
-
-  # Drawing relay — strokes / undo / clear from the drawer. Pushed to
-  # every client; the canvas skips events whose `from` is itself (the
-  # drawer already rendered locally, same self-skip as note replay).
-  def handle_info({:minigame_relay, kind, payload}, socket) do
-    {:noreply,
-     push_event(socket, "minigame_relay", %{kind: Atom.to_string(kind), payload: payload})}
-  end
 
   def handle_info({:activity_changed, activity}, socket) do
     chamber = Chambers.find_by_slug(socket.assigns.chamber_slug)
@@ -1279,10 +340,9 @@ defmodule MixchambWeb.ChamberLive do
     {:noreply,
      socket
      |> assign(:chamber, chamber)
-     |> assign(:poker_session, load_poker_session(chamber))
-     |> assign(:retro_session, load_retro_session(chamber))
-     |> assign(:minigame_state, load_minigame_state(chamber))
-     |> assign(:past_retros, load_past_retros(chamber))
+     |> Poker.mount_assigns(chamber)
+     |> Retro.reload(chamber)
+     |> MiniGame.mount_assigns(chamber)
      # Tell the room the host flipped the activity — the board swaps
      # underneath everyone, so a flash explains why. Fires for every
      # connected client (the host's own confirms their click).
@@ -1302,88 +362,8 @@ defmodule MixchambWeb.ChamberLive do
      |> assign(:recorded_count, Chambers.recorded_event_count(updated.id))}
   end
 
-  @impl true
-  def handle_info({:chamber_note, event}, socket) do
-    user_id = socket.assigns.current_user.id
-
-    # Append to the recent-hits feed shown in the presence aside,
-    # for every hit (self + others). Releases don't show — only the
-    # initial press counts as something the user "played".
-    socket =
-      case hit_label(event.payload) do
-        nil ->
-          socket
-
-        label ->
-          ref = System.unique_integer([:positive, :monotonic])
-          # Pre-resolve the display name on the server so the
-          # template doesn't have to reach back into @presences for
-          # remote users (who may not even be in the presence map
-          # yet during a join race).
-          hit = %{
-            ref: ref,
-            user_name: hit_user_name(event.payload),
-            label: label,
-            instrument: hit_instrument_atom(event.payload),
-            is_self: event.payload["user_id"] == user_id
-          }
-
-          Process.send_after(self(), {:expire_hit, ref}, 3500)
-          assign(socket, :recent_hits, Enum.take([hit | socket.assigns.recent_hits], 5))
-      end
-
-    # Self-events skip the remote-play path: the player's local audio
-    # already fired immediately on tap, so re-playing from the network
-    # roundtrip would double-strike.
-    if event.payload["user_id"] != user_id do
-      {:noreply, push_event(socket, "play_remote_note", event.payload)}
-    else
-      {:noreply, socket}
-    end
-  end
-
-  @impl true
-  def handle_info({:expire_hit, ref}, socket) do
-    {:noreply,
-     assign(
-       socket,
-       :recent_hits,
-       Enum.reject(socket.assigns.recent_hits, &(&1.ref == ref))
-     )}
-  end
-
-  # Pull a human label out of the note payload. Each instrument
-  # family puts the "what was played" value under a different key,
-  # and pad release events have no label of their own (the press
-  # already showed up). Drums and kendang send an explicit `label`
-  # since their `note` field is a sample ID (e.g. `crash`) rather
-  # than a displayable name (`Crash 1`).
-  defp hit_label(%{"phase" => "release"}), do: nil
-  defp hit_label(%{"label" => l}) when is_binary(l) and l != "", do: l
-  defp hit_label(%{"chord" => c}) when is_binary(c), do: c
-  defp hit_label(%{"note" => n}) when is_binary(n), do: n
-  defp hit_label(%{"pad" => p}) when is_binary(p), do: p
-  defp hit_label(_), do: nil
-
-  defp hit_user_name(%{"alias" => a}) when is_binary(a) and a != "", do: a
-  defp hit_user_name(%{"display_name" => n}) when is_binary(n), do: n
-  defp hit_user_name(_), do: "Someone"
-
-  # Map the instrument string from a network payload back to one of
-  # @instruments. Unknown values collapse to :drums for the dot
-  # colour — the label still renders correctly either way.
-  defp hit_instrument_atom(%{"instrument" => i}) when is_binary(i) do
-    try do
-      atom = String.to_existing_atom(i)
-      if atom in @instruments, do: atom, else: :drums
-    rescue
-      ArgumentError -> :drums
-    end
-  end
-
-  defp hit_instrument_atom(_), do: :drums
-
-  defp presence_topic(slug) when is_binary(slug), do: "chamber:#{slug}:presence"
+  @doc false
+  def presence_topic(slug) when is_binary(slug), do: "chamber:#{slug}:presence"
 
   # Display helpers for the (alias, display_name) pair. The
   # auto-generated display_name is always shown somewhere; the
@@ -1419,55 +399,6 @@ defmodule MixchambWeb.ChamberLive do
     Enum.any?(presences, fn {user_id, _meta} ->
       user_id != chamber.creator_user_id
     end)
-  end
-
-  ## Replay helpers
-
-  # Trim the stored event buffer down to just the fields the Vue side
-  # needs, with offsets relative to the first event so the client can
-  # schedule them via setTimeout from "now."
-  defp events_to_replay_payload([]), do: %{events: []}
-
-  defp events_to_replay_payload([first | _] = events) do
-    start_at = first.at
-
-    events_payload =
-      Enum.map(events, fn e ->
-        replay_event(e.payload, e.at - start_at)
-      end)
-
-    %{events: events_payload}
-  end
-
-  # Same shape as `events_to_replay_payload/1` but starts from a
-  # list of `Chambers.ChamberEvent` rows — these use absolute
-  # `inserted_at` timestamps, so offsets are computed against the
-  # first row's timestamp instead of monotonic time.
-  defp recorded_to_replay_payload([]), do: %{events: []}
-
-  defp recorded_to_replay_payload([first | _] = rows) do
-    start_at = first.inserted_at
-
-    events_payload =
-      Enum.map(rows, fn row ->
-        offset_ms = DateTime.diff(row.inserted_at, start_at, :millisecond)
-        replay_event(row.payload, offset_ms)
-      end)
-
-    %{events: events_payload}
-  end
-
-  defp replay_event(payload, offset_ms) do
-    %{
-      instrument: payload["instrument"],
-      style: payload["style"] || "synth",
-      note: payload["note"],
-      chord: payload["chord"],
-      octave_offset: payload["octave_offset"] || 0,
-      phase: payload["phase"],
-      up_strum: payload["up_strum"],
-      offset_ms: offset_ms
-    }
   end
 
   ## Render helpers
@@ -1598,150 +529,11 @@ defmodule MixchambWeb.ChamberLive do
     end)
   end
 
-  # Shape the PokerSession into the JSON-safe map that Chamber.vue
-  # (and PokerBoard.vue) consume. Filters vote values during `:voting`
-  # so only the current user's own card is sent to the client; the
-  # rest of the room sees just a "this user has voted" signal until
-  # the host reveals. On `:revealed`, every value is exposed.
-  # Mini-game per-user view: delegate to the chosen game's `view/2`
-  # so the drawer sees the secret word while guessers see only
-  # blanks (spec §1). nil outside minigame mode.
-  defp minigame_view(nil, _user_id), do: nil
-
-  defp minigame_view(%Mixchamb.MiniGame.State{} = state, user_id) do
-    Mixchamb.MiniGame.Registry.module(state.game).view(state, user_id)
-  end
-
-  defp poker_view(nil, _user_id), do: nil
-
-  defp poker_view(session, user_id) do
-    voted_user_ids = session.votes |> Map.keys() |> Enum.sort()
-    my_vote = Map.get(session.votes, user_id)
-
-    %{
-      status: Atom.to_string(session.status),
-      deck: Atom.to_string(session.deck),
-      cards: Mixchamb.Chambers.PokerSession.cards_for(session.deck),
-      story: session.story,
-      round: session.round,
-      my_vote: my_vote,
-      voted_user_ids: voted_user_ids,
-      votes: if(session.status == :revealed, do: session.votes, else: %{}),
-      history: Enum.map(session.history, &history_view/1),
-      queue: session.queue
-    }
-  end
-
-  # Shape history entries for the wire. Strip user_ids — the
-  # RoundHistory panel only renders the verdict + count, not a
-  # per-user breakdown (that's RevealPanel's job, and only for
-  # the live round). Snapshot the deck's card order so the
-  # client can compute the "close" verdict correctly even if
-  # the deck was switched between rounds.
-  defp history_view(entry) do
-    %{
-      round: entry.round,
-      story: entry.story,
-      deck: Atom.to_string(entry.deck),
-      cards: Mixchamb.Chambers.PokerSession.cards_for(entry.deck),
-      values: Map.values(entry.votes)
-    }
-  end
-
-  # Shape the loaded RetroSession (with its columns/cards/actions
-  # preloads) into a JSON-safe map for Chamber.vue / RetroBoard.vue.
-  # Strips Ecto metadata and snakes-into the wire shape RetroBoard
-  # expects (see assets/vue/activities/retro/RetroBoard.vue's
-  # `RetroSession` type). No per-user vote filtering at this layer
-  # — votes are ephemeral in the GenServer; vote_count on each
-  # card is the only persisted signal.
-  defp retro_view(nil), do: nil
-
-  defp retro_view(session) do
-    %{
-      id: session.id,
-      title: session.title,
-      status: session.status,
-      voting_enabled: session.voting_enabled,
-      brainstorm_visible: session.brainstorm_visible,
-      columns:
-        Enum.map(session.columns, fn col ->
-          %{id: col.id, name: col.name, position: col.position}
-        end),
-      cards:
-        Enum.map(session.cards, fn card ->
-          %{
-            id: card.id,
-            retro_column_id: card.retro_column_id,
-            body: card.body,
-            author_user_id: card.author_user_id,
-            author_alias: card.author_alias,
-            author_display_name: card.author_display_name,
-            vote_count: card.vote_count,
-            reactions:
-              Enum.map(card.reactions, fn r ->
-                %{user_id: r.user_id, emoji: r.emoji}
-              end),
-            comments:
-              Enum.map(card.comments, fn co ->
-                %{
-                  id: co.id,
-                  body: co.body,
-                  author_user_id: co.author_user_id,
-                  author_alias: co.author_alias,
-                  author_display_name: co.author_display_name
-                }
-              end)
-          }
-        end),
-      action_items:
-        Enum.map(session.action_items, fn action ->
-          %{
-            id: action.id,
-            source_card_id: action.source_card_id,
-            body: action.body,
-            assignee_alias: action.assignee_alias,
-            # Date → ISO string for the wire. live_vue's JSON
-            # encoder doesn't know how to serialise %Date{}.
-            due_date: action.due_date && Date.to_iso8601(action.due_date),
-            completed: action.completed
-          }
-        end)
-    }
-  end
-
-  # Slim wire shape for the most-recent archived retro in this
-  # chamber. RetroBoard renders a "Copy share link" notice in
-  # its empty state pointing at this. Returns nil when nothing's
-  # been archived yet.
-  defp retro_last_archived([]), do: nil
-
-  defp retro_last_archived([latest | _]) do
-    %{
-      id: latest.id,
-      title: latest.title,
-      archived_at: latest.archived_at
-    }
-  end
-
-  # Just the display labels (alias_or_name) for the current
-  # participants, used by retro's assignee-input autocomplete
-  # (spec §6). Sorted by joined_at for a stable order; deduped
-  # in case anyone joined twice from different tabs.
-  defp retro_participant_aliases(presences) do
-    presences
-    |> Enum.map(fn {_user_id, %{metas: [meta | _]}} ->
-      {meta.alias || meta.display_name, meta.joined_at}
-    end)
-    |> Enum.sort_by(fn {_label, joined_at} -> joined_at end)
-    |> Enum.map(fn {label, _} -> label end)
-    |> Enum.uniq()
-  end
-
-  # Trim the presence map down to the subset PokerBoard needs:
-  # user_id + display_name + alias, sorted by joined_at so the
-  # row order is stable across renders.
-  defp poker_participants(presences) do
+  # Trim the presence map down to the subset PokerBoard / the
+  # mini-game lobby need: user_id + display_name + alias, sorted
+  # by joined_at so the row order is stable across renders.
+  @doc false
+  def participants(presences) do
     presences
     |> Enum.map(fn {user_id, %{metas: [meta | _]}} ->
       %{
@@ -1794,12 +586,6 @@ defmodule MixchambWeb.ChamberLive do
   end
 
   defp creator?(chamber, current_user), do: chamber.creator_user_id == current_user.id
-
-  # Kind picker is open to the chamber's creator OR any logged-in
-  # admin — the chaos chamber has no human creator, so without the
-  # admin escape hatch nobody could ever change its audio character.
-  defp can_change_kind?(chamber, current_user, current_admin),
-    do: creator?(chamber, current_user) or is_binary(current_admin)
 
   # Order matters — drives chip render order. From driest to wettest
   # so the picker reads as a "spectrum" left-to-right.
@@ -1948,7 +734,7 @@ defmodule MixchambWeb.ChamberLive do
               <span class="text-xs uppercase tracking-wider text-muted-foreground mr-1">
                 Kind
               </span>
-              <%= if can_change_kind?(@chamber, @current_user, @current_admin) do %>
+              <%= if Music.can_change_kind?(@chamber, @current_user, @current_admin) do %>
                 <button
                   :for={kind <- chamber_kinds()}
                   phx-click="set_kind"
@@ -2127,16 +913,16 @@ defmodule MixchambWeb.ChamberLive do
               chamber_slug={@chamber.slug}
               activity={@chamber.activity}
               presence_count={map_size(@presences)}
-              poker_session={poker_view(@poker_session, @current_user.id)}
-              poker_participants={poker_participants(@presences)}
-              retro_session={retro_view(@retro_session)}
+              poker_session={Poker.view(@poker_session, @current_user.id)}
+              poker_participants={participants(@presences)}
+              retro_session={Retro.view(@retro_session)}
               retro_tallies={@retro_tallies}
               retro_my_votes={MapSet.to_list(@retro_my_votes)}
               retro_discussing_card_id={@retro_discussing_card_id}
-              retro_participant_aliases={retro_participant_aliases(@presences)}
-              retro_last_archived={retro_last_archived(@past_retros)}
-              minigame_state={minigame_view(@minigame_state, @current_user.id)}
-              minigame_participants={poker_participants(@presences)}
+              retro_participant_aliases={Retro.participant_aliases(@presences)}
+              retro_last_archived={Retro.last_archived(@past_retros)}
+              minigame_state={MiniGame.view(@minigame_state, @current_user.id)}
+              minigame_participants={participants(@presences)}
               current_user_id={@current_user.id}
               current_user_alias={@current_user.alias || @current_user.display_name}
               is_host={@is_host}

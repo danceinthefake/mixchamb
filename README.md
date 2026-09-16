@@ -347,7 +347,8 @@ mixchamb/
 │       ├── components/layouts/   root + app layouts (HEEX)
 │       ├── controllers/          AdminSessionController + admin login form
 │       ├── live/
-│       │   ├── chamber_live.ex   the user-facing chamber (dispatches by activity)
+│       │   ├── chamber_live.ex   the user-facing chamber shell (routes by activity)
+│       │   ├── chamber_live/     per-activity handlers: music / poker / retro / minigame
 │       │   ├── landing_live.ex   activity picker
 │       │   ├── retro_live.ex     read-only /archives/retros/:id permalink
 │       │   └── admin/            7 admin LVs + shared shell
