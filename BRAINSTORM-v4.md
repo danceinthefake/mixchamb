@@ -450,6 +450,68 @@ the spec explicitly defers polish.
   would-you-rather are small synchronous games, so a separate
   activity would only fragment the same idea.
 
+## 7a. Re-evaluation (2026-09-17) — _Locked_
+
+Honest audit after a 3.5-month idle stretch (last feature commit
+2026-05-28). Findings:
+
+- **Not deployed, zero users.** Every judgement below is against
+  no real-world signal. Deploy + user testing stay skipped for now
+  (hosting target still undecided, see `HOSTING.md`) — so the
+  work picked here is the work that's obviously right without
+  that signal.
+- **No user auth.** `EnsureAnonUser` gives a cookie-backed
+  `anonymous_users` row swept after 24h idle; `/admin` has its
+  own env-var login. Retro archives hang off chambers, which also
+  get swept — "our team's last retro" is unreachable a week later
+  unless someone kept the URL. §7 item 2 (magic link / OAuth)
+  stays **skipped** — the gap is team continuity, not identity,
+  and that's solvable without a login.
+- **Per activity.** Music: polished showcase, no ritual value,
+  frozen. Poker: solid, crowded field, keep. Retro: deepest build
+  and the only activity that can earn *recurring* use — invest
+  here. Mini-game: good, frozen at three games. Admin: 12
+  LiveViews / ~3.2K LOC, larger than any activity, built for an
+  operator with no traffic — frozen.
+- **`chamber_live.ex` is 2.5K lines / 55 `handle_event`s.**
+  Maintenance hazard; split by activity *before* piling retro
+  features on top.
+
+### Plan (in order)
+
+1. ⬜ **Split `chamber_live.ex` by activity.** Per-activity
+   modules (music / poker / retro / minigame) behind the one
+   chamber LV shell. No behaviour change; tests must stay green.
+2. ⬜ **Teams (slug) — continuity without auth.** `teams` table;
+   retro `:setup` takes an optional team slug (`payments`), and
+   `/t/:slug` lists that team's archived retros. A shared secret
+   in the URL, same trust model as chamber links. This is ~80% of
+   the auth value at ~10% of the cost.
+3. ⬜ **Action-item carry-over** (`features/retrospective.md`
+   §11). With teams, `:setup` surfaces "N open from last time —
+   carry over / mark done". Meaningless without teams, which is
+   why it never shipped.
+4. ⬜ **Markdown export** at `:archived` — clipboard snapshot of
+   title + cards by column + action items. ~25 lines. That's how
+   retro output actually travels (Slack / Notion).
+5. ⬜ **Column presets** on `:setup` — Start/Stop/Continue, 4Ls,
+   Mad/Sad/Glad, Sailboat. Prefill the name inputs; no schema.
+6. ⬜ **Phase timer.** Host sets e.g. "brainstorm 5 min", everyone
+   sees the countdown. Reuse Pictionary's server-side tick.
+7. ⬜ **Retro → poker handoff.** Action item "estimate X" → one
+   click flips the chamber to poker with that story queued. Makes
+   "one link, four rituals" real instead of a landing-page claim.
+8. ⬜ **Anon sweep 24h → 30 days.** One constant; makes the anon
+   identity stick across a weekly ritual.
+
+**Deferred, in this order if teams ask:** card grouping / merging
+(§11, highest UI cost — duplicate cards are the #1 annoyance in
+an 8-person retro, so it's next once 1–8 land); real auth +
+private archives + action-item email / Jira push.
+
+**Frozen:** new instruments, new mini-games, new admin tabs,
+multi-node work, sequencing / event templates (§7 item 3).
+
 ## 8. What this means for the existing music build
 
 - **Nothing breaks.** Music chambers keep working exactly as they
