@@ -14,21 +14,6 @@ import type { RetroSession } from "../activities/retro/RetroBoard.vue"
 
 enableAutoUnmount(afterEach)
 
-function makeCard(o: Partial<import("../activities/retro/RetroBoard.vue").RetroCard> = {}) {
-  return {
-    id: "c-default",
-    retro_column_id: "c1",
-    body: "x",
-    author_user_id: "u1",
-    author_alias: "me",
-    author_display_name: null,
-    vote_count: 0,
-    reactions: [],
-    comments: [],
-    ...o,
-  }
-}
-
 function makeSession(overrides: Partial<RetroSession> = {}): RetroSession {
   return {
     id: "s1",

@@ -3,22 +3,7 @@
 // helper in audio.ts. Side-effect module: importing from GuitarPad.vue
 // registers every flavor into audio.ts's registry.
 
-import {
-  AmplitudeEnvelope,
-  Chorus,
-  Delay,
-  Distortion,
-  Filter,
-  Frequency,
-  Gain,
-  MonoSynth,
-  Noise,
-  PolySynth,
-  Reverb,
-  Sampler,
-  Synth,
-  now as toneNow,
-} from "tone"
+import { Chorus, Distortion, MonoSynth, PolySynth, Reverb, Sampler, Synth } from "tone"
 import {
   applyStrumPhase,
   getChamberBus,

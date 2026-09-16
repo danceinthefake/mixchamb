@@ -1,7 +1,7 @@
 // Bass engines — Synth / Sub / Slap. Side-effect module: importing
 // from BassPad.vue registers all three into audio.ts's registry.
 
-import { MonoSynth, PolySynth, Synth, now as toneNow } from "tone"
+import { MonoSynth, now as toneNow } from "tone"
 import { getChamberBus, register, type InstrumentEngine } from "../audio"
 
 // ── Bass : Synth ───────────────────────────────────────────────────

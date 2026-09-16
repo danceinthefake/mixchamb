@@ -12,7 +12,7 @@ describe("cn", () => {
   })
 
   it("drops falsy values via clsx semantics", () => {
-    expect(cn("a", false && "b", null, undefined, "c")).toBe("a c")
+    expect(cn("a", false, null, undefined, "c")).toBe("a c")
   })
 })
 
