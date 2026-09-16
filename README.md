@@ -375,7 +375,7 @@ mixchamb/
 
 | Layer | What |
 |---|---|
-| Backend | Elixir 1.18+, **Phoenix 1.8** + **LiveView 1.1**, Ecto + Postgres, Bandit, `dns_cluster` |
+| Backend | Elixir 1.18+, **Phoenix 1.8** + **LiveView 1.2**, Ecto + Postgres, Bandit, `dns_cluster` |
 | Realtime | **Phoenix.PubSub** for note + activity broadcasts, **Phoenix.Presence** for the jammer panel |
 | Observability | `:telemetry` custom events + `Telemetry.Metrics` + Phoenix LiveDashboard |
 | Frontend | **Vue 3.5** + TypeScript (strict), Vite 8 (Rolldown bundler), Tailwind v4, **shadcn-vue** (Reka UI), Lucide icons |

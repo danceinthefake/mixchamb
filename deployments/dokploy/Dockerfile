@@ -8,10 +8,10 @@
 # produce identical artifacts. The two are kept as separate
 # files so each subdirectory is self-contained.
 
-ARG ELIXIR_VERSION=1.19.5
-ARG OTP_VERSION=28.5.0.1
-ARG DEBIAN_VERSION=bookworm-20260518-slim
-ARG NODE_VERSION=24.14.1
+ARG ELIXIR_VERSION=1.20.4
+ARG OTP_VERSION=29.0.6
+ARG DEBIAN_VERSION=bookworm-20260824-slim
+ARG NODE_VERSION=24.21.0
 
 FROM hexpm/elixir:${ELIXIR_VERSION}-erlang-${OTP_VERSION}-debian-${DEBIAN_VERSION} AS build
 

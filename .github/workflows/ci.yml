@@ -50,8 +50,8 @@ jobs:
       - name: Set up Elixir + OTP
         uses: erlef/setup-beam@v1
         with:
-          elixir-version: "1.19.5"
-          otp-version: "28.5.0.1"
+          elixir-version: "1.20.4"
+          otp-version: "29.0.6"
 
       - name: Cache deps + build
         uses: actions/cache@v4
@@ -101,8 +101,8 @@ jobs:
       - name: "Set up Elixir + OTP (for the file: deps)"
         uses: erlef/setup-beam@v1
         with:
-          elixir-version: "1.19.5"
-          otp-version: "28.5.0.1"
+          elixir-version: "1.20.4"
+          otp-version: "29.0.6"
 
       - name: Cache mix deps
         uses: actions/cache@v4
@@ -121,7 +121,7 @@ jobs:
       - name: Set up Node
         uses: actions/setup-node@v6
         with:
-          node-version: "24.14.1"
+          node-version: "24.21.0"
           cache: "npm"
 
       - name: Install JS deps
@@ -176,8 +176,8 @@ jobs:
       - name: Set up Elixir + OTP
         uses: erlef/setup-beam@v1
         with:
-          elixir-version: "1.19.5"
-          otp-version: "28.5.0.1"
+          elixir-version: "1.20.4"
+          otp-version: "29.0.6"
 
       - name: Cache deps + build
         uses: actions/cache@v4
@@ -198,7 +198,7 @@ jobs:
       - name: Set up Node
         uses: actions/setup-node@v6
         with:
-          node-version: "24.14.1"
+          node-version: "24.21.0"
           cache: "npm"
 
       - name: Install JS deps
@@ -245,7 +245,7 @@ jobs:
       - name: Set up Node
         uses: actions/setup-node@v6
         with:
-          node-version: "24.14.1"
+          node-version: "24.21.0"
 
       - name: Download Elixir coverage
         uses: actions/download-artifact@v4

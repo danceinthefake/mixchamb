@@ -258,8 +258,7 @@ defmodule MixchambWeb.LandingLive do
                       chamber.activity == "music" && "bg-primary",
                       chamber.activity == "poker" && "bg-accent-poker",
                       chamber.activity == "minigame" && "bg-accent-minigame"
-                    ]}>
-                    </span>
+                    ]}></span>
                     <span class="uppercase tracking-wider">
                       {recent_activity_label(chamber.activity)}
                     </span>

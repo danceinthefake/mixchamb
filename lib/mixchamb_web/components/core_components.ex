@@ -69,7 +69,7 @@ defmodule MixchambWeb.CoreComponents do
   Renders a button. Mirrors shadcn-vue's Button variants on the HEEX side
   so HEEX templates and Vue islands share a visual language.
   """
-  attr :rest, :global, include: ~w(href navigate patch method download name value disabled)
+  attr :rest, :global, include: ~w(href navigate patch method download name value disabled type)
   attr :class, :any
   attr :variant, :string, values: ~w(primary outline ghost), default: "primary"
   slot :inner_block, required: true

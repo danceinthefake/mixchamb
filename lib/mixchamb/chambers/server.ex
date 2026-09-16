@@ -674,18 +674,14 @@ defmodule Mixchamb.Chambers.Server do
       when not is_nil(session) do
     opts = if is_nil(story), do: [], else: [story: story]
 
-    case Mixchamb.Chambers.PokerSession.next_round(session, opts) do
-      {:ok, updated} ->
-        broadcast_poker(
-          state.slug,
-          {:poker, :cleared, updated.round, updated.story, updated.deck}
-        )
+    {:ok, updated} = Mixchamb.Chambers.PokerSession.next_round(session, opts)
 
-        {:noreply, %{state | poker_session: updated, dirty?: true}}
+    broadcast_poker(
+      state.slug,
+      {:poker, :cleared, updated.round, updated.story, updated.deck}
+    )
 
-      _ ->
-        {:noreply, state}
-    end
+    {:noreply, %{state | poker_session: updated, dirty?: true}}
   end
 
   def handle_cast({:poker_set_story, story}, %{poker_session: session} = state)

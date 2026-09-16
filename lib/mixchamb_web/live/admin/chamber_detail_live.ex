@@ -12,7 +12,6 @@ defmodule MixchambWeb.Admin.ChamberDetailLive do
   override below — this LV piggy-backs on that nav entry.
   """
   use MixchambWeb, :live_view
-  require Logger
 
   alias Mixchamb.Chambers
   alias Mixchamb.Chambers.Server, as: ChamberServer
@@ -152,8 +151,7 @@ defmodule MixchambWeb.Admin.ChamberDetailLive do
         "size-2 rounded-full",
         status_pill_dot_class(@tone),
         @pulse? && "animate-pulse"
-      ]}>
-      </span>
+      ]}></span>
       {@label}
     </span>
     """

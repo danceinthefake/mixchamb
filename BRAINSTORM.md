@@ -35,7 +35,7 @@ was built for" story.
 - **Tone.js** — audio synthesis for all three instruments
 
 ### Backend
-- **Elixir 1.18+** with **Phoenix 1.8** + **LiveView 1.1**
+- **Elixir 1.18+** with **Phoenix 1.8** + **LiveView 1.2**
 - **Ecto + Postgres** (just for `anonymous_users`)
 - **Phoenix.PubSub** + **Phoenix.Presence** — the realtime backbone
 - **`dns_cluster`** for v3 multi-node on Fly

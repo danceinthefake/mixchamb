@@ -2025,8 +2025,7 @@ defmodule MixchambWeb.ChamberLive do
                     @chamber.is_recording && "bg-red-500 animate-pulse",
                     !@chamber.is_recording && "bg-muted-foreground/40"
                   ]}
-                >
-                </span>
+                ></span>
                 {if @chamber.is_recording, do: "REC · click to stop", else: "Start recording"}
               </button>
 
@@ -2202,8 +2201,7 @@ defmodule MixchambWeb.ChamberLive do
               phx-click="toggle_presence_sheet"
               aria-label="Close players panel"
               class="absolute inset-0 -z-10 backdrop-blur-md bg-background/80 cursor-pointer"
-            >
-            </button>
+            ></button>
             <div class="relative mx-auto w-full max-w-md rounded-xl border bg-card shadow-2xl flex flex-col overflow-hidden">
               <div class="flex items-center justify-between px-3 py-2 border-b shrink-0">
                 <span class="text-xs font-semibold uppercase tracking-wider font-display">
@@ -2282,8 +2280,7 @@ defmodule MixchambWeb.ChamberLive do
                   aria-hidden="true"
                   class="size-2 rounded-full opacity-80"
                   style={"background-color: " <> accent_var(inst)}
-                >
-                </span>
+                ></span>
                 <%!-- On mobile, only the active tab keeps its
                      label; the rest collapse to a dot so all 7
                      fit without horizontal scroll. --%>
@@ -2333,7 +2330,8 @@ defmodule MixchambWeb.ChamberLive do
                    where the dock has room for both. Label tracks
                    activity: "jamming" for music, "here" otherwise. --%>
               <span class="text-xs text-muted-foreground tabular-nums whitespace-nowrap">
-                {map_size(@presences)}<span class="hidden sm:inline">{" " <> presence_label(@chamber.activity)}</span>
+                {map_size(@presences)}<span class="hidden sm:inline">{" " <>
+                  presence_label(@chamber.activity)}</span>
               </span>
             </button>
           </div>
@@ -2405,8 +2403,7 @@ defmodule MixchambWeb.ChamberLive do
           aria-hidden="true"
           class="size-2 rounded-full shrink-0 mt-2"
           style={"background-color: " <> presence_dot_color(@chamber.activity, meta)}
-        >
-        </span>
+        ></span>
         <%!-- Geometric identicon with a permanent per-user colour —
              the player's stable visual identity across activities. --%>
         <.player_identicon seed={user_id} class="size-5 mt-0.5" />
@@ -2513,8 +2510,7 @@ defmodule MixchambWeb.ChamberLive do
           aria-hidden="true"
           class="size-1.5 rounded-full shrink-0"
           style={"background-color: " <> accent_var(hit.instrument)}
-        >
-        </span>
+        ></span>
         <span class={[
           "truncate min-w-0",
           hit.is_self && "text-foreground font-semibold",

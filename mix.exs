@@ -64,16 +64,16 @@ defmodule Mixchamb.MixProject do
   # Type `mix help deps` for examples and options.
   defp deps do
     [
-      {:quickbeam, "~> 0.8"},
-      {:phoenix, "~> 1.8.7"},
+      {:quickbeam, "~> 0.11"},
+      {:phoenix, "~> 1.8.14"},
       {:phoenix_ecto, "~> 4.5"},
       {:ecto_sql, "~> 3.13"},
       {:postgrex, ">= 0.0.0"},
       {:phoenix_html, "~> 4.1"},
       {:phoenix_live_reload, "~> 1.2", only: :dev},
-      {:phoenix_live_view, "~> 1.1.0"},
+      {:phoenix_live_view, "~> 1.2.0"},
       {:lazy_html, ">= 0.1.0", only: :test},
-      {:phoenix_live_dashboard, "~> 0.8.3"},
+      {:phoenix_live_dashboard, "~> 0.9.0"},
       # Powers LiveDashboard's "Ecto Stats" tab (Postgres-specific
       # queries: index usage, cache hit rate, locks, table sizes).
       {:ecto_psql_extras, "~> 0.8"},
@@ -84,20 +84,20 @@ defmodule Mixchamb.MixProject do
        app: false,
        compile: false,
        depth: 1},
-      {:telemetry_metrics, "~> 1.0"},
+      {:telemetry_metrics, "~> 1.2"},
       {:telemetry_poller, "~> 1.0"},
       {:gettext, "~> 1.0"},
       {:jason, "~> 1.2"},
-      {:dns_cluster, "~> 0.2.0"},
-      {:bandit, "~> 1.5"},
+      {:dns_cluster, "~> 0.3.0"},
+      {:bandit, "~> 1.12"},
       # Error reporting. SENTRY_DSN is plumbed through every deploy
-      # method; this is what actually reports to it. hackney is
-      # Sentry's default HTTP client.
-      {:sentry, "~> 10.8"},
-      {:hackney, "~> 1.20"},
+      # method; this is what actually reports to it. finch is
+      # Sentry's default HTTP client (since v11).
+      {:sentry, "~> 13.5"},
+      {:finch, "~> 0.21"},
       {:live_vue, "~> 1.2"},
       {:bcrypt_elixir, "~> 3.0"},
-      {:igniter, "~> 0.5", only: [:dev]},
+      {:igniter, "~> 0.8", only: [:dev]},
       # Dev-only LiveView inspector — process tree, assigns viewer,
       # callback trace. Runs at http://localhost:4007.
       {:live_debugger, "~> 1.0", only: [:dev]},

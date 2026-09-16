@@ -166,6 +166,7 @@ defmodule MixchambWeb.Admin.ChambersLive do
            no-op in `filter_chambers/2`. --%>
       <form
         :if={@chambers != []}
+        id="chambers-search"
         phx-change="search"
         class="flex items-center gap-2"
       >
