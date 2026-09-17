@@ -8,10 +8,10 @@ import { fileURLToPath, URL } from "node:url";
 // alias the production code imports through.
 export default defineConfig({
   plugins: [vue()],
-  // Vite serves priv/static as the public dir in the real build
-  // (assets/vite.config.mjs); mirror it so absolute asset URLs in
-  // templates (`/images/logo.svg`) resolve under test.
-  publicDir: "priv/static",
+  // Same public dir as assets/vite.config.mjs (the tracked source —
+  // priv/static is build output and absent on CI), so absolute asset
+  // URLs in templates (`/images/logo.svg`) resolve under test.
+  publicDir: "assets/public",
   resolve: {
     alias: {
       "@": fileURLToPath(new URL("./assets/vue", import.meta.url)),
