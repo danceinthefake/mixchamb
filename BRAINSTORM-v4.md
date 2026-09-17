@@ -504,6 +504,24 @@ Honest audit after a 3.5-month idle stretch (last feature commit
 8. ✅ **Anon sweep 24h → 30 days** _(2026-09-17)_. One constant; makes the anon
    identity stick across a weekly ritual.
 
+### Batch 2 (locked 2026-09-18) — make retro #2 better, still no auth
+
+9. ⬜ **Discussion "Next →".** In `:discuss` the host steps through
+   cards by votes desc; visited cards are marked. Uses
+   `retro_set_discussing` as-is.
+10. ⬜ **Timer auto-advance (opt-in).** Host ticks "advance when
+    time's up"; the existing tick calls `retro_advance_phase`.
+    One boolean in `EphemeralState`.
+11. ⬜ **Team summary on `/t/:slug`.** Card counts by column for
+    the last retros + action-item completion rate. One query,
+    HEEx only — the reason to come back to the team page.
+12. ⬜ **"Your teams" on the landing page.** Team slugs remembered
+    in localStorage; one click to `/t/<slug>` without auth.
+13. ⬜ **Card merge** (§11 grouping). Click card A, then "Merge
+    into" card B during `:reveal`; votes and reactions follow the
+    group. `retro_cards.merged_into_card_id`. Last — highest UI
+    cost, wait for the duplicate-card pain to be real.
+
 **Deferred, in this order if teams ask:** card grouping / merging
 (§11, highest UI cost — duplicate cards are the #1 annoyance in
 an 8-person retro, so it's next once 1–8 land); real auth +
