@@ -154,4 +154,40 @@ defmodule Mixchamb.MiniGame.TwoTruthsTest do
       assert s.game_state.order == ~w(a b), "c (no statements) isn't an author"
     end
   end
+
+  describe "edges" do
+    test "unknown actions, wrong phases, junk statements, config coercion, gameover advance" do
+      s = tt(~w(a b c))
+      assert {:error, :not_allowed} = TwoTruths.handle_action(s, :album_next, %{user_id: "a"})
+      lobby = %State{s | phase: :lobby}
+
+      assert {:error, :not_playing} =
+               TwoTruths.handle_action(lobby, {:submit, %{}}, %{user_id: "a"})
+
+      assert TwoTruths.advance(lobby) == lobby
+
+      # Non-string items are rejected as invalid.
+      assert {:error, :invalid} =
+               TwoTruths.handle_action(s, {:submit, %{"items" => [1, 2, 3], "lie" => 0}}, %{
+                 user_id: "a"
+               })
+
+      s = all_write(s)
+      assert %{players: _, scores: _} = TwoTruths.view(s, "zzz")
+      assert %{is_author: true} = TwoTruths.view(s, Enum.at(s.game_state.order, 0))
+
+      done =
+        Enum.reduce(1..20, s, fn _, acc ->
+          if acc.phase == :gameover, do: acc, else: TwoTruths.advance(acc)
+        end)
+
+      assert done.phase == :gameover
+      assert TwoTruths.advance(done) == done
+      assert %{phase: "gameover"} = TwoTruths.view(done, "a")
+
+      assert TwoTruths.sanitize_config(%{write_seconds: 90, guess_seconds: 30}, %{
+               "write_seconds" => "abc"
+             }).write_seconds == 90
+    end
+  end
 end

@@ -50,11 +50,18 @@ defmodule MixchambWeb.Admin.SystemLive do
 
   @impl true
   def handle_event("kill", %{"module" => module}, socket) do
-    mod = String.to_existing_atom(module)
+    # The buttons only ever send names of modules that exist; a forged
+    # event with an unknown name must not crash the admin LV.
+    mod =
+      try do
+        String.to_existing_atom(module)
+      rescue
+        ArgumentError -> nil
+      end
 
-    case Process.whereis(mod) do
+    case mod && Process.whereis(mod) do
       nil ->
-        {:noreply, put_flash(socket, :error, "#{inspect(mod)} is not running.")}
+        {:noreply, put_flash(socket, :error, "#{module} is not running.")}
 
       pid ->
         Logger.warning("[admin/system] kill issued: #{inspect(mod)} (pid #{inspect(pid)})")

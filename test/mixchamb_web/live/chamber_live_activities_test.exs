@@ -361,6 +361,37 @@ defmodule MixchambWeb.ChamberLiveActivitiesTest do
       %{chamber: chamber, view: view}
     end
 
+    test "recent-hits feed handles chord / pad / release / unknown-instrument payloads + expiry",
+         %{chamber: chamber, view: view} do
+      topic = Chambers.topic(chamber.slug)
+
+      for payload <- [
+            %{"user_id" => "x", "instrument" => "guitar", "chord" => "Am", "alias" => "al"},
+            %{"user_id" => "x", "instrument" => "pad", "pad" => "P1", "display_name" => "dn"},
+            %{"user_id" => "x", "instrument" => "not-an-instrument", "note" => "C4"},
+            %{"user_id" => "x", "instrument" => "kazoo", "note" => "C4"},
+            %{"user_id" => "x", "note" => "C4"},
+            %{"user_id" => "x", "instrument" => "drums", "phase" => "release", "note" => "kick"}
+          ] do
+        Phoenix.PubSub.broadcast(
+          Mixchamb.PubSub,
+          topic,
+          {:chamber_note, %{kind: :note, payload: payload}}
+        )
+      end
+
+      html = render(view)
+      assert html =~ "Am" and html =~ "P1"
+      send(view.pid, {:expire_hit, -1})
+      assert render(view)
+
+      # Empty replay (no events yet) still pushes a burst.
+      render_hook(view, "request_replay", %{})
+      assert_push_event(view, "replay_burst", %{events: []})
+      render_hook(view, "play_recording", %{})
+      assert_push_event(view, "replay_burst", %{events: []})
+    end
+
     test "request_replay pushes a burst; audio_downloaded clears the flag; same kind is a no-op",
          %{chamber: chamber, view: view} do
       render_hook(view, "note", %{"instrument" => "drums", "note" => "kick"})

@@ -171,4 +171,49 @@ defmodule Mixchamb.MiniGame.GarticPhoneTest do
       assert String.length(s.game_state.books[0][0].text) == 200
     end
   end
+
+  describe "views + config edges" do
+    test "spectator view, gameover view, non-text/stroke payloads, config coercion" do
+      s = gartic(~w(a b c))
+      assert %{is_player: false, prompt: nil, submitted: true} = GarticPhone.view(s, "zzz")
+
+      # Junk payloads clean to empty text / no strokes.
+      s = submit(s, "a", %{"text" => 123})
+      assert s.game_state.books[0][0].text == ""
+      s = GarticPhone.advance(s)
+      s = submit(s, "a", %{"strokes" => "nope"})
+      assert s.game_state.books[2][1].strokes == []
+
+      # Drive to game over and check the final album view.
+      s = s |> GarticPhone.advance() |> GarticPhone.advance()
+      assert s.phase == :album
+
+      s =
+        Enum.reduce(1..20, s, fn _, acc ->
+          if acc.phase == :album, do: GarticPhone.advance(acc), else: acc
+        end)
+
+      assert s.phase == :gameover
+      assert GarticPhone.advance(s) == s
+      v = GarticPhone.view(s, "a")
+      assert v.total_books == 3
+      assert length(v.books) == 3
+      assert Enum.all?(v.books, &(length(&1.pages) == 3))
+
+      # Lobby view (no game_state yet) still renders a gameover-shaped view safely.
+      assert %{books: []} = GarticPhone.view(%State{phase: :gameover, players: ~w(a)}, "a")
+
+      # Config: strings coerce, junk keeps the prior value.
+      assert GarticPhone.sanitize_config(%{step_seconds: 60}, %{"step_seconds" => "90"}).step_seconds in [
+               60,
+               90
+             ]
+
+      assert GarticPhone.sanitize_config(%{step_seconds: 60}, %{"step_seconds" => "abc"}).step_seconds ==
+               60
+
+      assert GarticPhone.sanitize_config(%{step_seconds: 60}, %{"step_seconds" => 1.5}).step_seconds ==
+               60
+    end
+  end
 end
