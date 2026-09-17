@@ -19,9 +19,12 @@ test("retro: start → brainstorm → reveal a card to the room", async ({ brows
   const [host, guest] = room.pages
 
   try {
-    // Host starts the session (null → :setup).
-    await host.getByRole("button", { name: /Start retro/i }).click()
-    await expect(guest.getByText(/host is setting up/i)).toBeVisible()
+    // Host starts the session (null → :setup). Retry the click: a
+    // phx-click landing before the socket is up is dropped silently.
+    await expect(async () => {
+      await host.getByRole("button", { name: /Start retro/i }).click({ timeout: 2000 })
+      await expect(guest.getByText(/host is setting up/i)).toBeVisible({ timeout: 3000 })
+    }).toPass({ timeout: 15_000 })
 
     // Tag a team on setup; the slug hint updates from the broadcast.
     const team = `e2e ${Date.now()}`
