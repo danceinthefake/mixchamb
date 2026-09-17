@@ -1,0 +1,24 @@
+test/mixchamb/chambers/server_minigame_test.exs
+  s_ae52c82cfbb39d::t_aa324533944aaf 1-45,47,49,51-267
+  s_ae52c82cfbb39d::t_3e0495a00b9d9f 46,48,50
+coveralls.json
+  s_ae52c82cfbb39d::t_569feeb3ac444e 1-16
+test/mixchamb_web/live/chamber_live_activities_test.exs
+  s_ae52c82cfbb39d::t_a2b7c566217e41 1-387
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "002d5747937383237775cd8a1a016e200d7245da",
+  "prompts": {},
+  "sessions": {
+    "s_ae52c82cfbb39d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1de5c5ca-1395-4e73-b795-ed7057489ec8",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Hafidz Bahtiar <hafidz.bahtiar@hypefast.id>"
+    }
+  }
+}
