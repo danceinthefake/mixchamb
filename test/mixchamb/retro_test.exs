@@ -584,6 +584,57 @@ defmodule Mixchamb.RetroTest do
   # unless the test enabled it before calling this helper.
   defp advance_to(%RetroSession{status: status} = s, target, _user) when status == target, do: s
 
+  describe "teams" do
+    alias Mixchamb.Retro.Team
+
+    test "slugify normalises the typed name" do
+      assert Team.slugify("  Payments Team! ") == "payments-team"
+      assert Team.slugify("!!!") == ""
+      assert Team.slugify("Ünïcode") == "n-code"
+    end
+
+    test "set_team finds-or-creates by slug and clears on blank", %{chamber: chamber} do
+      {:ok, s} = Retro.start_session(chamber.id)
+      assert s.team == nil
+
+      assert {:ok, s} = Retro.set_team(s, "Payments Team")
+      assert %Team{slug: "payments-team", name: "Payments Team"} = s.team
+
+      # Same slug from different spelling → same row.
+      assert {:ok, s2} = Retro.set_team(s, "payments team")
+      assert s2.team.id == s.team.id
+      assert Retro.get_team_by_slug("Payments-Team").id == s.team.id
+
+      assert {:ok, cleared} = Retro.set_team(s2, "   ")
+      assert cleared.team == nil
+      assert Retro.load_session(cleared.id).team_id == nil
+    end
+
+    test "a new session inherits the chamber's last team", %{chamber: chamber, user: user} do
+      {:ok, s} = Retro.start_session(chamber.id)
+      {:ok, s} = Retro.set_team(s, "payments")
+      _archived = advance_to(s, "archived", user)
+
+      {:ok, next} = Retro.start_session(chamber.id)
+      assert next.team.slug == "payments"
+    end
+
+    test "list_team_sessions returns archived only, newest first", %{
+      chamber: chamber,
+      user: user
+    } do
+      {:ok, a} = Retro.start_session(chamber.id, %{title: "first"})
+      {:ok, a} = Retro.set_team(a, "payments")
+      advance_to(a, "archived", user)
+
+      {:ok, b} = Retro.start_session(chamber.id, %{title: "live"})
+      assert b.team.slug == "payments"
+
+      team = Retro.get_team_by_slug("payments")
+      assert [%RetroSession{title: "first"}] = Retro.list_team_sessions(team.id)
+    end
+  end
+
   defp advance_to(s, target, user) do
     {:ok, next} = Retro.advance_phase(s)
     advance_to(next, target, user)

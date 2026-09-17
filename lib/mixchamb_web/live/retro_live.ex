@@ -8,6 +8,7 @@ defmodule MixchambWeb.RetroLive do
   use MixchambWeb, :live_view
 
   alias Mixchamb.Retro
+  alias MixchambWeb.ChamberLive
 
   @impl true
   def mount(%{"id" => id}, _session, socket) do
@@ -31,61 +32,6 @@ defmodule MixchambWeb.RetroLive do
     "#{base} · mixchamb"
   end
 
-  # Shape the persisted session into the wire format RetroBoard
-  # expects. Identical to ChamberLive's retro_view but resolved
-  # here to keep the two LVs decoupled (RetroLive doesn't depend
-  # on ChamberLive). due_date → ISO string for JSON.
-  defp retro_view(session) do
-    %{
-      id: session.id,
-      title: session.title,
-      status: session.status,
-      voting_enabled: session.voting_enabled,
-      brainstorm_visible: session.brainstorm_visible,
-      columns:
-        Enum.map(session.columns, fn col ->
-          %{id: col.id, name: col.name, position: col.position}
-        end),
-      cards:
-        Enum.map(session.cards, fn card ->
-          %{
-            id: card.id,
-            retro_column_id: card.retro_column_id,
-            body: card.body,
-            author_user_id: card.author_user_id,
-            author_alias: card.author_alias,
-            author_display_name: card.author_display_name,
-            vote_count: card.vote_count,
-            reactions:
-              Enum.map(card.reactions, fn r ->
-                %{user_id: r.user_id, emoji: r.emoji}
-              end),
-            comments:
-              Enum.map(card.comments, fn co ->
-                %{
-                  id: co.id,
-                  body: co.body,
-                  author_user_id: co.author_user_id,
-                  author_alias: co.author_alias,
-                  author_display_name: co.author_display_name
-                }
-              end)
-          }
-        end),
-      action_items:
-        Enum.map(session.action_items, fn action ->
-          %{
-            id: action.id,
-            source_card_id: action.source_card_id,
-            body: action.body,
-            assignee_alias: action.assignee_alias,
-            due_date: action.due_date && Date.to_iso8601(action.due_date),
-            completed: action.completed
-          }
-        end)
-    }
-  end
-
   @impl true
   def render(assigns) do
     ~H"""
@@ -104,11 +50,21 @@ defmodule MixchambWeb.RetroLive do
               · archived {Calendar.strftime(@retro_session.archived_at, "%Y-%m-%d %H:%M UTC")}
             </span>
           </p>
+          <p :if={@retro_session.team} class="text-xs text-muted-foreground">
+            Team:
+            <.link
+              navigate={~p"/t/#{@retro_session.team.slug}"}
+              class="underline underline-offset-2 hover:text-foreground"
+            >
+              {@retro_session.team.name}
+            </.link>
+            — all this team's retros
+          </p>
         </header>
 
         <.RetroBoard
           chamber_slug={@retro_session.chamber_slug_snapshot || ""}
-          session={retro_view(@retro_session)}
+          session={ChamberLive.Retro.view(@retro_session)}
           tallies={%{}}
           my_votes={[]}
           discussing_card_id={nil}

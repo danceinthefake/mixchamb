@@ -38,6 +38,7 @@ const baseProps = {
   card: baseCard(),
   phase: "brainstorm" as const,
   brainstorm_visible: false,
+  team: null,
   is_mine: true,
   current_user_id: "u1",
   tally: 0,

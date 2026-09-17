@@ -62,6 +62,9 @@ defmodule MixchambWeb.Router do
       # activities (standups, icebreakers, …) get a consistent
       # namespace.
       live "/archives/retros/:id", RetroLive
+      # A team's retro history. The slug is the whole access model
+      # (shared secret, like a chamber link) — see Mixchamb.Retro.Team.
+      live "/t/:slug", TeamLive
     end
 
     # Admin login / logout — ungated so the user can reach the

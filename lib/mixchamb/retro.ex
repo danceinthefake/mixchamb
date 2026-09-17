@@ -19,7 +19,8 @@ defmodule Mixchamb.Retro do
     RetroCard,
     RetroActionItem,
     RetroCardReaction,
-    RetroCardComment
+    RetroCardComment,
+    Team
   }
 
   # ---------------------------------------------------------------
@@ -34,9 +35,17 @@ defmodule Mixchamb.Retro do
   def start_session(chamber_id, attrs \\ %{}) when is_binary(chamber_id) do
     case current_session(chamber_id) do
       nil ->
+        # Inherit the team from this chamber's previous retro so a
+        # recurring chamber doesn't make the host retype the slug
+        # every sprint. Explicit attrs still win.
+        attrs =
+          attrs
+          |> Map.put(:chamber_id, chamber_id)
+          |> Map.put_new(:team_id, latest_team_id(chamber_id))
+
         Repo.transaction(fn ->
           case %RetroSession{}
-               |> RetroSession.creation_changeset(Map.put(attrs, :chamber_id, chamber_id))
+               |> RetroSession.creation_changeset(attrs)
                |> Repo.insert() do
             {:ok, session} ->
               seed_default_columns!(session)
@@ -50,6 +59,16 @@ defmodule Mixchamb.Retro do
       _existing ->
         {:error, :session_already_active}
     end
+  end
+
+  defp latest_team_id(chamber_id) do
+    Repo.one(
+      from s in RetroSession,
+        where: s.chamber_id == ^chamber_id and not is_nil(s.team_id),
+        order_by: [desc: s.inserted_at],
+        limit: 1,
+        select: s.team_id
+    )
   end
 
   defp seed_default_columns!(%RetroSession{id: session_id}) do
@@ -105,6 +124,7 @@ defmodule Mixchamb.Retro do
 
   defp load_associations(%RetroSession{} = session) do
     Repo.preload(session,
+      team: [],
       columns: from(c in RetroColumn, order_by: [asc: c.position]),
       cards:
         {from(c in RetroCard, order_by: [asc: c.inserted_at]),
@@ -127,6 +147,61 @@ defmodule Mixchamb.Retro do
         # Tiebreak on inserted_at desc — archived_at is truncated
         # to second precision, so two sessions archived in the
         # same second would otherwise order arbitrarily.
+        order_by: [desc: s.archived_at, desc: s.inserted_at]
+    )
+  end
+
+  # ---------------------------------------------------------------
+  # Teams
+  # ---------------------------------------------------------------
+
+  @doc "Find a team by its slug (already-normalised or not)."
+  def get_team_by_slug(slug) when is_binary(slug) do
+    Repo.get_by(Team, slug: Team.slugify(slug))
+  end
+
+  @doc """
+  Find-or-create a team from the text the host typed. Returns
+  `{:ok, nil}` for a blank name (meaning "no team").
+  """
+  def find_or_create_team(name) when is_binary(name) do
+    case Team.slugify(name) do
+      "" ->
+        {:ok, nil}
+
+      slug ->
+        case Repo.get_by(Team, slug: slug) do
+          %Team{} = team ->
+            {:ok, team}
+
+          nil ->
+            # A concurrent insert of the same slug loses the race
+            # cleanly: the unique_constraint turns it into a
+            # changeset error, and we fall back to the winner.
+            case Repo.insert(Team.creation_changeset(%Team{}, %{name: name})) do
+              {:ok, team} -> {:ok, team}
+              {:error, _} -> {:ok, Repo.get_by!(Team, slug: slug)}
+            end
+        end
+    end
+  end
+
+  @doc "Tag `session` with the team named `name` (blank clears it)."
+  def set_team(%RetroSession{} = session, name) when is_binary(name) do
+    with {:ok, team} <- find_or_create_team(name),
+         {:ok, updated} <-
+           session
+           |> RetroSession.team_changeset(%{team_id: team && team.id})
+           |> Repo.update() do
+      {:ok, %{updated | team: team}}
+    end
+  end
+
+  @doc "Archived retros for a team, newest-first. Drives `/t/:slug`."
+  def list_team_sessions(team_id) when is_binary(team_id) do
+    Repo.all(
+      from s in RetroSession,
+        where: s.team_id == ^team_id and s.status == "archived",
         order_by: [desc: s.archived_at, desc: s.inserted_at]
     )
   end

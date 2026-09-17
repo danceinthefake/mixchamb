@@ -1,6 +1,6 @@
 <script setup lang="ts">
-// Setup phase — host customises the session title + 4 column
-// names. Locked once brainstorm begins (column rename is
+// Setup phase — host customises the session title, team tag, + 4
+// column names. Locked once brainstorm begins (column rename is
 // :setup-only, per spec §2).
 
 import { ref, watch } from "vue"
@@ -23,6 +23,20 @@ watch(
     titleDraft.value = t ?? ""
   },
 )
+
+const teamDraft = ref(props.session.team?.name ?? "")
+watch(
+  () => props.session.team?.name,
+  (t) => {
+    teamDraft.value = t ?? ""
+  },
+)
+
+function commitTeam() {
+  const next = teamDraft.value.trim()
+  if (next === (props.session.team?.name ?? "").trim()) return
+  live.pushEvent("retro_set_team", { team: next })
+}
 
 const columnDrafts = ref<Record<string, string>>(
   Object.fromEntries(props.session.columns.map((c) => [c.id, c.name])),
@@ -86,6 +100,32 @@ function toggleBrainstormVisible() {
           placeholder="e.g. Sprint 23 retro"
           class="w-full rounded-md border bg-card px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent-bass/40"
         />
+      </div>
+
+      <!-- Team tag -->
+      <div class="space-y-1.5">
+        <label
+          for="retro-team"
+          class="text-xs uppercase tracking-wider text-muted-foreground font-display"
+        >
+          Team <span class="normal-case text-muted-foreground/70">(optional)</span>
+        </label>
+        <input
+          id="retro-team"
+          v-model="teamDraft"
+          @blur="commitTeam"
+          @keydown.enter.prevent="commitTeam"
+          type="text"
+          maxlength="40"
+          placeholder="e.g. payments"
+          class="w-full rounded-md border bg-card px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent-bass/40"
+        />
+        <p class="text-xs text-muted-foreground">
+          Retros tagged with the same team collect at
+          <code class="font-mono">/t/{{ session.team?.slug ?? "your-team" }}</code>
+          — a history that outlives this chamber. Anyone with the slug can see it, same as a chamber
+          link. Remembered for this chamber's next retro.
+        </p>
       </div>
 
       <!-- Column names -->

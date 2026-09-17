@@ -482,7 +482,7 @@ Honest audit after a 3.5-month idle stretch (last feature commit
 1. ✅ **Split `chamber_live.ex` by activity** _(2026-09-17)_. Per-activity
    modules (music / poker / retro / minigame) behind the one
    chamber LV shell. No behaviour change; tests must stay green.
-2. ⬜ **Teams (slug) — continuity without auth.** `teams` table;
+2. ✅ **Teams (slug) — continuity without auth** _(2026-09-17, `features/retrospective.md` §12)_. `teams` table;
    retro `:setup` takes an optional team slug (`payments`), and
    `/t/:slug` lists that team's archived retros. A shared secret
    in the URL, same trust model as chamber links. This is ~80% of

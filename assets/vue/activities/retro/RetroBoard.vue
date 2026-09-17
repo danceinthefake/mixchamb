@@ -75,6 +75,9 @@ export type RetroSession = {
   // When false (default): each participant sees only their own
   // cards until host advances to :reveal.
   brainstorm_visible: boolean
+  // Team the retro is tagged with (set on :setup). Retros sharing
+  // a team list together at /t/:slug after their chambers are gone.
+  team: { slug: string; name: string } | null
   columns: RetroColumnT[]
   cards: RetroCard[]
   action_items: RetroActionItem[]
@@ -453,6 +456,13 @@ async function copyLastArchivedPermalink() {
           <p class="font-semibold text-foreground">Retro archived · permanent link</p>
           <p class="text-muted-foreground">
             Bookmark to revisit. The chamber will eventually be reaped; this URL keeps working.
+            <template v-if="session.team">
+              Filed under
+              <a :href="`/t/${session.team.slug}`" class="underline underline-offset-2">
+                {{ session.team.name }}
+              </a>
+              with this team's other retros.
+            </template>
           </p>
         </div>
         <button

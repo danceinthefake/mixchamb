@@ -31,7 +31,8 @@ defmodule Mixchamb.Retro.RetroSession do
              :revealed_at,
              :archived_at,
              :chamber_slug_snapshot,
-             :chamber_title_snapshot
+             :chamber_title_snapshot,
+             :team
            ]}
 
   schema "retro_sessions" do
@@ -49,6 +50,7 @@ defmodule Mixchamb.Retro.RetroSession do
     field :chamber_title_snapshot, :string
 
     belongs_to :chamber, Mixchamb.Chambers.Chamber
+    belongs_to :team, Mixchamb.Retro.Team
     belongs_to :creator, Mixchamb.Accounts.AnonymousUser, foreign_key: :creator_user_id
     has_many :columns, Mixchamb.Retro.RetroColumn, foreign_key: :retro_session_id
     has_many :cards, Mixchamb.Retro.RetroCard, foreign_key: :retro_session_id
@@ -62,6 +64,7 @@ defmodule Mixchamb.Retro.RetroSession do
     session
     |> cast(attrs, [
       :chamber_id,
+      :team_id,
       :title,
       :voting_enabled,
       :brainstorm_visible,
@@ -85,6 +88,13 @@ defmodule Mixchamb.Retro.RetroSession do
     session
     |> cast(attrs, [:brainstorm_visible])
     |> validate_required([:brainstorm_visible])
+  end
+
+  @doc false
+  def team_changeset(session, attrs) do
+    session
+    |> cast(attrs, [:team_id])
+    |> foreign_key_constraint(:team_id)
   end
 
   @doc false

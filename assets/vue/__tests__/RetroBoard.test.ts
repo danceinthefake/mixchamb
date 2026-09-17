@@ -21,6 +21,7 @@ function makeSession(overrides: Partial<RetroSession> = {}): RetroSession {
     status: "setup",
     voting_enabled: false,
     brainstorm_visible: false,
+    team: null,
     columns: [
       { id: "c1", name: "Good", position: 0 },
       { id: "c2", name: "Bad", position: 1 },
@@ -130,6 +131,7 @@ describe("RetroBoard", () => {
     const session = makeSession({
       status: "brainstorm",
       brainstorm_visible: true,
+      team: null,
       cards: [
         {
           id: "mine",

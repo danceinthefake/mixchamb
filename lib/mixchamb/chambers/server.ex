@@ -171,6 +171,10 @@ defmodule Mixchamb.Chambers.Server do
   def retro_set_title(slug, user_id, title) when is_binary(user_id),
     do: GenServer.cast(via(slug), {:retro_set_title, user_id, title})
 
+  @doc "Tag the session with a team name (blank clears). Host-only."
+  def retro_set_team(slug, user_id, name) when is_binary(user_id) and is_binary(name),
+    do: GenServer.cast(via(slug), {:retro_set_team, user_id, name})
+
   @doc "Toggle voting_enabled. Host-only. See spec §5 for transition rules."
   def retro_set_voting_enabled(slug, user_id, enabled)
       when is_binary(user_id) and is_boolean(enabled),
@@ -776,6 +780,20 @@ defmodule Mixchamb.Chambers.Server do
       with %_{} = session <- Mixchamb.Retro.load_session(rs.session_id),
            {:ok, updated} <- Mixchamb.Retro.set_title(session, title) do
         broadcast_retro(state.slug, {:retro, :title_changed, updated.title})
+      end
+
+      {:noreply, state}
+    end
+  end
+
+  def handle_cast({:retro_set_team, user_id, name}, %{retro_state: rs} = state)
+      when not is_nil(rs) do
+    if not MapSet.member?(state.hosts, user_id) do
+      {:noreply, state}
+    else
+      with %_{} = session <- Mixchamb.Retro.load_session(rs.session_id),
+           {:ok, updated} <- Mixchamb.Retro.set_team(session, name) do
+        broadcast_retro(state.slug, {:retro, :team_changed, updated.team_id})
       end
 
       {:noreply, state}

@@ -527,6 +527,32 @@ re-debated on each pass.
   - `R` / `S` for host's "Reveal" / "Start voting" advances
   Worth it but not blocking.
 
+## 12. Teams — continuity without auth _(shipped 2026-09-17)_
+
+Retro archives used to hang off the chamber, which gets swept;
+"our team's last retro" was unreachable a week later unless
+someone kept the URL. Rather than build auth (BRAINSTORM-v4 §7a
+skips it), a **team** is a slug the host types on `:setup`.
+
+- `teams` table: `id, slug (unique), name`. `slug` is
+  `Team.slugify(name)` — downcase, non-alnum → `-`, trimmed, ≤40.
+  Find-or-create on set; a concurrent insert race falls back to
+  the winner via the unique constraint.
+- `retro_sessions.team_id` (nullable, `on_delete: :nilify_all`).
+  `Retro.set_team/2` is host-only via the GenServer
+  (`:retro_set_team` cast → `{:retro, :team_changed, team_id}`).
+- **Inheritance:** `start_session/2` copies `team_id` from the
+  chamber's most recent tagged session, so a recurring chamber
+  doesn't make the host retype the slug every sprint.
+- **`/t/:slug`** (`TeamLive`): the team's archived retros,
+  newest-first, each linking to `/archives/retros/:id`. Live
+  sessions are excluded (same rule as the permalink). The
+  archived-retro banner and the `/archives/retros/:id` header
+  both link back to the team page.
+- **Trust model:** knowing the slug is the whole access model —
+  identical to a chamber link. No owner, no membership. Real
+  auth + private archives stay deferred (§7a).
+
 ## Ready-to-build checklist
 
 Implementation order I'd recommend, sized in working-day units:

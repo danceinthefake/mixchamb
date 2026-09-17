@@ -109,6 +109,18 @@ defmodule MixchambWeb.ChamberLive.Retro do
     {:noreply, socket}
   end
 
+  def handle_event("retro_set_team", %{"team" => name}, socket) when is_binary(name) do
+    if socket.assigns.is_host do
+      Mixchamb.Chambers.Server.retro_set_team(
+        socket.assigns.chamber_slug,
+        socket.assigns.current_user.id,
+        name
+      )
+    end
+
+    {:noreply, socket}
+  end
+
   def handle_event("retro_set_voting_enabled", %{"enabled" => enabled}, socket)
       when is_boolean(enabled) do
     if socket.assigns.is_host do
@@ -471,6 +483,7 @@ defmodule MixchambWeb.ChamberLive.Retro do
       status: session.status,
       voting_enabled: session.voting_enabled,
       brainstorm_visible: session.brainstorm_visible,
+      team: session.team && %{slug: session.team.slug, name: session.team.name},
       columns:
         Enum.map(session.columns, fn col ->
           %{id: col.id, name: col.name, position: col.position}
