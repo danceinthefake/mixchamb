@@ -245,6 +245,15 @@ defmodule Mixchamb.Chambers.Server do
   def retro_add_action_item(slug, attrs) when is_map(attrs),
     do: GenServer.cast(via(slug), {:retro_add_action_item, attrs})
 
+  @doc "Copy an open item from a previous team retro into this session (spec §13)."
+  def retro_carry_over_action(slug, user_id, action_id)
+      when is_binary(user_id) and is_binary(action_id),
+      do: GenServer.cast(via(slug), {:retro_carry_over_action, user_id, action_id})
+
+  @doc "Mark a previous team retro's open item done without carrying it (spec §13)."
+  def retro_complete_previous_action(slug, action_id) when is_binary(action_id),
+    do: GenServer.cast(via(slug), {:retro_complete_previous_action, action_id})
+
   @doc "Update an action item. Anyone in the chamber, :discuss-only."
   def retro_update_action_item(slug, action_id, attrs)
       when is_binary(action_id) and is_map(attrs),
@@ -1047,6 +1056,33 @@ defmodule Mixchamb.Chambers.Server do
           {:noreply, state}
       end
     end
+  end
+
+  # Carry-over targets an item from *another* session, so re-check
+  # it's genuinely one of this session's open previous items before
+  # touching it — a hand-crafted id could otherwise reach any row.
+  def handle_cast({:retro_carry_over_action, user_id, action_id}, %{retro_state: rs} = state)
+      when not is_nil(rs) do
+    session = Mixchamb.Retro.load_session(rs.session_id)
+
+    with %_{} = previous <- find_previous_open(session, action_id),
+         {:ok, _copy} <- Mixchamb.Retro.carry_over_action_item(session, previous, user_id) do
+      broadcast_retro(state.slug, {:retro, :previous_actions_changed, action_id})
+    end
+
+    {:noreply, state}
+  end
+
+  def handle_cast({:retro_complete_previous_action, action_id}, %{retro_state: rs} = state)
+      when not is_nil(rs) do
+    session = Mixchamb.Retro.load_session(rs.session_id)
+
+    with %_{} = previous <- find_previous_open(session, action_id),
+         {:ok, _} <- Mixchamb.Retro.complete_previous_action_item(previous) do
+      broadcast_retro(state.slug, {:retro, :previous_actions_changed, action_id})
+    end
+
+    {:noreply, state}
   end
 
   def handle_cast({:retro_add_action_item, attrs}, %{retro_state: rs} = state)
@@ -1914,6 +1950,12 @@ defmodule Mixchamb.Chambers.Server do
   # across code reloads of an already-archived chamber's
   # GenServer — this defensive check makes start_session recover
   # instead of staying stuck.
+  defp find_previous_open(session, action_id) do
+    session
+    |> Mixchamb.Retro.open_previous_action_items()
+    |> Enum.find(&(&1.id == action_id))
+  end
+
   defp live_retro_state?(nil), do: false
   defp live_retro_state?(%{phase: :archived}), do: false
   defp live_retro_state?(_), do: true

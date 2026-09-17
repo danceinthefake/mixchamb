@@ -9,6 +9,8 @@
 import { computed, provide, ref } from "vue"
 import { useLiveVue } from "live_vue"
 import RetroSetup from "./RetroSetup.vue"
+import RetroCarryOver from "./RetroCarryOver.vue"
+import type { PreviousAction } from "./RetroCarryOver.vue"
 import RetroColumn from "./RetroColumn.vue"
 import RetroDiscussPanel from "./RetroDiscussPanel.vue"
 import RetroVotingPanel from "./RetroVotingPanel.vue"
@@ -109,6 +111,9 @@ const props = defineProps<{
   // that shows in the empty-retro state so hosts can grab the
   // permalink immediately after clicking Archive.
   last_archived: LastArchived
+  // Open action items from the team's earlier retros (spec §13).
+  // [] without a team.
+  previous_actions: PreviousAction[]
   current_user_id: string
   current_user_alias: string
   is_host: boolean
@@ -436,7 +441,10 @@ async function copyLastArchivedPermalink() {
     </div>
 
     <!-- :setup — column-name + title editor -->
-    <RetroSetup v-else-if="phase === 'setup'" :session="session" :is_host="is_host" />
+    <div v-else-if="phase === 'setup'" class="space-y-4">
+      <RetroCarryOver :items="previous_actions" />
+      <RetroSetup :session="session" :is_host="is_host" />
+    </div>
 
     <!-- :brainstorm / :reveal / :voting / :discuss / :archived — columns grid -->
     <div v-else class="space-y-4">
@@ -499,6 +507,8 @@ async function copyLastArchivedPermalink() {
         :votes_remaining="votesRemaining"
         :vote_cap="VOTE_CAP"
       />
+
+      <RetroCarryOver v-if="phase === 'discuss'" :items="previous_actions" />
 
       <RetroDiscussPanel
         v-if="phase === 'discuss' || phase === 'archived'"

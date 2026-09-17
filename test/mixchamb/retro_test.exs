@@ -635,6 +635,69 @@ defmodule Mixchamb.RetroTest do
     end
   end
 
+  describe "action-item carry-over (spec §13)" do
+    setup %{chamber: chamber, user: user} do
+      {:ok, prev} = Retro.start_session(chamber.id, %{title: "Sprint 1"})
+      {:ok, prev} = Retro.set_team(prev, "payments")
+      prev = advance_to(prev, "discuss", user)
+      {:ok, open} = Retro.add_action_item(prev, %{body: "fix CI", assignee_alias: "ana"})
+      {:ok, done} = Retro.add_action_item(prev, %{body: "done already"})
+      {:ok, _} = Retro.update_action_item(done, %{completed: true}, prev)
+      prev = advance_to(prev, "archived", user)
+
+      {:ok, current} = Retro.start_session(chamber.id, %{title: "Sprint 2"})
+      %{prev: prev, open: open, current: current}
+    end
+
+    test "lists only open, un-carried items from archived team retros", %{
+      current: current,
+      open: open
+    } do
+      assert [%{id: id, session: %{title: "Sprint 1"}}] =
+               Retro.open_previous_action_items(current)
+
+      assert id == open.id
+    end
+
+    test "no team → nothing to carry", %{chamber: chamber, user: user, current: current} do
+      _ = advance_to(current, "archived", user)
+      {:ok, s} = Retro.start_session(chamber.id)
+      {:ok, s} = Retro.set_team(s, "")
+      assert Retro.open_previous_action_items(s) == []
+    end
+
+    test "carry_over copies into the current session and stamps the original", %{
+      current: current,
+      open: open,
+      user: user
+    } do
+      assert {:ok, copy} = Retro.carry_over_action_item(current, open, user.id)
+      assert copy.retro_session_id == current.id
+      assert copy.body == "fix CI"
+      assert copy.assignee_alias == "ana"
+      assert copy.source_card_id == nil
+
+      assert %{carried_over_at: %DateTime{}, completed: false} = Retro.get_action_item(open.id)
+      assert Retro.open_previous_action_items(current) == []
+      assert [%{body: "fix CI"}] = Retro.load_session(current.id).action_items
+    end
+
+    test "complete_previous marks it done without copying", %{current: current, open: open} do
+      assert {:ok, %{completed: true}} = Retro.complete_previous_action_item(open)
+      assert Retro.open_previous_action_items(current) == []
+      assert Retro.load_session(current.id).action_items == []
+    end
+
+    test "carry_over refuses into an archived session", %{
+      current: current,
+      open: open,
+      user: user
+    } do
+      archived = advance_to(current, "archived", user)
+      assert {:error, :archived} = Retro.carry_over_action_item(archived, open, user.id)
+    end
+  end
+
   defp advance_to(s, target, user) do
     {:ok, next} = Retro.advance_phase(s)
     advance_to(next, target, user)

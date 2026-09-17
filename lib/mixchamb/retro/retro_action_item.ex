@@ -23,7 +23,8 @@ defmodule Mixchamb.Retro.RetroActionItem do
              :body,
              :assignee_alias,
              :due_date,
-             :completed
+             :completed,
+             :carried_over_at
            ]}
 
   schema "retro_action_items" do
@@ -31,6 +32,9 @@ defmodule Mixchamb.Retro.RetroActionItem do
     field :assignee_alias, :string
     field :due_date, :date
     field :completed, :boolean, default: false
+    # Set when the item was copied forward into a later retro.
+    # Excluded from "open" from then on without pretending it's done.
+    field :carried_over_at, :utc_datetime
 
     belongs_to :session, Mixchamb.Retro.RetroSession, foreign_key: :retro_session_id
 

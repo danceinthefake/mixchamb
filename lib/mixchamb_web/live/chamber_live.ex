@@ -921,6 +921,7 @@ defmodule MixchambWeb.ChamberLive do
               retro_discussing_card_id={@retro_discussing_card_id}
               retro_participant_aliases={Retro.participant_aliases(@presences)}
               retro_last_archived={Retro.last_archived(@past_retros)}
+              retro_previous_actions={Retro.previous_actions_view(@retro_previous_actions)}
               minigame_state={MiniGame.view(@minigame_state, @current_user.id)}
               minigame_participants={participants(@presences)}
               current_user_id={@current_user.id}

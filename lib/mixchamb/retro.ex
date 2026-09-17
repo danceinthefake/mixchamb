@@ -463,6 +463,76 @@ defmodule Mixchamb.Retro do
 
   def delete_action_item(_, _), do: {:error, :discuss_only}
 
+  # --- Carry-over (spec §13) ---------------------------------------
+
+  @doc """
+  Open action items from a team's *archived* retros: not completed,
+  not already carried forward. Session title preloaded for the
+  "from Sprint 12" label. Empty for sessions without a team.
+  """
+  def open_previous_action_items(%RetroSession{team_id: nil}), do: []
+
+  def open_previous_action_items(%RetroSession{team_id: team_id, id: session_id}) do
+    Repo.all(from a in open_team_actions_query(team_id), where: a.retro_session_id != ^session_id)
+  end
+
+  @doc "Every open item across a team's archived retros (drives `/t/:slug`)."
+  def open_team_action_items(team_id) when is_binary(team_id) do
+    Repo.all(open_team_actions_query(team_id))
+  end
+
+  defp open_team_actions_query(team_id) do
+    from a in RetroActionItem,
+      join: s in assoc(a, :session),
+      where:
+        s.team_id == ^team_id and s.status == "archived" and
+          a.completed == false and is_nil(a.carried_over_at),
+      order_by: [desc: s.archived_at, asc: a.inserted_at],
+      preload: [session: s]
+  end
+
+  @doc """
+  Copy `previous` into `session` as a freeform item and stamp the
+  original as carried over. Allowed in any live phase — carry-over
+  happens on :setup, before :discuss unlocks regular item creation.
+  """
+  def carry_over_action_item(
+        %RetroSession{status: status} = session,
+        %RetroActionItem{} = previous,
+        user_id
+      )
+      when status != "archived" do
+    Repo.transaction(fn ->
+      attrs = %{
+        retro_session_id: session.id,
+        body: previous.body,
+        assignee_alias: previous.assignee_alias,
+        due_date: previous.due_date,
+        created_by_user_id: user_id
+      }
+
+      with {:ok, copy} <-
+             Repo.insert(RetroActionItem.creation_changeset(%RetroActionItem{}, attrs)),
+           {:ok, _} <-
+             previous
+             |> Ecto.Changeset.change(carried_over_at: DateTime.utc_now(:second))
+             |> Repo.update() do
+        copy
+      else
+        {:error, changeset} -> Repo.rollback(changeset)
+      end
+    end)
+  end
+
+  def carry_over_action_item(_, _, _), do: {:error, :archived}
+
+  @doc "Mark a previous retro's open item done out-of-band (from the current retro or /t/:slug)."
+  def complete_previous_action_item(%RetroActionItem{} = previous) do
+    previous
+    |> Ecto.Changeset.change(completed: true)
+    |> Repo.update()
+  end
+
   @doc "Load a single action item by id."
   def get_action_item(id) when is_binary(id) do
     Repo.get(RetroActionItem, id)

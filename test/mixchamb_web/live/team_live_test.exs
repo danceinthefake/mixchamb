@@ -35,6 +35,28 @@ defmodule MixchambWeb.TeamLiveTest do
     assert has_element?(view, "#team-empty")
   end
 
+  test "lists open action items and marks one done", %{conn: conn, chamber: chamber} do
+    {:ok, s} = Retro.start_session(chamber.id, %{title: "Sprint 1"})
+    {:ok, s} = Retro.set_team(s, "ops")
+    s = advance_to(s, "discuss")
+    {:ok, item} = Retro.add_action_item(s, %{body: "rotate the pager"})
+    archive(s)
+
+    {:ok, view, _} = live(conn, ~p"/t/ops")
+    assert has_element?(view, "#team-action-#{item.id}", "rotate the pager")
+
+    view |> element("#team-action-#{item.id} button") |> render_click()
+    refute has_element?(view, "#team-open-actions")
+    assert Retro.get_action_item(item.id).completed
+  end
+
+  defp advance_to(%{status: target} = s, target), do: s
+
+  defp advance_to(s, target) do
+    {:ok, next} = Retro.advance_phase(s)
+    advance_to(next, target)
+  end
+
   defp archive(%{status: "archived"} = s), do: s
 
   defp archive(s) do

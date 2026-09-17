@@ -97,6 +97,8 @@ const props = defineProps<{
   // permalink the moment they archive without hunting through
   // the past-retros disclosure.
   retro_last_archived?: { id: string; title: string | null; archived_at: string | null } | null
+  // Open action items from the team's previous retros (spec §13).
+  retro_previous_actions?: import("./activities/retro/RetroCarryOver.vue").PreviousAction[]
   // Mini-game-specific. `minigame_state` is the per-user view from
   // the chosen game's `view/2` (drawer sees the secret word,
   // guessers see blanks) — `null` outside "minigame" activity.
@@ -580,6 +582,7 @@ live.handleEvent("play_remote_note", async (payload: RemoteNote) => {
     :discussing_card_id="props.retro_discussing_card_id ?? null"
     :participant_aliases="props.retro_participant_aliases ?? []"
     :last_archived="props.retro_last_archived ?? null"
+    :previous_actions="props.retro_previous_actions ?? []"
     :current_user_id="props.current_user_id ?? ''"
     :current_user_alias="props.current_user_alias ?? ''"
     :is_host="props.is_host ?? false"

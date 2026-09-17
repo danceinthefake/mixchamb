@@ -487,7 +487,7 @@ Honest audit after a 3.5-month idle stretch (last feature commit
    `/t/:slug` lists that team's archived retros. A shared secret
    in the URL, same trust model as chamber links. This is ~80% of
    the auth value at ~10% of the cost.
-3. ⬜ **Action-item carry-over** (`features/retrospective.md`
+3. ✅ **Action-item carry-over** _(2026-09-17, §13)_ (`features/retrospective.md`
    §11). With teams, `:setup` surfaces "N open from last time —
    carry over / mark done". Meaningless without teams, which is
    why it never shipped.

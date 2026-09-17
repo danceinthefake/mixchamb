@@ -53,10 +53,18 @@ defmodule MixchambWeb.ChamberLive.Retro do
 
   @doc "Re-pull session + archive list (activity switch / phase change)."
   def reload(socket, chamber) do
+    session = load_session(chamber)
+
     socket
-    |> assign(:retro_session, load_session(chamber))
+    |> assign(:retro_session, session)
     |> assign(:past_retros, load_past(chamber))
+    # Open items from the team's earlier retros (spec §13). [] when
+    # there's no session or no team.
+    |> assign(:retro_previous_actions, previous_actions(session))
   end
+
+  defp previous_actions(nil), do: []
+  defp previous_actions(session), do: Mixchamb.Retro.open_previous_action_items(session)
 
   # Pulls the live EphemeralState off the chamber GenServer and
   # seeds retro_tallies / retro_my_votes / retro_discussing_card_id
@@ -299,6 +307,27 @@ defmodule MixchambWeb.ChamberLive.Retro do
     {:noreply, socket}
   end
 
+  def handle_event("retro_carry_over_action", %{"action_id" => action_id}, socket)
+      when is_binary(action_id) do
+    Mixchamb.Chambers.Server.retro_carry_over_action(
+      socket.assigns.chamber_slug,
+      socket.assigns.current_user.id,
+      action_id
+    )
+
+    {:noreply, socket}
+  end
+
+  def handle_event("retro_complete_previous_action", %{"action_id" => action_id}, socket)
+      when is_binary(action_id) do
+    Mixchamb.Chambers.Server.retro_complete_previous_action(
+      socket.assigns.chamber_slug,
+      action_id
+    )
+
+    {:noreply, socket}
+  end
+
   def handle_event("retro_delete_action_item", %{"action_id" => action_id}, socket)
       when is_binary(action_id) do
     Mixchamb.Chambers.Server.retro_delete_action_item(socket.assigns.chamber_slug, action_id)
@@ -445,7 +474,7 @@ defmodule MixchambWeb.ChamberLive.Retro do
   # the session. Cheap, avoids per-event patching against a stale
   # local copy.
   def handle_info({:retro, _evt, _payload}, socket) do
-    {:noreply, assign(socket, :retro_session, load_session(socket.assigns.chamber))}
+    {:noreply, reload(socket, socket.assigns.chamber)}
   end
 
   def handle_info({:retro, _evt, _a, _b}, socket) do
@@ -528,6 +557,20 @@ defmodule MixchambWeb.ChamberLive.Retro do
           }
         end)
     }
+  end
+
+  @doc "Wire shape for the carry-over panel (spec §13)."
+  def previous_actions_view(items) do
+    Enum.map(items, fn a ->
+      %{
+        id: a.id,
+        body: a.body,
+        assignee_alias: a.assignee_alias,
+        due_date: a.due_date && Date.to_iso8601(a.due_date),
+        from_title: a.session.title,
+        from_archived_at: a.session.archived_at
+      }
+    end)
   end
 
   # Slim wire shape for the most-recent archived retro in this

@@ -24,7 +24,25 @@ defmodule MixchambWeb.TeamLive do
          socket
          |> assign(:team, team)
          |> assign(:sessions, Retro.list_team_sessions(team.id))
+         |> assign(:open_actions, Retro.open_team_action_items(team.id))
          |> assign(:page_title, "#{team.name} · retros · mixchamb")}
+    end
+  end
+
+  # Out-of-band completion (spec §13): anyone with the slug can tick
+  # an item off between retros. Re-checked against the team's open
+  # set so a hand-crafted id can't reach another team's rows.
+  @impl true
+  def handle_event("complete_action", %{"action_id" => action_id}, socket) do
+    case Enum.find(socket.assigns.open_actions, &(&1.id == action_id)) do
+      nil ->
+        {:noreply, socket}
+
+      item ->
+        {:ok, _} = Retro.complete_previous_action_item(item)
+
+        {:noreply,
+         assign(socket, :open_actions, Retro.open_team_action_items(socket.assigns.team.id))}
     end
   end
 
@@ -43,6 +61,36 @@ defmodule MixchambWeb.TeamLive do
             team name on your next retro's setup screen to keep the history in one place.
           </p>
         </header>
+
+        <section :if={@open_actions != []} id="team-open-actions" class="space-y-2">
+          <h2 class="text-sm uppercase tracking-wider text-muted-foreground font-display">
+            Open action items · {length(@open_actions)}
+          </h2>
+          <ul class="divide-y rounded-xl border bg-card">
+            <li
+              :for={a <- @open_actions}
+              id={"team-action-#{a.id}"}
+              class="flex flex-wrap items-center gap-x-3 gap-y-1 px-4 py-2.5"
+            >
+              <div class="flex-1 min-w-0 text-sm">
+                <p class="break-words">{a.body}</p>
+                <p class="text-xs text-muted-foreground">
+                  <span :if={a.assignee_alias}>{a.assignee_alias} · </span>
+                  <span :if={a.due_date}>due {a.due_date} · </span>
+                  from {a.session.title || "Untitled retro"}
+                </p>
+              </div>
+              <button
+                type="button"
+                phx-click="complete_action"
+                phx-value-action_id={a.id}
+                class="rounded-md border px-2.5 py-1 text-xs font-medium hover:bg-accent shrink-0"
+              >
+                Mark done
+              </button>
+            </li>
+          </ul>
+        </section>
 
         <p
           :if={@sessions == []}

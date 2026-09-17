@@ -42,6 +42,7 @@ const baseProps = {
   discussing_card_id: null,
   participant_aliases: [],
   last_archived: null,
+  previous_actions: [],
   current_user_id: "u1",
   current_user_alias: "host-alias",
   is_host: true,

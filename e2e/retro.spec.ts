@@ -1,6 +1,6 @@
 import { test, expect } from "@playwright/test"
 import type { Page } from "@playwright/test"
-import { openRoom } from "./helpers"
+import { openRoom, dismissGate } from "./helpers"
 
 // Advance the retro phase machine one step (the button label changes
 // per phase: Start brainstorm → Reveal cards → Start discussion…).
@@ -45,14 +45,31 @@ test("retro: start → brainstorm → reveal a card to the room", async ({ brows
     await advance(host)
     await expect(guest.getByText("Slow CI is painful")).toBeVisible({ timeout: 8000 })
 
-    // Reveal → (voting is off by default) → discuss → archive, then
-    // the team page lists it.
+    // Reveal → (voting is off by default) → discuss. Leave an open
+    // action item, then archive.
     await advance(host)
+    await host.getByPlaceholder("Add an action item…").fill("Fix the flaky CI job")
+    await host.getByRole("button", { name: "Add action" }).click()
+    await expect(host.getByText("Fix the flaky CI job")).toBeVisible()
     host.once("dialog", (d) => d.accept())
     await host.getByRole("button", { name: /Archive retro/ }).click()
     await expect(host.getByText(/Retro archived/i)).toBeVisible({ timeout: 8000 })
-    await host.goto(`/t/${team.replace(" ", "-")}`)
+
+    // The team page lists the retro and the open item.
+    const slug = team.replace(" ", "-")
+    await host.goto(`/t/${slug}`)
     await expect(host.locator("#team-retros a")).toHaveCount(1)
+    await expect(host.locator("#team-open-actions")).toContainText("Fix the flaky CI job")
+
+    // Next retro in the same chamber inherits the team and offers
+    // the open item for carry-over on :setup.
+    await host.goto(room.url, { waitUntil: "networkidle" })
+    await dismissGate(host)
+    await host.getByRole("button", { name: /Start new retro/i }).click()
+    await expect(host.locator("#retro-team")).toHaveValue(team, { timeout: 8000 })
+    await expect(host.locator("#retro-carry-over")).toContainText("Fix the flaky CI job")
+    await host.getByRole("button", { name: "Carry over" }).click()
+    await expect(host.locator("#retro-carry-over")).toHaveCount(0, { timeout: 8000 })
 
     expect(room.errors, room.errors.join("\n")).toEqual([])
   } finally {

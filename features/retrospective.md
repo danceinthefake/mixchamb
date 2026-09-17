@@ -287,7 +287,8 @@ to a source card.
 | `body` | text, 1–280 chars | |
 | `assignee_alias` | string, nullable | Free-text alias. Autocomplete in v1 pulls from current chamber Presence. Not enforced to be a real participant — teams sometimes assign to people not in the chamber. |
 | `due_date` | date, nullable | Optional. If set, surfaces on the archived session view. |
-| `completed` | bool, default false | Toggleable in `:discuss`. Out-of-band completion (after archive) is v2. |
+| `completed` | bool, default false | Toggleable in `:discuss`. Out-of-band completion after archive: from the next retro's carry-over panel or `/t/:slug` (§13). |
+| `carried_over_at` | timestamp, nullable | Set when copied into a later retro (§13). |
 | `created_by_user_id` | uuid fk, nullable | Audit. Not displayed in v1. |
 | `inserted_at`, `updated_at` | timestamps | |
 
@@ -503,10 +504,8 @@ re-debated on each pass.
   `:discuss`, the host's clicked card gets a soft pulse / border
   glow so latecomers' eyes go to the focused card. Polish, not
   blocker.
-- **Action item carry-over from previous retro.** "Unfinished
-  from last time: 2 items" surfaced at the top of `:setup`.
-  Requires loading previous session's actions where `completed
-  = false`. Schema already supports it; just a query + UI.
+- ✅ **Action item carry-over from previous retro.** Shipped
+  2026-09-17 — see §13.
 - **Card character counter** in the brainstorm input, 280-char
   cap. Same pattern as twitter compose box.
 - **Anonymous mode.** Toggle on `:setup` to suppress author
@@ -552,6 +551,31 @@ skips it), a **team** is a slug the host types on `:setup`.
 - **Trust model:** knowing the slug is the whole access model —
   identical to a chamber link. No owner, no membership. Real
   auth + private archives stay deferred (§7a).
+
+## 13. Action-item carry-over _(shipped 2026-09-17)_
+
+The §11 item that made retro #2 better than retro #1. With teams
+(§12) in place, "unfinished from last time" is a query.
+
+- `retro_action_items.carried_over_at` (nullable). **Open** =
+  `completed = false AND carried_over_at IS NULL`, across the
+  team's *archived* sessions. Carrying stamps the original instead
+  of completing it, so "moved" and "done" stay distinguishable.
+- `Retro.open_previous_action_items/1` (excludes the current
+  session), `carry_over_action_item/3` (copies body / assignee /
+  due date as a freeform item, any live phase — bypasses the
+  `:discuss`-only rule because carry-over happens on `:setup`),
+  `complete_previous_action_item/1`, `open_team_action_items/1`.
+- GenServer casts `:retro_carry_over_action` /
+  `:retro_complete_previous_action` re-resolve the id against the
+  session's open set before touching it, then broadcast
+  `{:retro, :previous_actions_changed, id}`.
+- UI: `RetroCarryOver.vue` panel on `:setup` and `:discuss` —
+  each row **Carry over** / **Mark done**. `/t/:slug` lists the
+  team's open items with **Mark done** for out-of-band completion
+  between retros (the §6 "v2" line).
+- Not host-gated: anyone in the chamber can add action items in
+  `:discuss`, so carry-over follows the same rule.
 
 ## Ready-to-build checklist
 
