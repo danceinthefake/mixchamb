@@ -10,6 +10,7 @@ import { computed, provide, ref } from "vue"
 import { useLiveVue } from "live_vue"
 import RetroSetup from "./RetroSetup.vue"
 import RetroCarryOver from "./RetroCarryOver.vue"
+import { retroToMarkdown } from "./markdown"
 import type { PreviousAction } from "./RetroCarryOver.vue"
 import RetroColumn from "./RetroColumn.vue"
 import RetroDiscussPanel from "./RetroDiscussPanel.vue"
@@ -280,6 +281,21 @@ async function copyPermalink() {
 async function copyLastArchivedPermalink() {
   await copyText(lastArchivedPermalink.value)
 }
+
+// Markdown snapshot — how retro output actually travels (Slack,
+// Notion, the sprint doc). Separate flash so the two banner
+// buttons don't both flip to "Copied!".
+const mdCopied = ref(false)
+async function copyMarkdown() {
+  if (!props.session) return
+  try {
+    await navigator.clipboard.writeText(retroToMarkdown(props.session, permalink.value))
+    mdCopied.value = true
+    setTimeout(() => (mdCopied.value = false), 1500)
+  } catch {
+    /* clipboard blocked — nothing to fall back to */
+  }
+}
 </script>
 
 <template>
@@ -473,13 +489,22 @@ async function copyLastArchivedPermalink() {
             </template>
           </p>
         </div>
-        <button
-          type="button"
-          @click="copyPermalink"
-          class="rounded-md bg-accent-bass text-background px-3 py-1.5 text-xs font-medium hover:bg-accent-bass/90 shrink-0"
-        >
-          {{ copiedFlash ? "Copied!" : "Copy share link" }}
-        </button>
+        <div class="flex gap-1.5 shrink-0">
+          <button
+            type="button"
+            @click="copyMarkdown"
+            class="rounded-md border px-3 py-1.5 text-xs font-medium hover:bg-accent"
+          >
+            {{ mdCopied ? "Copied!" : "Copy as markdown" }}
+          </button>
+          <button
+            type="button"
+            @click="copyPermalink"
+            class="rounded-md bg-accent-bass text-background px-3 py-1.5 text-xs font-medium hover:bg-accent-bass/90"
+          >
+            {{ copiedFlash ? "Copied!" : "Copy share link" }}
+          </button>
+        </div>
       </div>
 
       <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4">

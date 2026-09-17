@@ -515,10 +515,13 @@ re-debated on each pass.
 - **Preset column templates** (Start/Stop/Continue, Mad/Sad/Glad,
   4Ls) as a dropdown on `:setup` that prefills the four name
   inputs. No schema change needed.
-- **Markdown export from `:archived` view.** Same pattern as
-  poker's round-history export — clipboard helper that builds
-  a markdown snapshot of session title + cards by column +
-  action items. ~25 lines.
+- ✅ **Markdown export from `:archived` view.** Shipped 2026-09-17
+  — `activities/retro/markdown.ts` (`retroToMarkdown/2`: title,
+  cards by column votes-desc with nested actions, freeform
+  actions, team + permalink footer). **Copy as markdown** sits
+  next to **Copy share link** in the archived banner; the older
+  copy buried in the discuss panel's header (with `alert`) is
+  gone.
 - **Keyboard shortcuts.** Following poker's pattern:
   - `1`–`4` add card to column N during `:brainstorm`
   - `Enter` submits current card

@@ -491,7 +491,7 @@ Honest audit after a 3.5-month idle stretch (last feature commit
    §11). With teams, `:setup` surfaces "N open from last time —
    carry over / mark done". Meaningless without teams, which is
    why it never shipped.
-4. ⬜ **Markdown export** at `:archived` — clipboard snapshot of
+4. ✅ **Markdown export** _(2026-09-17)_ at `:archived` — clipboard snapshot of
    title + cards by column + action items. ~25 lines. That's how
    retro output actually travels (Slack / Notion).
 5. ⬜ **Column presets** on `:setup` — Start/Stop/Continue, 4Ls,
