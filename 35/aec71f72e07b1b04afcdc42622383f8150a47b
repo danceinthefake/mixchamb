@@ -1,0 +1,29 @@
+test/mixchamb/minigame/gartic_phone_test.exs
+  s_ae52c82cfbb39d::t_9d9738a295f9da 174-218
+test/mixchamb/minigame/two_truths_test.exs
+  s_ae52c82cfbb39d::t_9d9738a295f9da 157-192
+test/mixchamb_web/live/admin/admin_edges_test.exs
+  s_ae52c82cfbb39d::t_8ced3d40ab0f1b 1-37,40-82,87-130
+  s_ae52c82cfbb39d::t_534f2c80d789cb 38-39
+  s_ae52c82cfbb39d::t_d43b178505fcc4 83-86
+lib/mixchamb_web/live/admin/system_live.ex
+  s_ae52c82cfbb39d::t_d43b178505fcc4 53-60,62,64
+test/mixchamb_web/live/chamber_live_activities_test.exs
+  s_ae52c82cfbb39d::t_5aac2c71b26f4a 364-394
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "35aec71f72e07b1b04afcdc42622383f8150a47b",
+  "prompts": {},
+  "sessions": {
+    "s_ae52c82cfbb39d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1de5c5ca-1395-4e73-b795-ed7057489ec8",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Hafidz Bahtiar <hafidz.bahtiar@hypefast.id>"
+    }
+  }
+}
