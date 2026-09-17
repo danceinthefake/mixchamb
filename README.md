@@ -35,10 +35,14 @@ shared across all of them; the activity decides what happens
 - **Planning poker** — host opens voting, participants pick a card
   in private, host reveals, everyone discusses, repeat next story.
 - **Retrospective** — 4-column board with the Reetro-style flow:
-  setup → brainstorm (hidden until reveal, or open) → reveal →
-  optional voting → discuss + capture action items → archive.
-  Archived retros live permanently at `/archives/retros/:id`,
-  decoupled from the (ephemeral) chamber that hosted them.
+  setup (column presets, team tag, carry-over of last time's open
+  action items) → brainstorm (hidden until reveal, or open) →
+  reveal → optional voting → discuss + capture action items, with
+  a host phase timer throughout → archive (markdown export, or
+  hand the open items straight to planning poker). Archived
+  retros live permanently at `/archives/retros/:id`; tag a
+  **team** and every retro with that slug collects at `/t/:slug`
+  — no login, the slug is the link.
 - **Mini-game** — a registry of small synchronous games behind one
   lobby / host-control shell. Three games ship:
   - **Pictionary** — one drawer streams strokes on a shared canvas
@@ -351,6 +355,7 @@ mixchamb/
 │       │   ├── chamber_live/     per-activity handlers: music / poker / retro / minigame
 │       │   ├── landing_live.ex   activity picker
 │       │   ├── retro_live.ex     read-only /archives/retros/:id permalink
+│       │   ├── team_live.ex      /t/:slug — a team's retro history + open action items
 │       │   └── admin/            7 admin LVs + shared shell
 │       ├── plugs/                EnsureAnonUser + AdminAuth
 │       └── router.ex
