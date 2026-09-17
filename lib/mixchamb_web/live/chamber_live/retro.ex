@@ -323,6 +323,26 @@ defmodule MixchambWeb.ChamberLive.Retro do
     {:noreply, socket}
   end
 
+  # Retro → poker handoff (spec §15): flip the chamber to poker with
+  # the retro's open action items queued as stories. Host-gated like
+  # every other retro host action; the three casts land in the same
+  # GenServer mailbox, so set_activity is applied before the queue.
+  def handle_event("retro_estimate_in_poker", _params, socket) do
+    %{chamber: chamber, retro_session: session, is_host: is_host} = socket.assigns
+
+    stories =
+      if session, do: for(a <- session.action_items, not a.completed, do: a.body), else: []
+
+    with true <- is_host and stories != [],
+         {:ok, _} <- Mixchamb.Chambers.set_activity(chamber, "poker") do
+      [first | rest] = stories
+      Mixchamb.Chambers.Server.poker_set_story(chamber.slug, first)
+      Mixchamb.Chambers.Server.poker_set_queue(chamber.slug, rest)
+    end
+
+    {:noreply, socket}
+  end
+
   def handle_event("retro_carry_over_action", %{"action_id" => action_id}, socket)
       when is_binary(action_id) do
     Mixchamb.Chambers.Server.retro_carry_over_action(

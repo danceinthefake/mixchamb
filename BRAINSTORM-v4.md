@@ -498,7 +498,7 @@ Honest audit after a 3.5-month idle stretch (last feature commit
    Mad/Sad/Glad, Sailboat. Prefill the name inputs; no schema.
 6. ✅ **Phase timer** _(2026-09-17, §14)_. Host sets e.g. "brainstorm 5 min", everyone
    sees the countdown. Reuse Pictionary's server-side tick.
-7. ⬜ **Retro → poker handoff.** Action item "estimate X" → one
+7. ✅ **Retro → poker handoff** _(2026-09-17, §15)_. Action item "estimate X" → one
    click flips the chamber to poker with that story queued. Makes
    "one link, four rituals" real instead of a landing-page claim.
 8. ⬜ **Anon sweep 24h → 30 days.** One constant; makes the anon

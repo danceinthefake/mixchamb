@@ -599,6 +599,22 @@ Facilitators time-box phases; every real retro tool has a clock.
   countdown for everyone, `playTimeUp` buzzer at 0:00.
   Display-only — nothing auto-advances; the host moves on.
 
+## 15. Retro → poker handoff _(shipped 2026-09-17)_
+
+The "one link, four rituals" claim made real: action items that
+need sizing go straight into planning poker in the same chamber.
+
+- **Estimate in poker · N** in the discuss panel header (host,
+  `:discuss` / `:archived`, N = open action items). Confirms,
+  then `retro_estimate_in_poker`.
+- LV: `Chambers.set_activity(chamber, "poker")`, then
+  `poker_set_story(first)` + `poker_set_queue(rest)`. All three
+  land in the chamber GenServer's mailbox in order, so the poker
+  session exists before the queue is applied. Host-gated (co-hosts
+  included, per the poker spec's multi-host rule).
+- Retro state persists across the switch (spec §9), so the host
+  flips back via the Activity chips to archive when done.
+
 ## Ready-to-build checklist
 
 Implementation order I'd recommend, sized in working-day units:

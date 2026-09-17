@@ -26,6 +26,22 @@ const live = useLiveVue()
 
 const readOnly = computed(() => props.session.status === "archived")
 
+// Retro → poker handoff: open action items become the poker queue
+// (first one is the current story). Host-only; the chamber flips
+// activity underneath everyone.
+const openActionCount = computed(
+  () => props.session.action_items.filter((a) => !a.completed).length,
+)
+function estimateInPoker() {
+  if (
+    !confirm(
+      `Switch this chamber to planning poker with ${openActionCount.value} action item(s) queued as stories?`,
+    )
+  )
+    return
+  live.pushEvent("retro_estimate_in_poker", {})
+}
+
 const draft = ref({
   body: "",
   source_card_id: "",
@@ -51,10 +67,20 @@ function submit() {
 
 <template>
   <section class="rounded-xl border bg-card/40 p-4 space-y-4">
-    <header>
+    <header class="flex items-baseline justify-between gap-3">
       <h2 class="text-sm uppercase tracking-wider text-muted-foreground font-display">
         Freeform action items
       </h2>
+      <button
+        v-if="is_host && openActionCount > 0"
+        id="retro-estimate-in-poker"
+        type="button"
+        @click="estimateInPoker"
+        class="text-xs font-medium rounded-md border px-3 py-1 hover:bg-accent"
+        title="Flip the chamber to planning poker with the open action items queued as stories"
+      >
+        Estimate in poker · {{ openActionCount }}
+      </button>
     </header>
 
     <div v-if="freeform_actions.length > 0" class="space-y-2">

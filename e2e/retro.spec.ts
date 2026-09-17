@@ -54,6 +54,18 @@ test("retro: start → brainstorm → reveal a card to the room", async ({ brows
     await host.getByPlaceholder("Add an action item…").fill("Fix the flaky CI job")
     await host.getByRole("button", { name: "Add action" }).click()
     await expect(host.getByText("Fix the flaky CI job")).toBeVisible()
+
+    // Retro → poker handoff: the open item becomes the poker story
+    // for the whole room; then the host flips back to finish the retro.
+    host.once("dialog", (d) => d.accept())
+    await host.locator("#retro-estimate-in-poker").click()
+    await expect(guest.getByText(/Host switched the chamber to Poker/i)).toBeVisible()
+    await expect(guest.getByText("Fix the flaky CI job")).toBeVisible({ timeout: 8000 })
+    await host.locator('button[phx-value-activity="retro"]').click()
+    await expect(host.getByRole("button", { name: /Archive retro/ })).toBeVisible({
+      timeout: 8000,
+    })
+
     host.once("dialog", (d) => d.accept())
     await host.getByRole("button", { name: /Archive retro/ }).click()
     await expect(host.getByText(/Retro archived/i)).toBeVisible({ timeout: 8000 })

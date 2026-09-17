@@ -252,6 +252,41 @@ defmodule MixchambWeb.ChamberLiveTest do
     end
   end
 
+  describe "retro_estimate_in_poker (spec §15)" do
+    alias Mixchamb.Retro
+
+    setup %{user: user} do
+      {:ok, chamber} = Chambers.create_chamber(user.id, "retro")
+      {:ok, s} = Retro.start_session(chamber.id)
+      s = advance_to(s, "discuss")
+      {:ok, _} = Retro.add_action_item(s, %{body: "Fix CI"})
+      {:ok, done} = Retro.add_action_item(s, %{body: "Already done"})
+      {:ok, _} = Retro.update_action_item(done, %{completed: true}, s)
+      {:ok, _} = Retro.add_action_item(s, %{body: "Rotate pager"})
+      %{chamber: chamber}
+    end
+
+    test "host flips to poker with open items as story + queue", %{conn: conn, chamber: chamber} do
+      {:ok, view, _html} = live(conn, ~p"/chamber/#{chamber.slug}")
+
+      render_hook(view, "retro_estimate_in_poker", %{})
+      assert Chambers.find_by_slug(chamber.slug).activity == "poker"
+
+      poker = Server.poker_state(chamber.slug)
+      assert poker.story == "Fix CI"
+      assert poker.queue == ["Rotate pager"]
+    end
+
+    test "non-host is ignored", %{conn: conn, chamber: chamber} do
+      {:ok, other} = Accounts.create_anonymous_user()
+      conn = Plug.Test.init_test_session(conn, %{"user_id" => other.id})
+      {:ok, view, _html} = live(conn, ~p"/chamber/#{chamber.slug}")
+
+      render_hook(view, "retro_estimate_in_poker", %{})
+      assert Chambers.find_by_slug(chamber.slug).activity == "retro"
+    end
+  end
+
   describe "set_activity" do
     test "creator can flip music ↔ poker", %{conn: conn, chamber: chamber} do
       {:ok, view, _html} = live(conn, ~p"/chamber/#{chamber.slug}")
@@ -499,5 +534,12 @@ defmodule MixchambWeb.ChamberLiveTest do
       :timer.sleep(50)
       refute render(view) =~ "no-feed-row"
     end
+  end
+
+  defp advance_to(%{status: target} = s, target), do: s
+
+  defp advance_to(s, target) do
+    {:ok, next} = Mixchamb.Retro.advance_phase(s)
+    advance_to(next, target)
   end
 end
