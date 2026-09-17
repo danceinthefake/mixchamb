@@ -334,6 +334,25 @@ defmodule MixchambWeb.Admin.AdminLiveTest do
       assert is_binary(html)
     end
 
+    test "connect without an @ shows the format error", %{conn: conn} do
+      {:ok, view, _html} = live(conn, ~p"/admin/cluster")
+      assert render_hook(view, "connect", %{"node" => "justaname"}) =~ "needs an @"
+    end
+
+    test "drain on an unreachable peer reports the RPC failure", %{conn: conn} do
+      {:ok, view, _html} = live(conn, ~p"/admin/cluster")
+      html = render_hook(view, "drain", %{"node" => "ghost@nowhere"})
+      assert html =~ "RPC failed reaching ghost@nowhere"
+    end
+
+    test "tick / nodeup / nodedown reload the node table", %{conn: conn} do
+      {:ok, view, _html} = live(conn, ~p"/admin/cluster")
+      send(view.pid, :tick)
+      send(view.pid, {:nodeup, :peer@nowhere})
+      send(view.pid, {:nodedown, :peer@nowhere})
+      assert render(view) =~ to_string(Node.self())
+    end
+
     test "disconnect with unknown node is a flash-only no-op", %{conn: conn} do
       {:ok, view, _html} = live(conn, ~p"/admin/cluster")
       html = render_hook(view, "disconnect", %{"node" => "not_actually_connected@nowhere"})
