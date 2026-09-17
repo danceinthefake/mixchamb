@@ -512,9 +512,12 @@ re-debated on each pass.
   attribution on cards. Doesn't remove from DB (audit), just
   hides from UI. Add only if a team asks — see §3 for why
   default is non-anonymous.
-- **Preset column templates** (Start/Stop/Continue, Mad/Sad/Glad,
-  4Ls) as a dropdown on `:setup` that prefills the four name
-  inputs. No schema change needed.
+- ✅ **Preset column templates.** Shipped 2026-09-17 —
+  `activities/retro/presets.ts` (Good/Bad/Start/Thanks,
+  Start/Stop/Continue/Kudos, Mad/Sad/Glad/Ideas, 4Ls, Sailboat) as
+  a `<select>` on `:setup`; applying one is four
+  `retro_rename_column` events through the existing pipeline. No
+  schema change.
 - ✅ **Markdown export from `:archived` view.** Shipped 2026-09-17
   — `activities/retro/markdown.ts` (`retroToMarkdown/2`: title,
   cards by column votes-desc with nested actions, freeform

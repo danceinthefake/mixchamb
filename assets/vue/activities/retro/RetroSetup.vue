@@ -6,6 +6,7 @@
 import { ref, watch } from "vue"
 import { useLiveVue } from "live_vue"
 import type { RetroSession } from "./RetroBoard.vue"
+import { COLUMN_PRESETS } from "./presets"
 
 const props = defineProps<{
   session: RetroSession
@@ -65,6 +66,21 @@ function commitColumn(columnId: string) {
   const orig = props.session.columns.find((c) => c.id === columnId)
   if (orig?.name === next) return
   live.pushEvent("retro_rename_column", { column_id: columnId, name: next })
+}
+
+// Reads the value off the event rather than a v-model ref: the
+// directive's own change listener isn't guaranteed to run first.
+const presetPick = ref("")
+function applyPreset(e: Event) {
+  const names = COLUMN_PRESETS[(e.target as HTMLSelectElement).value]
+  if (!names) return
+  props.session.columns.forEach((col, i) => {
+    const name = names[i]
+    if (!name || col.name === name) return
+    columnDrafts.value[col.id] = name
+    live.pushEvent("retro_rename_column", { column_id: col.id, name })
+  })
+  presetPick.value = ""
 }
 
 function toggleBrainstormVisible() {
@@ -136,6 +152,18 @@ function toggleBrainstormVisible() {
         <p class="text-xs text-muted-foreground">
           Customise per your team's retro format. Locked once brainstorm starts.
         </p>
+        <select
+          id="retro-column-preset"
+          v-model="presetPick"
+          @change="applyPreset"
+          aria-label="Apply a column preset"
+          class="rounded-md border bg-card px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-accent-bass/40"
+        >
+          <option value="">Apply a preset…</option>
+          <option v-for="(_, label) in COLUMN_PRESETS" :key="label" :value="label">
+            {{ label }}
+          </option>
+        </select>
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 pt-1">
           <div v-for="col in session.columns" :key="col.id" class="space-y-1">
             <input

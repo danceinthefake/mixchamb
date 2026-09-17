@@ -494,7 +494,7 @@ Honest audit after a 3.5-month idle stretch (last feature commit
 4. ✅ **Markdown export** _(2026-09-17)_ at `:archived` — clipboard snapshot of
    title + cards by column + action items. ~25 lines. That's how
    retro output actually travels (Slack / Notion).
-5. ⬜ **Column presets** on `:setup` — Start/Stop/Continue, 4Ls,
+5. ✅ **Column presets** _(2026-09-17)_ on `:setup` — Start/Stop/Continue, 4Ls,
    Mad/Sad/Glad, Sailboat. Prefill the name inputs; no schema.
 6. ⬜ **Phase timer.** Host sets e.g. "brainstorm 5 min", everyone
    sees the countdown. Reuse Pictionary's server-side tick.
