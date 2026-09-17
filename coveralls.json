@@ -1,0 +1,16 @@
+{
+  "skip_files": [
+    "lib/mixchamb.ex",
+    "lib/mixchamb/repo.ex",
+    "lib/mixchamb/release.ex",
+    "lib/mixchamb_web.ex",
+    "lib/mixchamb_web/endpoint.ex",
+    "lib/mixchamb_web/gettext.ex",
+    "lib/mixchamb_web/channels/presence.ex",
+    "lib/mixchamb_web/telemetry.ex",
+    "test/support"
+  ],
+  "coverage_options": {
+    "minimum_coverage": 0
+  }
+}
