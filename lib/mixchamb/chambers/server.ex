@@ -1286,6 +1286,8 @@ defmodule Mixchamb.Chambers.Server do
   def handle_cast({:retro_withdraw_vote, _, _}, state), do: {:noreply, state}
   def handle_cast({:retro_set_discussing, _, _}, state), do: {:noreply, state}
   def handle_cast({:retro_add_action_item, _}, state), do: {:noreply, state}
+  def handle_cast({:retro_carry_over_action, _, _}, state), do: {:noreply, state}
+  def handle_cast({:retro_complete_previous_action, _}, state), do: {:noreply, state}
   def handle_cast({:retro_update_action_item, _, _}, state), do: {:noreply, state}
   def handle_cast({:retro_delete_action_item, _}, state), do: {:noreply, state}
   def handle_cast({:retro_toggle_reaction, _, _, _}, state), do: {:noreply, state}
