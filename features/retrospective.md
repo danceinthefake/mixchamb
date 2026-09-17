@@ -640,6 +640,14 @@ now `{:retro, :timer, %{deadline, auto_advance}}`. Everyone sees
 an "auto" tag on the clock. Default off — the host still moves
 the room unless they say otherwise.
 
+## 18. Team summary _(shipped 2026-09-18)_
+
+`/t/:slug` opens with a stat strip — retros run, cards written,
+action items raised, completed (n/total · %) — and each retro row
+carries its own "N cards · d/a actions done". `Retro.team_summary/1`
+is two GROUP BY queries over the team's archived sessions; the
+strip refreshes when an item is ticked off on the page.
+
 ## Ready-to-build checklist
 
 Implementation order I'd recommend, sized in working-day units:

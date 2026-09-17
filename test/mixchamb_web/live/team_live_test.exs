@@ -50,6 +50,30 @@ defmodule MixchambWeb.TeamLiveTest do
     assert Retro.get_action_item(item.id).completed
   end
 
+  test "summary strip + per-retro counts", %{conn: conn, chamber: chamber} do
+    {:ok, s} = Retro.start_session(chamber.id, %{title: "Sprint 1"})
+    {:ok, s} = Retro.set_team(s, "stats")
+    s = advance_to(s, "brainstorm")
+    [col | _] = Retro.load_session(s.id).columns
+    {:ok, _} = Retro.add_card(s, col, %{body: "a", author_alias: "x"})
+    {:ok, _} = Retro.add_card(s, col, %{body: "b", author_alias: "x"})
+    s = advance_to(s, "discuss")
+    {:ok, done} = Retro.add_action_item(s, %{body: "done"})
+    {:ok, _} = Retro.update_action_item(done, %{completed: true}, s)
+    {:ok, _} = Retro.add_action_item(s, %{body: "open"})
+    archive(s)
+
+    {:ok, view, html} = live(conn, ~p"/t/stats")
+    assert has_element?(view, "#team-summary")
+    assert html =~ "2 cards · 1/2 actions done"
+    assert html =~ "1/2 · 50%"
+
+    # Ticking the open item off updates the strip.
+    [open_item] = Retro.open_team_action_items(Retro.get_team_by_slug("stats").id)
+    view |> element("#team-action-#{open_item.id} button") |> render_click()
+    assert render(view) =~ "2/2 · 100%"
+  end
+
   defp advance_to(%{status: target} = s, target), do: s
 
   defp advance_to(s, target) do

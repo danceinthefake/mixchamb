@@ -206,6 +206,51 @@ defmodule Mixchamb.Retro do
     )
   end
 
+  @doc """
+  Per-team numbers for `/t/:slug` (spec §18): retros run, cards
+  written, action items raised / completed, plus the same three
+  counts per archived session keyed by session id. Two GROUP BY
+  queries over the team's archived sessions.
+  """
+  def team_summary(team_id) when is_binary(team_id) do
+    cards =
+      Repo.all(
+        from c in RetroCard,
+          join: s in assoc(c, :session),
+          where: s.team_id == ^team_id and s.status == "archived",
+          group_by: c.retro_session_id,
+          select: {c.retro_session_id, count(c.id)}
+      )
+      |> Map.new()
+
+    actions =
+      Repo.all(
+        from a in RetroActionItem,
+          join: s in assoc(a, :session),
+          where: s.team_id == ^team_id and s.status == "archived",
+          group_by: a.retro_session_id,
+          select:
+            {a.retro_session_id,
+             {count(a.id), sum(fragment("CASE WHEN ? THEN 1 ELSE 0 END", a.completed))}}
+      )
+      |> Map.new()
+
+    per_session =
+      (Map.keys(cards) ++ Map.keys(actions))
+      |> Enum.uniq()
+      |> Map.new(fn sid ->
+        {total, done} = Map.get(actions, sid, {0, 0})
+        {sid, %{cards: Map.get(cards, sid, 0), actions: total, done: done || 0}}
+      end)
+
+    totals =
+      Enum.reduce(per_session, %{cards: 0, actions: 0, done: 0}, fn {_, m}, acc ->
+        %{cards: acc.cards + m.cards, actions: acc.actions + m.actions, done: acc.done + m.done}
+      end)
+
+    Map.put(totals, :per_session, per_session)
+  end
+
   @doc "Update the session title. Allowed in any phase."
   def set_title(%RetroSession{} = session, title) do
     session

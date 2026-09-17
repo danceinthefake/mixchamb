@@ -512,7 +512,7 @@ Honest audit after a 3.5-month idle stretch (last feature commit
 10. ✅ **Timer auto-advance (opt-in)** _(2026-09-18, §17)_. Host ticks "advance when
     time's up"; the existing tick calls `retro_advance_phase`.
     One boolean in `EphemeralState`.
-11. ⬜ **Team summary on `/t/:slug`.** Card counts by column for
+11. ✅ **Team summary on `/t/:slug`** _(2026-09-18, §18)_. Card counts by column for
     the last retros + action-item completion rate. One query,
     HEEx only — the reason to come back to the team page.
 12. ⬜ **"Your teams" on the landing page.** Team slugs remembered
