@@ -79,6 +79,34 @@ defmodule MixchambWeb.TeamLive do
     ~H"""
     <Layouts.app flash={@flash}>
       <div class="max-w-3xl mx-auto px-4 py-6 space-y-6">
+        <%!-- Remember this team in the browser so the landing page can
+             offer it back (§7a step 12). Most-recent first, capped. --%>
+        <div
+          id="remember-team"
+          phx-hook=".RememberTeam"
+          phx-update="ignore"
+          data-slug={@team.slug}
+          data-name={@team.name}
+          hidden
+        >
+        </div>
+        <script :type={Phoenix.LiveView.ColocatedHook} name=".RememberTeam">
+          export default {
+            mounted() {
+              const { slug, name } = this.el.dataset
+              let teams = []
+              try {
+                teams = JSON.parse(localStorage.getItem("mixchamb:teams") || "[]")
+              } catch (_) {}
+              if (!Array.isArray(teams)) teams = []
+              teams = [{ slug, name }, ...teams.filter((t) => t && t.slug !== slug)].slice(0, 8)
+              try {
+                localStorage.setItem("mixchamb:teams", JSON.stringify(teams))
+              } catch (_) {}
+            },
+          }
+        </script>
+
         <header class="space-y-1">
           <p class="text-xs uppercase tracking-wider text-muted-foreground font-display">
             Team

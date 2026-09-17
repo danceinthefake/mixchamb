@@ -236,6 +236,44 @@ defmodule MixchambWeb.LandingLive do
             </button>
           </div>
 
+          <%!-- Your teams (§7a step 12). Team slugs this browser has
+               visited at /t/:slug, kept in localStorage — no login,
+               so this is purely client-side: the hook renders the
+               links itself and LiveView leaves the subtree alone.
+               Hidden until the list is non-empty. --%>
+          <div id="your-teams" phx-hook=".YourTeams" phx-update="ignore" class="space-y-3 hidden">
+            <h3 class="text-xs uppercase tracking-wider text-muted-foreground font-display text-center">
+              Your teams
+            </h3>
+            <ul class="flex flex-wrap justify-center gap-2" data-teams></ul>
+          </div>
+          <script :type={Phoenix.LiveView.ColocatedHook} name=".YourTeams">
+            export default {
+              mounted() {
+                let teams = []
+                try {
+                  teams = JSON.parse(localStorage.getItem("mixchamb:teams") || "[]")
+                } catch (_) {}
+                if (!Array.isArray(teams) || teams.length === 0) return
+                const ul = this.el.querySelector("[data-teams]")
+                for (const t of teams) {
+                  if (!t || typeof t.slug !== "string") continue
+                  const li = document.createElement("li")
+                  const a = document.createElement("a")
+                  a.href = `/t/${encodeURIComponent(t.slug)}`
+                  a.setAttribute("data-phx-link", "redirect")
+                  a.setAttribute("data-phx-link-state", "push")
+                  a.className =
+                    "inline-flex items-center gap-1.5 rounded-full border bg-card/60 hover:bg-accent px-3 py-1 text-sm transition-colors"
+                  a.textContent = t.name || t.slug
+                  li.appendChild(a)
+                  ul.appendChild(li)
+                }
+                this.el.classList.remove("hidden")
+              },
+            }
+          </script>
+
           <%!-- Resume-where-you-left-off. Renders only when the
                user has live visits — the FK cascade clears rows
                when the chamber is reaped (30-min idle) or the user

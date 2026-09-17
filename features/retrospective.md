@@ -648,6 +648,15 @@ carries its own "N cards · d/a actions done". `Retro.team_summary/1`
 is two GROUP BY queries over the team's archived sessions; the
 strip refreshes when an item is ticked off on the page.
 
+## 19. "Your teams" on the landing page _(shipped 2026-09-18)_
+
+Visiting `/t/:slug` stores `{slug, name}` in
+`localStorage["mixchamb:teams"]` (most-recent first, capped at 8)
+via a colocated hook; the landing page's `.YourTeams` hook renders
+the chips client-side inside a `phx-update="ignore"` block. No
+backend, no identity — it's a per-browser bookmark, which is all
+the no-auth model can honestly offer.
+
 ## Ready-to-build checklist
 
 Implementation order I'd recommend, sized in working-day units:

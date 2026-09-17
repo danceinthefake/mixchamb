@@ -515,7 +515,7 @@ Honest audit after a 3.5-month idle stretch (last feature commit
 11. ✅ **Team summary on `/t/:slug`** _(2026-09-18, §18)_. Card counts by column for
     the last retros + action-item completion rate. One query,
     HEEx only — the reason to come back to the team page.
-12. ⬜ **"Your teams" on the landing page.** Team slugs remembered
+12. ✅ **"Your teams" on the landing page** _(2026-09-18, §19)_. Team slugs remembered
     in localStorage; one click to `/t/<slug>` without auth.
 13. ⬜ **Card merge** (§11 grouping). Click card A, then "Merge
     into" card B during `:reveal`; votes and reactions follow the

@@ -75,6 +75,11 @@ test("retro: start → brainstorm → reveal a card to the room", async ({ brows
     await host.goto(`/t/${slug}`)
     await expect(host.locator("#team-retros a")).toHaveCount(1)
     await expect(host.locator("#team-open-actions")).toContainText("Fix the flaky CI job")
+    await expect(host.locator("#team-summary")).toContainText("Retros")
+
+    // The visit is remembered: the landing page offers the team back.
+    await host.goto("/", { waitUntil: "networkidle" })
+    await expect(host.locator("#your-teams a", { hasText: team })).toBeVisible()
 
     // Next retro in the same chamber inherits the team and offers
     // the open item for carry-over on :setup.
