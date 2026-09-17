@@ -1,0 +1,61 @@
+lib/mixchamb_web/live/team_live.ex
+  s_ae52c82cfbb39d::t_491273a64d9f4d 1-72
+test/mixchamb/retro_test.exs
+  s_ae52c82cfbb39d::t_c2bdc9a43e713b 587-637
+lib/mixchamb/retro.ex
+  s_ae52c82cfbb39d::t_2bea406a192a02 22-23,38-45,48,64-73,127,154-204,206-207
+  s_ae52c82cfbb39d::t_d7fb302cf11026 205,208
+lib/mixchamb_web/live/retro_live.ex
+  s_ae52c82cfbb39d::t_491273a64d9f4d 11,53-62,67
+assets/vue/__tests__/RetroBoard.test.ts
+  s_ae52c82cfbb39d::t_e10a6f14b4ba47 24,134
+assets/vue/__tests__/RetroCard.test.ts
+  s_ae52c82cfbb39d::t_e10a6f14b4ba47 41
+lib/mixchamb/retro/retro_session.ex
+  s_ae52c82cfbb39d::t_2bea406a192a02 34-35,53,67,93-97
+  s_ae52c82cfbb39d::t_2cb59063516b24 98-99
+lib/mixchamb/retro/team.ex
+  s_ae52c82cfbb39d::t_cc5e4e3739c33a 1-58
+lib/mixchamb_web/live/chamber_live/retro.ex
+  s_ae52c82cfbb39d::t_28ca9a9844deb5 112-123,486
+lib/mixchamb_web/router.ex
+  s_ae52c82cfbb39d::t_491273a64d9f4d 65-67
+e2e/retro.spec.ts
+  s_ae52c82cfbb39d::t_21dea917248dfb 26-31,53-55
+  s_ae52c82cfbb39d::t_0d988acad38942 48-50,52
+  s_ae52c82cfbb39d::t_ac03156ba6e6df 51
+  s_ae52c82cfbb39d::t_48700314f5aa35 56
+lib/mixchamb/chambers/server.ex
+  s_ae52c82cfbb39d::t_28ca9a9844deb5 174-177,789-796,799
+  s_ae52c82cfbb39d::t_95b0e2fc5bd518 797-798,800-802
+assets/vue/activities/retro/RetroBoard.vue
+  s_ae52c82cfbb39d::t_26c173918e47f2 78-80,459-465
+assets/vue/activities/retro/RetroSetup.vue
+  s_ae52c82cfbb39d::t_b2e246ec7ea46b 126-127
+  s_ae52c82cfbb39d::t_26c173918e47f2 2-3,27-40,105-125,128
+  s_ae52c82cfbb39d::t_26816c38c9477b 129-130
+priv/repo/migrations/20260917043746_add_teams_to_retro_sessions.exs
+  s_ae52c82cfbb39d::t_cc5e4e3739c33a 1-25
+test/mixchamb_web/live/team_live_test.exs
+  s_ae52c82cfbb39d::t_c2bdc9a43e713b 1-44
+BRAINSTORM-v4.md
+  s_ae52c82cfbb39d::t_19377a722ad732 485
+features/retrospective.md
+  s_ae52c82cfbb39d::t_ec887ff180c531 530-555
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "a26747cc41d0654f777729edccdd487f27d4645a",
+  "prompts": {},
+  "sessions": {
+    "s_ae52c82cfbb39d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1de5c5ca-1395-4e73-b795-ed7057489ec8",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Hafidz Bahtiar <hafidz.bahtiar@hypefast.id>"
+    }
+  }
+}
