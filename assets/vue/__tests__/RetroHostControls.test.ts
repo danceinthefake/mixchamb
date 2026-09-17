@@ -37,6 +37,7 @@ function session(
       author_user_id: "u1",
       author_alias: "a",
       vote_count: 0,
+      merged: [],
     })),
     action_items: [],
   }

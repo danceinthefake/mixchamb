@@ -466,6 +466,51 @@ defmodule Mixchamb.Retro do
     end)
   end
 
+  # --- Merge (spec §20) --------------------------------------------
+
+  @doc """
+  Fold `source` into `target` during `:reveal`: the source keeps its
+  row but is hidden from the board and rendered under the target.
+  Any cards already merged into the source follow it to the target,
+  so groups stay one level deep.
+  """
+  def merge_card(%RetroCard{} = source, %RetroCard{} = target, %RetroSession{} = session) do
+    cond do
+      session.status != "reveal" ->
+        {:error, :reveal_only}
+
+      source.id == target.id ->
+        {:error, :same_card}
+
+      source.retro_session_id != session.id or target.retro_session_id != session.id ->
+        {:error, :wrong_session}
+
+      not is_nil(target.merged_into_card_id) ->
+        {:error, :target_is_merged}
+
+      true ->
+        Repo.transaction(fn ->
+          now = DateTime.utc_now() |> DateTime.truncate(:second)
+
+          from(c in RetroCard, where: c.merged_into_card_id == ^source.id)
+          |> Repo.update_all(set: [merged_into_card_id: target.id, updated_at: now])
+
+          source
+          |> Ecto.Changeset.change(merged_into_card_id: target.id)
+          |> Repo.update!()
+        end)
+    end
+  end
+
+  @doc "Undo a merge: the card stands on its own again (`:reveal` only)."
+  def unmerge_card(%RetroCard{merged_into_card_id: nil} = card, _session), do: {:ok, card}
+
+  def unmerge_card(%RetroCard{} = card, %RetroSession{status: "reveal"}) do
+    card |> Ecto.Changeset.change(merged_into_card_id: nil) |> Repo.update()
+  end
+
+  def unmerge_card(_, _), do: {:error, :reveal_only}
+
   @doc "Load a single card by id."
   def get_card(card_id) when is_binary(card_id) do
     Repo.get(RetroCard, card_id)

@@ -37,6 +37,7 @@ const card = {
   author_alias: "ana",
   author_display_name: null,
   vote_count: 2,
+  merged: [],
   reactions: [
     { user_id: "u1", emoji: "🔥" },
     { user_id: "u2", emoji: "🔥" },

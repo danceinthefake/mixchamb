@@ -517,7 +517,7 @@ Honest audit after a 3.5-month idle stretch (last feature commit
     HEEx only — the reason to come back to the team page.
 12. ✅ **"Your teams" on the landing page** _(2026-09-18, §19)_. Team slugs remembered
     in localStorage; one click to `/t/<slug>` without auth.
-13. ⬜ **Card merge** (§11 grouping). Click card A, then "Merge
+13. ✅ **Card merge** _(2026-09-18, §20)_ (§11 grouping). Click card A, then "Merge
     into" card B during `:reveal`; votes and reactions follow the
     group. `retro_cards.merged_into_card_id`. Last — highest UI
     cost, wait for the duplicate-card pain to be real.

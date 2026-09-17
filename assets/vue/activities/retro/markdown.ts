@@ -24,6 +24,7 @@ export function retroToMarkdown(session: RetroSession, permalink?: string): stri
     for (const c of cards) {
       const votes = c.vote_count > 0 ? ` _(${c.vote_count} votes)_` : ""
       lines.push(`- ${c.body}${votes} — ${c.author_alias}`)
+      for (const m of c.merged ?? []) lines.push(`  - + ${m.body} — ${m.author_alias}`)
       for (const a of session.action_items.filter((a) => a.source_card_id === c.id))
         lines.push(actionLine(a, "  "))
     }

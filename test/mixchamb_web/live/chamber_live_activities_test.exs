@@ -113,8 +113,34 @@ defmodule MixchambWeb.ChamberLiveActivitiesTest do
       settle(slug)
       assert Retro.get_card(guest_card.id) == nil
 
-      # → reveal: reactions + comments.
+      # → reveal: reactions + comments; merge a second card into the
+      # host's and check the folded wire shape.
+      render_hook(host, "retro_add_card", %{"column_id" => col.id, "body" => "dup"})
+      settle(slug)
+      dup = Enum.find(Retro.load_session(session.id).cards, &(&1.body == "dup"))
       render_hook(host, "retro_advance_phase", %{})
+      settle(slug)
+
+      render_hook(guest, "retro_merge_card", %{"source_id" => dup.id, "target_id" => host_card.id})
+
+      settle(slug)
+      assert Retro.get_card(dup.id).merged_into_card_id == nil
+      render_hook(host, "retro_merge_card", %{"source_id" => dup.id, "target_id" => host_card.id})
+      settle(slug)
+      assert Retro.get_card(dup.id).merged_into_card_id == host_card.id
+
+      folded =
+        Enum.find(
+          MixchambWeb.ChamberLive.Retro.view(Retro.load_session(session.id)).cards,
+          &(&1.id == host_card.id)
+        )
+
+      assert [%{body: "dup"}] = folded.merged
+      render_hook(guest, "retro_unmerge_card", %{"card_id" => dup.id})
+      render_hook(host, "retro_unmerge_card", %{"card_id" => dup.id})
+      settle(slug)
+      assert Retro.get_card(dup.id).merged_into_card_id == nil
+      render_hook(host, "retro_merge_card", %{"source_id" => dup.id, "target_id" => host_card.id})
       settle(slug)
       render_hook(guest, "retro_toggle_reaction", %{"card_id" => host_card.id, "emoji" => "🔥"})
       render_hook(guest, "retro_add_comment", %{"card_id" => host_card.id, "body" => "yes"})
@@ -203,6 +229,8 @@ defmodule MixchambWeb.ChamberLiveActivitiesTest do
       for msg <- [
             {:retro, :title_changed, "t"},
             {:retro, :card_edited, "a", "b"},
+            {:retro, :card_merged, "a", "b"},
+            {:retro, :card_unmerged, "a"},
             {:retro, :vote_cast, "u", "c", %{"c" => 1}},
             {:retro, :vote_withdrawn, "u", "c", %{}},
             {:retro, :reaction_toggled, "c", "u", "🔥", :added},

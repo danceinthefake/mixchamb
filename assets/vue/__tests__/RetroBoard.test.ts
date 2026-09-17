@@ -100,6 +100,7 @@ describe("RetroBoard", () => {
           author_user_id: "u1",
           author_alias: "me",
           vote_count: 0,
+          merged: [],
           reactions: [],
           comments: [],
         },
@@ -110,6 +111,7 @@ describe("RetroBoard", () => {
           author_user_id: "u2",
           author_alias: "them",
           vote_count: 0,
+          merged: [],
           reactions: [],
           comments: [],
         },
@@ -120,6 +122,7 @@ describe("RetroBoard", () => {
           author_user_id: "u3",
           author_alias: "other",
           vote_count: 0,
+          merged: [],
           reactions: [],
           comments: [],
         },
@@ -148,6 +151,7 @@ describe("RetroBoard", () => {
           author_user_id: "u1",
           author_alias: "me",
           vote_count: 0,
+          merged: [],
           reactions: [],
           comments: [],
         },
@@ -158,6 +162,7 @@ describe("RetroBoard", () => {
           author_user_id: "u2",
           author_alias: "them",
           vote_count: 0,
+          merged: [],
           reactions: [],
           comments: [],
         },
@@ -185,6 +190,7 @@ describe("RetroBoard", () => {
           author_user_id: "u2",
           author_alias: "them",
           vote_count: 0,
+          merged: [],
           reactions: [],
           comments: [],
         },
@@ -210,6 +216,7 @@ describe("RetroBoard", () => {
           author_user_id: "u1",
           author_alias: "me",
           vote_count: 0,
+          merged: [],
           reactions: [],
           comments: [],
         },
@@ -220,6 +227,7 @@ describe("RetroBoard", () => {
           author_user_id: "u2",
           author_alias: "them",
           vote_count: 0,
+          merged: [],
           reactions: [],
           comments: [],
         },
@@ -243,6 +251,7 @@ describe("RetroBoard", () => {
           author_user_id: "u1",
           author_alias: "me",
           vote_count: 0,
+          merged: [],
           reactions: [],
           comments: [],
         },
@@ -253,6 +262,7 @@ describe("RetroBoard", () => {
           author_user_id: "u2",
           author_alias: "them",
           vote_count: 0,
+          merged: [],
           reactions: [],
           comments: [],
         },
@@ -343,6 +353,7 @@ describe("RetroBoard", () => {
           author_user_id: "u1",
           author_alias: "me",
           vote_count: 1,
+          merged: [],
           reactions: [],
           comments: [],
         },
@@ -353,6 +364,7 @@ describe("RetroBoard", () => {
           author_user_id: "u1",
           author_alias: "me",
           vote_count: 5,
+          merged: [],
           reactions: [],
           comments: [],
         },
@@ -372,6 +384,7 @@ describe("RetroBoard", () => {
       author_alias: "ana",
       author_display_name: null,
       vote_count,
+      merged: [],
       reactions: [],
       comments: [],
     })
@@ -457,6 +470,76 @@ describe("RetroBoard", () => {
       const w = mount(RetroBoard, { props: { ...baseProps, session: archived } })
       const bodies = w.findAll("[data-card-body], .break-words").map((n) => n.text())
       expect(bodies.indexOf("high")).toBeLessThan(bodies.indexOf("low"))
+    })
+  })
+
+  describe("merge mode (host, :reveal)", () => {
+    const card = (id: string, body: string) => ({
+      id,
+      retro_column_id: "c1",
+      body,
+      author_user_id: "u1",
+      author_alias: "ana",
+      author_display_name: null,
+      vote_count: 0,
+      merged: [] as any[],
+      reactions: [],
+      comments: [],
+    })
+    const reveal = makeSession({
+      status: "reveal",
+      cards: [card("k1", "CI slow"), card("k2", "CI is slow")],
+    })
+
+    it("arms a source, merges into the next card clicked, cancels on re-click", async () => {
+      const w = mount(RetroBoard, { props: { ...baseProps, session: reveal } })
+      const mergeBtns = () => w.findAll("button").filter((b) => b.text() === "merge")
+      expect(mergeBtns()).toHaveLength(2)
+
+      await mergeBtns()[0].trigger("click")
+      expect(w.text()).toContain("pick target")
+      await w.findAll("article")[1].trigger("click")
+      expect(pushEventMock).toHaveBeenCalledWith("retro_merge_card", {
+        source_id: "k1",
+        target_id: "k2",
+      })
+      expect(w.text()).not.toContain("pick target")
+
+      await mergeBtns()[0].trigger("click")
+      await w
+        .findAll("button")
+        .find((b) => /cancel/.test(b.text()))!
+        .trigger("click")
+      expect(w.text()).not.toContain("pick target")
+      expect(pushEventMock).toHaveBeenCalledTimes(1)
+    })
+
+    it("shows folded cards with a split button; guests get neither control", async () => {
+      const folded = makeSession({
+        status: "reveal",
+        cards: [
+          {
+            ...card("k1", "CI slow"),
+            merged: [
+              {
+                id: "k2",
+                body: "CI is slow",
+                author_user_id: "u2",
+                author_alias: "bo",
+                author_display_name: null,
+              },
+            ],
+          },
+        ],
+      })
+      const w = mount(RetroBoard, { props: { ...baseProps, session: folded } })
+      expect(w.text()).toContain("CI is slow")
+      await w.get('button[aria-label="Split out: CI is slow"]').trigger("click")
+      expect(pushEventMock).toHaveBeenCalledWith("retro_unmerge_card", { card_id: "k2" })
+
+      const guest = mount(RetroBoard, { props: { ...baseProps, session: folded, is_host: false } })
+      expect(guest.findAll("button").filter((b) => b.text() === "merge")).toHaveLength(0)
+      expect(guest.find('button[aria-label^="Split out"]').exists()).toBe(false)
     })
   })
 })

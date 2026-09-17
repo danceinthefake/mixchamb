@@ -4,13 +4,18 @@
 // discuss + archived show static count + (host-only) discussing
 // focus toggle.
 
-import { computed, ref } from "vue"
+import { computed, inject, ref } from "vue"
 import { useLiveVue } from "live_vue"
 import { SmilePlus } from "lucide-vue-next"
 import { playVoteBlip } from "../../lib/audio"
 import RetroActionRow from "./RetroActionRow.vue"
 import RetroComments from "./RetroComments.vue"
-import type { RetroCard as RetroCardT, RetroActionItem, RetroPhase } from "./RetroBoard.vue"
+import type {
+  RetroCard as RetroCardT,
+  RetroActionItem,
+  RetroPhase,
+  RetroMerge,
+} from "./RetroBoard.vue"
 
 // emoji-picker-element is lazy-loaded the first time a picker
 // opens, so the ~50KB web-component bundle doesn't ship on
@@ -121,6 +126,18 @@ const readOnlyActions = computed(() => props.phase === "archived")
 
 const live = useLiveVue()
 
+// Merge mode (spec §20) — provided by RetroBoard; absent on the
+// archived permalink page where the board is read-only.
+const merge = inject<RetroMerge | null>("retro_merge", null)
+const canMerge = computed(() => props.is_host && props.phase === "reveal" && !!merge)
+const isMergeSource = computed(() => merge?.sourceId.value === props.card.id)
+const mergeArmed = computed(() => !!merge && merge.sourceId.value !== null)
+
+function onCardClick() {
+  if (props.phase === "discuss") return focusForDiscussion()
+  if (canMerge.value && mergeArmed.value) merge!.pick(props.card.id)
+}
+
 const editing = ref(false)
 const editDraft = ref(props.card.body)
 
@@ -183,8 +200,10 @@ function focusForDiscussion() {
       'ring-2 ring-accent-bass ring-offset-1 ring-offset-background border-accent-bass':
         is_discussing,
       'opacity-70': is_discussed && !is_discussing && phase === 'discuss',
+      'ring-2 ring-accent-poker border-accent-poker': isMergeSource,
+      'cursor-copy hover:border-accent-poker/60': mergeArmed && !isMergeSource,
     }"
-    @click="phase === 'discuss' ? focusForDiscussion() : undefined"
+    @click="onCardClick"
   >
     <div v-if="!editing" class="text-sm leading-snug whitespace-pre-wrap break-words">
       <span
@@ -208,6 +227,29 @@ function focusForDiscussion() {
     <div v-if="editing" class="flex justify-end text-[10px] text-muted-foreground tabular-nums">
       {{ editDraft.length }}/280
     </div>
+
+    <!-- Cards folded into this one (spec §20). -->
+    <ul
+      v-if="(card.merged?.length ?? 0) > 0"
+      class="space-y-1 border-l-2 border-accent-poker/40 pl-2 text-xs"
+      :aria-label="`Merged into: ${card.body}`"
+    >
+      <li v-for="m in card.merged" :key="m.id" class="flex items-baseline gap-1.5">
+        <span class="flex-1 min-w-0 break-words">
+          {{ m.body }}
+          <span class="text-muted-foreground/70">— {{ m.author_alias }}</span>
+        </span>
+        <button
+          v-if="canMerge"
+          type="button"
+          class="text-[10px] text-muted-foreground hover:text-foreground shrink-0"
+          :aria-label="`Split out: ${m.body}`"
+          @click.stop="merge!.unmerge(m.id)"
+        >
+          split
+        </button>
+      </li>
+    </ul>
 
     <div class="flex items-center justify-between gap-2 text-[10px] text-muted-foreground">
       <span class="truncate">
@@ -240,6 +282,18 @@ function focusForDiscussion() {
             delete
           </button>
         </template>
+
+        <!-- Merge (host, :reveal): arm this card, then click the target. -->
+        <button
+          v-if="canMerge"
+          type="button"
+          class="hover:text-foreground"
+          :class="isMergeSource ? 'text-accent-poker font-semibold' : ''"
+          :aria-label="isMergeSource ? 'Cancel merge' : `Merge ${card.body} into another card`"
+          @click.stop="merge!.pick(card.id)"
+        >
+          {{ isMergeSource ? "pick target… (cancel)" : "merge" }}
+        </button>
 
         <template v-if="editing">
           <button type="button" class="hover:text-foreground" @click.stop="commitEdit">save</button>

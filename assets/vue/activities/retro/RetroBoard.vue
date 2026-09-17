@@ -6,7 +6,7 @@
 //
 // See features/retrospective.md for the full design.
 
-import { computed, provide, ref } from "vue"
+import { computed, provide, ref, watch } from "vue"
 import { useLiveVue } from "live_vue"
 import RetroSetup from "./RetroSetup.vue"
 import RetroCarryOver from "./RetroCarryOver.vue"
@@ -53,12 +53,31 @@ export type RetroCard = {
   // (matches poker reveal's two-piece pattern; spec §3).
   author_display_name: string | null
   vote_count: number
+  // Cards the host folded into this one during :reveal (spec §20).
+  // They don't appear on the board on their own.
+  merged: RetroMergedCard[]
   // Emoji reactions (multi-emoji, one-per-user-per-emoji
   // toggle). Empty when nobody's reacted yet.
   reactions: RetroReaction[]
   // Flat comments thread. Collapsed by default in the UI;
   // expand to see / add.
   comments: RetroComment[]
+}
+
+export type RetroMergedCard = {
+  id: string
+  body: string
+  author_user_id: string | null
+  author_alias: string
+  author_display_name: string | null
+}
+
+// Merge mode (host, :reveal): the board owns "which card is being
+// merged"; cards inject this to render pick / cancel affordances.
+export type RetroMerge = {
+  sourceId: import("vue").Ref<string | null>
+  pick: (cardId: string) => void
+  unmerge: (cardId: string) => void
 }
 
 export type RetroActionItem = {
@@ -225,6 +244,29 @@ const actionsByCardId = computed(() => {
 })
 
 const discussedSet = computed(() => new Set(props.discussed))
+
+// Merge mode: first click on "Merge" arms a source, the next card
+// clicked is the target. Clicking the source again cancels. Leaving
+// :reveal disarms.
+const mergeSourceId = ref<string | null>(null)
+function pickForMerge(cardId: string) {
+  if (!props.is_host || phase.value !== "reveal") return
+  if (mergeSourceId.value === null) {
+    mergeSourceId.value = cardId
+  } else if (mergeSourceId.value === cardId) {
+    mergeSourceId.value = null
+  } else {
+    live.pushEvent("retro_merge_card", { source_id: mergeSourceId.value, target_id: cardId })
+    mergeSourceId.value = null
+  }
+}
+function unmergeCard(cardId: string) {
+  live.pushEvent("retro_unmerge_card", { card_id: cardId })
+}
+watch(phase, (p) => {
+  if (p !== "reveal") mergeSourceId.value = null
+})
+provide("retro_merge", { sourceId: mergeSourceId, pick: pickForMerge, unmerge: unmergeCard })
 
 const freeformActions = computed(() => actionsByCardId.value.__freeform__ ?? [])
 

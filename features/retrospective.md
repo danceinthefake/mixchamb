@@ -497,9 +497,9 @@ These are sized and considered but explicitly deferred until
 after the locked v1 ships. Tracked here so they don't get
 re-debated on each pass.
 
-- **Card grouping / merging during `:reveal`.** Drag to cluster,
-  vote on the cluster instead of individual cards. EasyRetro
-  ships this; high UI complexity. Add when teams ask.
+- ✅ **Card grouping / merging during `:reveal`.** Shipped
+  2026-09-18 as click-to-merge (§20); drag can come later if the
+  two-click flow proves clumsy.
 - ✅ **Discussion stepping.** §16 (2026-09-18).
 - **"Currently discussing" highlight animation.** During
   `:discuss`, the host's clicked card gets a soft pulse / border
@@ -656,6 +656,32 @@ via a colocated hook; the landing page's `.YourTeams` hook renders
 the chips client-side inside a `phx-update="ignore"` block. No
 backend, no identity — it's a per-browser bookmark, which is all
 the no-auth model can honestly offer.
+
+## 20. Card merge _(shipped 2026-09-18)_
+
+The §11 grouping item. Duplicates are the #1 annoyance in an
+8-person retro; this folds them.
+
+- `retro_cards.merged_into_card_id` (self-FK, nilify). A merged
+  card keeps its row — attribution, reactions, comments — but
+  stops being a board card; the target renders it as a nested
+  "+ body — author" line. Groups stay one level deep: merging a
+  card that already has children re-points them to the new
+  target; merging *into* a merged card is refused.
+- `:reveal` only (host). Votes happen afterwards on the merged
+  card, so the ephemeral vote map never needs re-keying. **split**
+  undoes a merge, also `:reveal` only.
+- `Retro.merge_card/3`, `unmerge_card/2`; casts
+  `:retro_merge_card` / `:retro_unmerge_card`; broadcasts
+  `{:retro, :card_merged, source, target}` / `{:retro,
+  :card_unmerged, id}`.
+- Wire: `ChamberLive.Retro.view/1` drops merged rows from `cards`
+  and gives each target `merged: [...]` plus the union of the
+  group's reactions / comments. Markdown export lists folded
+  bodies as sub-bullets.
+- UI: **merge** on every card (host, `:reveal`) arms a source
+  (ring); the next card clicked is the target; clicking the source
+  again cancels. Leaving `:reveal` disarms.
 
 ## Ready-to-build checklist
 

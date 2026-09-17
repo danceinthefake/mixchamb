@@ -24,7 +24,8 @@ defmodule Mixchamb.Retro.RetroCard do
              :author_user_id,
              :author_alias,
              :author_display_name,
-             :vote_count
+             :vote_count,
+             :merged_into_card_id
            ]}
 
   schema "retro_cards" do
@@ -32,6 +33,10 @@ defmodule Mixchamb.Retro.RetroCard do
     field :author_alias, :string
     field :author_display_name, :string
     field :vote_count, :integer, default: 0
+    # Set when the host merged this card into another during :reveal
+    # (spec §20). The row stays for attribution; the board shows it
+    # nested under the target.
+    field :merged_into_card_id, :binary_id
 
     belongs_to :session, Mixchamb.Retro.RetroSession, foreign_key: :retro_session_id
     belongs_to :column, Mixchamb.Retro.RetroColumn, foreign_key: :retro_column_id

@@ -28,6 +28,7 @@ function baseCard(overrides: Partial<RetroCardT> = {}): RetroCardT {
     author_alias: "host-alias",
     author_display_name: null,
     vote_count: 0,
+    merged: [],
     reactions: [],
     comments: [],
     ...overrides,

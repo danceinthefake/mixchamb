@@ -698,6 +698,53 @@ defmodule Mixchamb.RetroTest do
     end
   end
 
+  describe "card merge (spec §20)" do
+    setup %{chamber: chamber, user: user} do
+      {:ok, s} = Retro.start_session(chamber.id)
+      s = advance_to(s, "brainstorm", user)
+      [col | _] = s.columns
+      {:ok, a} = Retro.add_card(s, col, %{body: "CI slow", author_alias: "a"})
+      {:ok, b} = Retro.add_card(s, col, %{body: "CI is slow", author_alias: "b"})
+      {:ok, c} = Retro.add_card(s, col, %{body: "builds slow", author_alias: "c"})
+      %{s: s, a: a, b: b, c: c}
+    end
+
+    test "only during :reveal; groups stay one level deep; unmerge restores", ctx do
+      %{s: s, a: a, b: b, c: c, user: user} = ctx
+      assert {:error, :reveal_only} = Retro.merge_card(b, a, s)
+      s = advance_to(s, "reveal", user)
+      assert {:error, :same_card} = Retro.merge_card(a, a, s)
+
+      assert {:ok, %{merged_into_card_id: target}} = Retro.merge_card(b, a, s)
+      assert target == a.id
+      # c → b re-points to a (b is already merged), never two deep.
+      assert {:error, :target_is_merged} = Retro.merge_card(c, Retro.get_card(b.id), s)
+      assert {:ok, _} = Retro.merge_card(c, a, s)
+      # Now merging a (with children) into a fresh card drags them along.
+      {:ok, d} =
+        Retro.add_card(%{s | status: "brainstorm"}, hd(s.columns), %{body: "d", author_alias: "d"})
+
+      assert {:ok, _} = Retro.merge_card(Retro.get_card(a.id), d, s)
+      assert Retro.get_card(b.id).merged_into_card_id == d.id
+      assert Retro.get_card(c.id).merged_into_card_id == d.id
+
+      assert {:ok, %{merged_into_card_id: nil}} = Retro.unmerge_card(Retro.get_card(b.id), s)
+      assert {:ok, _} = Retro.unmerge_card(Retro.get_card(b.id), s)
+      s2 = advance_to(s, "discuss", user)
+      assert {:error, :reveal_only} = Retro.unmerge_card(Retro.get_card(c.id), s2)
+    end
+
+    test "cross-session merge is refused", %{s: s, a: a, user: user, chamber: _} do
+      {:ok, other_user} = Accounts.create_anonymous_user()
+      {:ok, other_chamber} = Chambers.create_chamber(other_user.id, "retro")
+      {:ok, other} = Retro.start_session(other_chamber.id)
+      other = advance_to(other, "brainstorm", other_user)
+      {:ok, x} = Retro.add_card(other, hd(other.columns), %{body: "x", author_alias: "x"})
+      s = advance_to(s, "reveal", user)
+      assert {:error, :wrong_session} = Retro.merge_card(x, a, s)
+    end
+  end
+
   defp advance_to(s, target, user) do
     {:ok, next} = Retro.advance_phase(s)
     advance_to(next, target, user)

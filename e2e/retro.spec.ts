@@ -44,9 +44,29 @@ test("retro: start → brainstorm → reveal a card to the room", async ({ brows
     await col.locator('button[type="submit"]').first().click()
     await host.waitForTimeout(300)
 
+    // Guest writes a near-duplicate so the host can merge it after reveal.
+    const gcol = guest
+      .locator("section")
+      .filter({ has: guest.locator("h2") })
+      .first()
+    await gcol.locator("textarea").first().fill("CI is so slow")
+    await gcol.locator('button[type="submit"]').first().click()
+    await guest.waitForTimeout(300)
+
     // Brainstorm → reveal. The card is now visible to the other person.
     await advance(host)
     await expect(guest.getByText("Slow CI is painful")).toBeVisible({ timeout: 8000 })
+
+    // Host merges the duplicate into their card; the guest sees it folded.
+    const dupCard = host.locator("article", { hasText: "CI is so slow" })
+    await dupCard.getByRole("button", { name: /^Merge/ }).click()
+    await host
+      .locator("article", { hasText: "Slow CI is painful" })
+      .getByText("Slow CI is painful")
+      .click()
+    await expect(
+      guest.locator("article", { hasText: "Slow CI is painful" }).getByText("CI is so slow"),
+    ).toBeVisible({ timeout: 8000 })
 
     // Reveal → (voting is off by default) → discuss. Leave an open
     // action item, then archive.

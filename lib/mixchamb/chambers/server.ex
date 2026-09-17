@@ -268,6 +268,15 @@ defmodule Mixchamb.Chambers.Server do
   def retro_delete_action_item(slug, action_id) when is_binary(action_id),
     do: GenServer.cast(via(slug), {:retro_delete_action_item, action_id})
 
+  @doc "Merge `source_id` into `target_id` (host, :reveal only — spec §20)."
+  def retro_merge_card(slug, user_id, source_id, target_id)
+      when is_binary(user_id) and is_binary(source_id) and is_binary(target_id),
+      do: GenServer.cast(via(slug), {:retro_merge_card, user_id, source_id, target_id})
+
+  @doc "Split a merged card back out (host, :reveal only)."
+  def retro_unmerge_card(slug, user_id, card_id) when is_binary(user_id) and is_binary(card_id),
+    do: GenServer.cast(via(slug), {:retro_unmerge_card, user_id, card_id})
+
   @doc "Toggle a user's emoji reaction on a card (reveal-phase onward)."
   def retro_toggle_reaction(slug, user_id, card_id, emoji)
       when is_binary(user_id) and is_binary(card_id) and is_binary(emoji),
@@ -1026,6 +1035,32 @@ defmodule Mixchamb.Chambers.Server do
     {:noreply, state}
   end
 
+  def handle_cast({:retro_merge_card, user_id, source_id, target_id}, %{retro_state: rs} = state)
+      when not is_nil(rs) do
+    with true <- MapSet.member?(state.hosts, user_id),
+         %_{} = session <- Mixchamb.Retro.load_session(rs.session_id),
+         %_{} = source <- Mixchamb.Retro.get_card(source_id),
+         %_{} = target <- Mixchamb.Retro.get_card(target_id),
+         {:ok, _} <- Mixchamb.Retro.merge_card(source, target, session) do
+      broadcast_retro(state.slug, {:retro, :card_merged, source_id, target_id})
+    end
+
+    {:noreply, state}
+  end
+
+  def handle_cast({:retro_unmerge_card, user_id, card_id}, %{retro_state: rs} = state)
+      when not is_nil(rs) do
+    with true <- MapSet.member?(state.hosts, user_id),
+         %_{} = session <- Mixchamb.Retro.load_session(rs.session_id),
+         %_{} = card <- Mixchamb.Retro.get_card(card_id),
+         true <- card.retro_session_id == session.id,
+         {:ok, _} <- Mixchamb.Retro.unmerge_card(card, session) do
+      broadcast_retro(state.slug, {:retro, :card_unmerged, card_id})
+    end
+
+    {:noreply, state}
+  end
+
   def handle_cast({:retro_delete_card, user_id, card_id}, %{retro_state: rs} = state)
       when not is_nil(rs) do
     session = Mixchamb.Retro.load_session(rs.session_id)
@@ -1298,6 +1333,8 @@ defmodule Mixchamb.Chambers.Server do
   def handle_cast({:retro_add_card, _, _, _, _, _}, state), do: {:noreply, state}
   def handle_cast({:retro_update_card, _, _, _}, state), do: {:noreply, state}
   def handle_cast({:retro_delete_card, _, _}, state), do: {:noreply, state}
+  def handle_cast({:retro_merge_card, _, _, _}, state), do: {:noreply, state}
+  def handle_cast({:retro_unmerge_card, _, _}, state), do: {:noreply, state}
   def handle_cast({:retro_vote, _, _}, state), do: {:noreply, state}
   def handle_cast({:retro_withdraw_vote, _, _}, state), do: {:noreply, state}
   def handle_cast({:retro_set_discussing, _, _}, state), do: {:noreply, state}

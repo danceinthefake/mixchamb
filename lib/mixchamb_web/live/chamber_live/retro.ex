@@ -248,6 +248,33 @@ defmodule MixchambWeb.ChamberLive.Retro do
     {:noreply, socket}
   end
 
+  def handle_event("retro_merge_card", %{"source_id" => source, "target_id" => target}, socket)
+      when is_binary(source) and is_binary(target) do
+    if socket.assigns.is_host do
+      Mixchamb.Chambers.Server.retro_merge_card(
+        socket.assigns.chamber_slug,
+        socket.assigns.current_user.id,
+        source,
+        target
+      )
+    end
+
+    {:noreply, socket}
+  end
+
+  def handle_event("retro_unmerge_card", %{"card_id" => card_id}, socket)
+      when is_binary(card_id) do
+    if socket.assigns.is_host do
+      Mixchamb.Chambers.Server.retro_unmerge_card(
+        socket.assigns.chamber_slug,
+        socket.assigns.current_user.id,
+        card_id
+      )
+    end
+
+    {:noreply, socket}
+  end
+
   def handle_event("retro_delete_card", %{"card_id" => card_id}, socket)
       when is_binary(card_id) do
     Mixchamb.Chambers.Server.retro_delete_card(
@@ -571,32 +598,7 @@ defmodule MixchambWeb.ChamberLive.Retro do
         Enum.map(session.columns, fn col ->
           %{id: col.id, name: col.name, position: col.position}
         end),
-      cards:
-        Enum.map(session.cards, fn card ->
-          %{
-            id: card.id,
-            retro_column_id: card.retro_column_id,
-            body: card.body,
-            author_user_id: card.author_user_id,
-            author_alias: card.author_alias,
-            author_display_name: card.author_display_name,
-            vote_count: card.vote_count,
-            reactions:
-              Enum.map(card.reactions, fn r ->
-                %{user_id: r.user_id, emoji: r.emoji}
-              end),
-            comments:
-              Enum.map(card.comments, fn co ->
-                %{
-                  id: co.id,
-                  body: co.body,
-                  author_user_id: co.author_user_id,
-                  author_alias: co.author_alias,
-                  author_display_name: co.author_display_name
-                }
-              end)
-          }
-        end),
+      cards: cards_view(session.cards),
       action_items:
         Enum.map(session.action_items, fn action ->
           %{
@@ -611,6 +613,58 @@ defmodule MixchambWeb.ChamberLive.Retro do
           }
         end)
     }
+  end
+
+  # Merged cards (spec §20) fold into their target: the target card
+  # carries `merged` (the folded bodies + authors) and the union of
+  # everyone's reactions / comments; the folded rows themselves
+  # don't appear as board cards.
+  defp cards_view(cards) do
+    children = Enum.group_by(cards, & &1.merged_into_card_id)
+
+    cards
+    |> Enum.reject(& &1.merged_into_card_id)
+    |> Enum.map(fn card ->
+      folded = Map.get(children, card.id, [])
+      all = [card | folded]
+
+      %{
+        id: card.id,
+        retro_column_id: card.retro_column_id,
+        body: card.body,
+        author_user_id: card.author_user_id,
+        author_alias: card.author_alias,
+        author_display_name: card.author_display_name,
+        vote_count: card.vote_count,
+        merged:
+          Enum.map(folded, fn c ->
+            %{
+              id: c.id,
+              body: c.body,
+              author_user_id: c.author_user_id,
+              author_alias: c.author_alias,
+              author_display_name: c.author_display_name
+            }
+          end),
+        reactions:
+          all
+          |> Enum.flat_map(& &1.reactions)
+          |> Enum.map(&%{user_id: &1.user_id, emoji: &1.emoji})
+          |> Enum.uniq_by(&{&1.user_id, &1.emoji}),
+        comments:
+          all
+          |> Enum.flat_map(& &1.comments)
+          |> Enum.map(fn co ->
+            %{
+              id: co.id,
+              body: co.body,
+              author_user_id: co.author_user_id,
+              author_alias: co.author_alias,
+              author_display_name: co.author_display_name
+            }
+          end)
+      }
+    end)
   end
 
   @doc "Wire shape for the carry-over panel (spec §13)."
