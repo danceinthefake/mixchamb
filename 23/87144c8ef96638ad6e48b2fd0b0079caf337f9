@@ -1,0 +1,19 @@
+e2e/retro.spec.ts
+  s_ae52c82cfbb39d::t_7ef8c08780fdfc 22-27
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "2387144c8ef96638ad6e48b2fd0b0079caf337f9",
+  "prompts": {},
+  "sessions": {
+    "s_ae52c82cfbb39d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1de5c5ca-1395-4e73-b795-ed7057489ec8",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Hafidz Bahtiar <hafidz.bahtiar@hypefast.id>"
+    }
+  }
+}
