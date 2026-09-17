@@ -4,7 +4,7 @@ defmodule Mixchamb.Accounts do
 
   Anonymous users are created on first request by
   `MixchambWeb.Plugs.EnsureAnonUser`, identified solely by a signed
-  session cookie. After 24 hours of inactivity the
+  session cookie. After 30 days of inactivity the
   `Mixchamb.Accounts.Sweeper` GenServer reaps them; cascading FK
   constraints take their songs and comments with them.
   """
@@ -167,7 +167,7 @@ defmodule Mixchamb.Accounts do
   end
 
   @doc """
-  Force-deletes an anonymous user — admin override of the 24h
+  Force-deletes an anonymous user — admin override of the 30-day
   idle-sweep policy.
   """
   def delete_anonymous_user(%AnonymousUser{} = user), do: Repo.delete(user)

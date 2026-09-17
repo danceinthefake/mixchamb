@@ -1,7 +1,11 @@
 defmodule Mixchamb.Accounts.Sweeper do
   @moduledoc """
   Background sweeper that deletes anonymous users idle for more than
-  24 hours. Runs hourly under the application supervisor.
+  30 days. Runs hourly under the application supervisor.
+
+  30 days (was 24h) so the cookie identity survives a weekly ritual
+  — a team that retros every other Friday keeps the same names,
+  aliases and last-instrument picks. Cost is a few idle rows.
 
   Restartable and idempotent — if the process is killed, the
   supervisor restarts it and it picks its schedule back up on the
@@ -13,7 +17,7 @@ defmodule Mixchamb.Accounts.Sweeper do
   alias Mixchamb.Accounts
 
   @sweep_interval :timer.hours(1)
-  @idle_threshold_hours 24
+  @idle_threshold_hours 24 * 30
 
   def start_link(opts \\ []) do
     GenServer.start_link(__MODULE__, opts, name: __MODULE__)

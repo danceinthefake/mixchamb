@@ -19,7 +19,7 @@ defmodule Mixchamb.RestartWatcher do
     {Mixchamb.Chambers.Supervisor, "Chambers.Supervisor",
      "Spawns one GenServer per active chamber; holds each one's recent-events buffer."},
     {Mixchamb.Accounts.Sweeper, "Accounts.Sweeper",
-     "Deletes anonymous users idle for more than 24 hours."},
+     "Deletes anonymous users idle for more than 30 days."},
     {Mixchamb.Chambers.Sweeper, "Chambers.Sweeper",
      "Deletes chambers idle for more than 24 hours."}
   ]

@@ -2,7 +2,7 @@ defmodule Mixchamb.Accounts.AnonymousUser do
   @moduledoc """
   An anonymous user — created on first visit, identified only by a
   signed session cookie. Idle users (no `last_active_at` activity for
-  more than 24 hours) are reaped by `Mixchamb.Accounts.Sweeper`.
+  more than 30 days) are reaped by `Mixchamb.Accounts.Sweeper`.
   """
   use Ecto.Schema
   import Ecto.Changeset

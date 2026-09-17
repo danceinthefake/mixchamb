@@ -7,7 +7,7 @@ defmodule MixchambWeb.Plugs.EnsureAnonUser do
     style display name from `Mixchamb.Accounts.NameGenerator` —
     something like `tempe-gendheng-42` or `bakso-mendhem-17`.
   - Subsequent visits: loads the user from the session id. If the
-    sweeper has reaped that user (24h idle), starts fresh.
+    sweeper has reaped that user (30 days idle), starts fresh.
   - Bumps `last_active_at` only when more than 60 seconds have passed
     since the last bump, to avoid a write per request.
 

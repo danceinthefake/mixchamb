@@ -461,7 +461,7 @@ Honest audit after a 3.5-month idle stretch (last feature commit
   work picked here is the work that's obviously right without
   that signal.
 - **No user auth.** `EnsureAnonUser` gives a cookie-backed
-  `anonymous_users` row swept after 24h idle; `/admin` has its
+  `anonymous_users` row swept after 24h idle (30 days since step 8); `/admin` has its
   own env-var login. Retro archives hang off chambers, which also
   get swept — "our team's last retro" is unreachable a week later
   unless someone kept the URL. §7 item 2 (magic link / OAuth)
@@ -501,7 +501,7 @@ Honest audit after a 3.5-month idle stretch (last feature commit
 7. ✅ **Retro → poker handoff** _(2026-09-17, §15)_. Action item "estimate X" → one
    click flips the chamber to poker with that story queued. Makes
    "one link, four rituals" real instead of a landing-page claim.
-8. ⬜ **Anon sweep 24h → 30 days.** One constant; makes the anon
+8. ✅ **Anon sweep 24h → 30 days** _(2026-09-17)_. One constant; makes the anon
    identity stick across a weekly ritual.
 
 **Deferred, in this order if teams ask:** card grouping / merging

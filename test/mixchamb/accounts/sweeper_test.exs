@@ -18,7 +18,7 @@ defmodule Mixchamb.Accounts.SweeperTest do
   describe "sweep_now/0" do
     test "deletes idle users and updates last_run_at" do
       ancient =
-        DateTime.utc_now() |> DateTime.add(-48, :hour) |> DateTime.truncate(:second)
+        DateTime.utc_now() |> DateTime.add(-31, :day) |> DateTime.truncate(:second)
 
       {:ok, user} = Accounts.create_anonymous_user(ancient)
 
