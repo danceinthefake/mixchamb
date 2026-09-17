@@ -64,7 +64,7 @@ defmodule Mixchamb.Chambers.ServerRetroTest do
 
       before = System.system_time(:millisecond)
       Server.retro_set_timer(chamber.slug, host.id, 60)
-      assert_receive {:retro, :timer, deadline}, 500
+      assert_receive {:retro, :timer, %{deadline: deadline}}, 500
       assert deadline >= before + 60_000
       assert Server.retro_state(chamber.slug).timer_deadline == deadline
 
@@ -73,9 +73,27 @@ defmodule Mixchamb.Chambers.ServerRetroTest do
       assert Server.retro_state(chamber.slug).timer_deadline == nil
 
       Server.retro_set_timer(chamber.slug, host.id, 30)
-      assert_receive {:retro, :timer, _}, 500
+      assert_receive {:retro, :timer, %{deadline: _, auto_advance: false}}, 500
       Server.retro_set_timer(chamber.slug, host.id, nil)
-      assert_receive {:retro, :timer, nil}, 500
+      assert_receive {:retro, :timer, %{deadline: nil}}, 500
+    end
+
+    test "auto-advance: the phase moves on when the clock runs out", %{
+      chamber: chamber,
+      host: host
+    } do
+      Server.retro_set_timer(chamber.slug, host.id, 1, true)
+      assert_receive {:retro, :timer, %{auto_advance: true, deadline: deadline}}, 500
+
+      # Deliver the expiry ourselves instead of waiting a second.
+      [{pid, _}] = Registry.lookup(Mixchamb.Chambers.Registry, chamber.slug)
+      send(pid, {:retro_timer_expire, deadline})
+      assert_receive {:retro, :phase_changed, :brainstorm}, 500
+      assert Server.retro_state(chamber.slug).timer_deadline == nil
+
+      # A stale expiry (cleared / replaced timer) does nothing.
+      send(pid, {:retro_timer_expire, deadline})
+      refute_receive {:retro, :phase_changed, _}, 100
     end
 
     test "retro_set_voting_enabled broadcasts the new value", %{chamber: chamber, host: host} do

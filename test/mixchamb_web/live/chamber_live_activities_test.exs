@@ -67,7 +67,7 @@ defmodule MixchambWeb.ChamberLiveActivitiesTest do
       render_hook(host, "retro_set_brainstorm_visible", %{"visible" => true})
       [col | _] = Retro.load_session(session.id).columns
       render_hook(host, "retro_rename_column", %{"column_id" => col.id, "name" => "Wins"})
-      render_hook(host, "retro_set_timer", %{"seconds" => 60})
+      render_hook(host, "retro_set_timer", %{"seconds" => 60, "auto_advance" => true})
       settle(slug)
 
       loaded = Retro.load_session(session.id)
@@ -77,6 +77,8 @@ defmodule MixchambWeb.ChamberLiveActivitiesTest do
       assert loaded.brainstorm_visible
       assert hd(loaded.columns).name == "Wins"
       assert is_integer(Server.retro_state(slug).timer_deadline)
+      assert Server.retro_state(slug).auto_advance
+      assert :sys.get_state(guest.pid).socket.assigns.retro_timer_auto
       render_hook(host, "retro_set_timer", %{"seconds" => nil})
       settle(slug)
       assert Server.retro_state(slug).timer_deadline == nil
@@ -205,7 +207,7 @@ defmodule MixchambWeb.ChamberLiveActivitiesTest do
             {:retro, :vote_withdrawn, "u", "c", %{}},
             {:retro, :reaction_toggled, "c", "u", "🔥", :added},
             {:retro, :discussing, "card-1", ["card-1"]},
-            {:retro, :timer, 123},
+            {:retro, :timer, %{deadline: 123, auto_advance: false}},
             {:retro, :team_changed, nil},
             {:retro, :phase_changed, :brainstorm},
             {:retro, :phase_changed, :archived}

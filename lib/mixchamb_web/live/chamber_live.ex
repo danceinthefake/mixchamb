@@ -921,6 +921,7 @@ defmodule MixchambWeb.ChamberLive do
               retro_discussing_card_id={@retro_discussing_card_id}
               retro_discussed={@retro_discussed}
               retro_timer_deadline={@retro_timer_deadline}
+              retro_timer_auto={@retro_timer_auto}
               retro_participant_aliases={Retro.participant_aliases(@presences)}
               retro_last_archived={Retro.last_archived(@past_retros)}
               retro_previous_actions={Retro.previous_actions_view(@retro_previous_actions)}

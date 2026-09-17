@@ -70,6 +70,7 @@ defmodule MixchambWeb.RetroLive do
           discussing_card_id={nil}
           discussed={[]}
           timer_deadline={nil}
+          timer_auto={false}
           participant_aliases={[]}
           previous_actions={[]}
           current_user_id=""

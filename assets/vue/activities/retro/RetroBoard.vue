@@ -106,6 +106,8 @@ const props = defineProps<{
   discussing_card_id: string | null
   // Host's phase timer as an absolute ms deadline (null = none).
   timer_deadline: number | null
+  // Host opted into advancing the phase when the timer hits 0:00.
+  timer_auto: boolean
   // Cards already focused this :discuss — the "Next →" stepper
   // skips them and cards render a visited mark.
   discussed: string[]
@@ -362,6 +364,7 @@ async function copyMarkdown() {
       <RetroTimer
         v-if="session && !['setup', 'archived'].includes(session.status)"
         :deadline="timer_deadline"
+        :auto_advance="timer_auto"
         :is_host="is_host"
       />
     </header>

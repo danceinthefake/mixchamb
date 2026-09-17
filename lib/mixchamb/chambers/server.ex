@@ -172,9 +172,9 @@ defmodule Mixchamb.Chambers.Server do
     do: GenServer.cast(via(slug), {:retro_set_title, user_id, title})
 
   @doc "Start (seconds) or clear (nil) the phase timer. Host-only."
-  def retro_set_timer(slug, user_id, seconds)
+  def retro_set_timer(slug, user_id, seconds, auto_advance \\ false)
       when is_binary(user_id) and (is_nil(seconds) or is_integer(seconds)),
-      do: GenServer.cast(via(slug), {:retro_set_timer, user_id, seconds})
+      do: GenServer.cast(via(slug), {:retro_set_timer, user_id, seconds, auto_advance})
 
   @doc "Tag the session with a team name (blank clears). Host-only."
   def retro_set_team(slug, user_id, name) when is_binary(user_id) and is_binary(name),
@@ -800,11 +800,23 @@ defmodule Mixchamb.Chambers.Server do
     end
   end
 
-  def handle_cast({:retro_set_timer, user_id, seconds}, %{retro_state: rs} = state)
+  def handle_cast({:retro_set_timer, user_id, seconds, auto}, %{retro_state: rs} = state)
       when not is_nil(rs) do
     with true <- MapSet.member?(state.hosts, user_id),
-         {:ok, new_rs} <- Mixchamb.Retro.EphemeralState.set_timer(rs, seconds) do
-      broadcast_retro(state.slug, {:retro, :timer, new_rs.timer_deadline})
+         {:ok, new_rs} <- Mixchamb.Retro.EphemeralState.set_timer(rs, seconds, auto) do
+      # Opt-in auto-advance: when the clock runs out, advance the
+      # phase as if the host clicked. Guarded on the deadline still
+      # being the one we scheduled (a reset / clear invalidates it).
+      if new_rs.auto_advance and new_rs.timer_deadline do
+        delay = max(0, new_rs.timer_deadline - System.system_time(:millisecond))
+        Process.send_after(self(), {:retro_timer_expire, new_rs.timer_deadline}, delay)
+      end
+
+      broadcast_retro(
+        state.slug,
+        {:retro, :timer, %{deadline: new_rs.timer_deadline, auto_advance: new_rs.auto_advance}}
+      )
+
       {:noreply, %{state | retro_state: new_rs}}
     else
       _ -> {:noreply, state}
@@ -1278,7 +1290,7 @@ defmodule Mixchamb.Chambers.Server do
   # doesn't gate on retro_state, so it always matches.
   def handle_cast({:retro_set_title, _, _}, state), do: {:noreply, state}
   def handle_cast({:retro_set_team, _, _}, state), do: {:noreply, state}
-  def handle_cast({:retro_set_timer, _, _}, state), do: {:noreply, state}
+  def handle_cast({:retro_set_timer, _, _, _}, state), do: {:noreply, state}
   def handle_cast({:retro_set_brainstorm_visible, _, _}, state), do: {:noreply, state}
   def handle_cast({:retro_set_voting_enabled, _, _}, state), do: {:noreply, state}
   def handle_cast({:retro_rename_column, _, _, _}, state), do: {:noreply, state}
@@ -1648,6 +1660,20 @@ defmodule Mixchamb.Chambers.Server do
   def handle_call(:hosts, _from, state) do
     {:reply, MapSet.to_list(state.hosts), state}
   end
+
+  # Phase-timer expiry with auto-advance on (spec §17). Any current
+  # host stands in for the click; a stale deadline is ignored.
+  def handle_info(
+        {:retro_timer_expire, deadline},
+        %{retro_state: %{timer_deadline: deadline, auto_advance: true}} = state
+      ) do
+    case Enum.at(MapSet.to_list(state.hosts), 0) do
+      nil -> {:noreply, state}
+      host -> handle_cast({:retro_advance_phase, host}, state)
+    end
+  end
+
+  def handle_info({:retro_timer_expire, _}, state), do: {:noreply, state}
 
   @impl true
   def handle_info(:check_grace, %{chamber_id: chamber_id, slug: slug} = state) do

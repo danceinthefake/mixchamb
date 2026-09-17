@@ -509,7 +509,7 @@ Honest audit after a 3.5-month idle stretch (last feature commit
 9. ✅ **Discussion "Next →"** _(2026-09-18, §16)_. In `:discuss` the host steps through
    cards by votes desc; visited cards are marked. Uses
    `retro_set_discussing` as-is.
-10. ⬜ **Timer auto-advance (opt-in).** Host ticks "advance when
+10. ✅ **Timer auto-advance (opt-in)** _(2026-09-18, §17)_. Host ticks "advance when
     time's up"; the existing tick calls `retro_advance_phase`.
     One boolean in `EphemeralState`.
 11. ⬜ **Team summary on `/t/:slug`.** Card counts by column for

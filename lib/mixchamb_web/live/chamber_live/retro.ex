@@ -47,6 +47,7 @@ defmodule MixchambWeb.ChamberLive.Retro do
     |> assign(:retro_discussed, [])
     # Host's phase timer, absolute ms deadline (nil = none).
     |> assign(:retro_timer_deadline, nil)
+    |> assign(:retro_timer_auto, false)
     # Seed all three ephemeral assigns from the GenServer for
     # late joiners / refreshes — without this, joining a chamber
     # mid-:voting shows 0/3 votes spent and no live tallies until
@@ -86,6 +87,7 @@ defmodule MixchambWeb.ChamberLive.Retro do
         |> assign(:retro_discussing_card_id, rs.discussing_card_id)
         |> assign(:retro_discussed, MapSet.to_list(rs.discussed))
         |> assign(:retro_timer_deadline, rs.timer_deadline)
+        |> assign(:retro_timer_auto, rs.auto_advance)
     end
   end
 
@@ -122,13 +124,14 @@ defmodule MixchambWeb.ChamberLive.Retro do
     {:noreply, socket}
   end
 
-  def handle_event("retro_set_timer", %{"seconds" => seconds}, socket)
+  def handle_event("retro_set_timer", %{"seconds" => seconds} = params, socket)
       when is_nil(seconds) or is_integer(seconds) do
     if socket.assigns.is_host do
       Mixchamb.Chambers.Server.retro_set_timer(
         socket.assigns.chamber_slug,
         socket.assigns.current_user.id,
-        seconds
+        seconds,
+        Map.get(params, "auto_advance") == true
       )
     end
 
@@ -461,6 +464,7 @@ defmodule MixchambWeb.ChamberLive.Retro do
       |> assign(:retro_discussing_card_id, nil)
       |> assign(:retro_discussed, [])
       |> assign(:retro_timer_deadline, nil)
+      |> assign(:retro_timer_auto, false)
 
     # Archive transition produces a new row in past_retros — reload
     # the disclosure list. Other transitions don't touch that list.
@@ -512,8 +516,11 @@ defmodule MixchambWeb.ChamberLive.Retro do
      |> assign(:retro_discussed, discussed)}
   end
 
-  def handle_info({:retro, :timer, deadline}, socket) do
-    {:noreply, assign(socket, :retro_timer_deadline, deadline)}
+  def handle_info({:retro, :timer, %{deadline: deadline, auto_advance: auto}}, socket) do
+    {:noreply,
+     socket
+     |> assign(:retro_timer_deadline, deadline)
+     |> assign(:retro_timer_auto, auto)}
   end
 
   # Catch-all retro broadcasts (card/action add/edit/delete, title,

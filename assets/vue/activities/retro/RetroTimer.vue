@@ -10,6 +10,8 @@ import { playTimeUp } from "../../lib/audio"
 
 const props = defineProps<{
   deadline: number | null
+  // Server-side flag: the phase advances by itself at 0:00.
+  auto_advance: boolean
   is_host: boolean
 }>()
 
@@ -17,8 +19,16 @@ const live = useLiveVue()
 
 const PRESETS_MIN = [3, 5, 10]
 
+// Local mirror of the checkbox so the host's next preset click
+// carries it; the server echoes the effective value back.
+const autoDraft = ref(props.auto_advance)
+watch(
+  () => props.auto_advance,
+  (v) => (autoDraft.value = v),
+)
+
 function start(minutes: number) {
-  live.pushEvent("retro_set_timer", { seconds: minutes * 60 })
+  live.pushEvent("retro_set_timer", { seconds: minutes * 60, auto_advance: autoDraft.value })
 }
 function clear() {
   live.pushEvent("retro_set_timer", { seconds: null })
@@ -68,8 +78,10 @@ watch(secondsLeft, (cur, prev) => {
       v-if="deadline"
       class="font-mono tabular-nums text-base font-semibold px-2 py-0.5 rounded-md border"
       :class="secondsLeft === 0 ? 'text-destructive border-destructive/50' : 'bg-card'"
+      :title="auto_advance ? 'Phase advances automatically at 0:00' : undefined"
     >
-      {{ secondsLeft === 0 ? "Time's up" : label }}
+      {{ secondsLeft === 0 ? "Time's up" : label
+      }}<span v-if="auto_advance" class="ml-1 text-xs font-normal text-muted-foreground">auto</span>
     </span>
     <template v-if="is_host">
       <span class="text-muted-foreground">Timer</span>
@@ -82,6 +94,15 @@ watch(secondsLeft, (cur, prev) => {
       >
         {{ m }} min
       </button>
+      <label class="inline-flex items-center gap-1 select-none cursor-pointer">
+        <input
+          id="retro-timer-auto"
+          v-model="autoDraft"
+          type="checkbox"
+          class="size-3 rounded border-input"
+        />
+        auto-advance
+      </label>
       <button
         v-if="deadline"
         type="button"

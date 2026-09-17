@@ -191,13 +191,20 @@ defmodule Mixchamb.Retro.EphemeralState do
   Start a phase timer of `seconds` (nil clears). Stored as an
   absolute deadline so late joiners get the same clock.
   """
-  def set_timer(%__MODULE__{} = s, nil), do: {:ok, %{s | timer_deadline: nil}}
+  def set_timer(s, seconds, auto_advance \\ false)
 
-  def set_timer(%__MODULE__{} = s, seconds) when is_integer(seconds) and seconds > 0 do
-    {:ok, %{s | timer_deadline: System.system_time(:millisecond) + seconds * 1000}}
+  def set_timer(%__MODULE__{} = s, nil, _auto), do: {:ok, %{s | timer_deadline: nil}}
+
+  def set_timer(%__MODULE__{} = s, seconds, auto) when is_integer(seconds) and seconds > 0 do
+    {:ok,
+     %{
+       s
+       | timer_deadline: System.system_time(:millisecond) + seconds * 1000,
+         auto_advance: auto == true
+     }}
   end
 
-  def set_timer(_, _), do: {:error, :invalid_seconds}
+  def set_timer(_, _, _), do: {:error, :invalid_seconds}
 
   @doc "Advance to a new phase. Clears phase-scoped state on exit."
   def set_phase(%__MODULE__{} = s, phase) when is_atom(phase) do

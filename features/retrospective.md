@@ -629,6 +629,17 @@ need sizing go straight into planning poker in the same chamber.
 - Cards render a ✓ and dim once discussed (still clickable to
   re-focus).
 
+## 17. Timer auto-advance _(shipped 2026-09-18)_
+
+Opt-in per timer: the host ticks **auto-advance** next to the
+presets; at 0:00 the GenServer runs `retro_advance_phase` on the
+host's behalf (`{:retro_timer_expire, deadline}` scheduled with
+`send_after`, ignored if the deadline was since cleared or
+replaced). `EphemeralState.auto_advance`; the timer broadcast is
+now `{:retro, :timer, %{deadline, auto_advance}}`. Everyone sees
+an "auto" tag on the clock. Default off — the host still moves
+the room unless they say otherwise.
+
 ## Ready-to-build checklist
 
 Implementation order I'd recommend, sized in working-day units:
