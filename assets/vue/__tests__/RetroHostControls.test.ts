@@ -162,4 +162,41 @@ describe("RetroHostControls", () => {
       expect(w.text()).not.toContain("voting helps")
     })
   })
+
+  describe("Next card → (discuss stepper)", () => {
+    it("focuses the highest-voted undiscussed card, then reports all discussed", async () => {
+      const s = session("discuss", false, 3)
+      s.cards[1].vote_count = 5
+      s.cards[2].vote_count = 2
+      const w = mount(RetroHostControls, {
+        props: { session: s, is_host: true, discussing_card_id: null, discussed: [] },
+      })
+      expect(w.text()).toContain("0 / 3 discussed")
+      await w.get("#retro-discuss-next").trigger("click")
+      expect(pushEventMock).toHaveBeenCalledWith("retro_set_discussing", { card_id: "c1" })
+
+      await w.setProps({ discussing_card_id: "c1", discussed: ["c1"] })
+      await w.get("#retro-discuss-next").trigger("click")
+      expect(pushEventMock).toHaveBeenLastCalledWith("retro_set_discussing", { card_id: "c2" })
+
+      await w.setProps({ discussed: ["c0", "c1", "c2"] })
+      expect(w.get("#retro-discuss-next").text()).toBe("All discussed")
+      expect(w.get("#retro-discuss-next").attributes("disabled")).toBeDefined()
+      await w.get("#retro-discuss-next").trigger("click")
+      expect(pushEventMock).toHaveBeenCalledTimes(2)
+    })
+
+    it("is absent outside :discuss and with no cards", () => {
+      expect(
+        mount(RetroHostControls, { props: { session: session("voting", true, 2), is_host: true } })
+          .find("#retro-discuss-next")
+          .exists(),
+      ).toBe(false)
+      expect(
+        mount(RetroHostControls, { props: { session: session("discuss"), is_host: true } })
+          .find("#retro-discuss-next")
+          .exists(),
+      ).toBe(false)
+    })
+  })
 })

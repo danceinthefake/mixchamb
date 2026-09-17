@@ -43,6 +43,9 @@ const props = defineProps<{
   // Visually highlight this card if it's the currently-focused
   // discussion card (host-driven, broadcast to everyone).
   is_discussing: boolean
+  // Already focused once this :discuss — dimmed + ticked so the room
+  // can see what's been covered (§7a step 9).
+  is_discussed: boolean
   // Action items whose source_card_id is this card. Rendered
   // nested below the card body during :discuss / :archived
   // (spec §6). Empty list outside those phases.
@@ -179,11 +182,18 @@ function focusForDiscussion() {
       'cursor-pointer hover:border-accent-bass/40': is_host && phase === 'discuss',
       'ring-2 ring-accent-bass ring-offset-1 ring-offset-background border-accent-bass':
         is_discussing,
+      'opacity-70': is_discussed && !is_discussing && phase === 'discuss',
     }"
     @click="phase === 'discuss' ? focusForDiscussion() : undefined"
   >
     <div v-if="!editing" class="text-sm leading-snug whitespace-pre-wrap break-words">
-      {{ card.body }}
+      <span
+        v-if="is_discussed && phase === 'discuss'"
+        class="mr-1 text-accent-bass"
+        aria-label="Discussed"
+        title="Discussed"
+        >✓</span
+      >{{ card.body }}
     </div>
 
     <textarea

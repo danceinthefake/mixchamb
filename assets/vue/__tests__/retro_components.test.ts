@@ -88,6 +88,7 @@ const cardProps = {
   votes_remaining: 3,
   is_host: false,
   is_discussing: false,
+  is_discussed: false,
   tied_actions: [] as RetroActionItem[],
 }
 
@@ -280,6 +281,7 @@ describe("RetroColumn + RetroDiscussPanel", () => {
       my_votes: new Set<string>(),
       votes_remaining: 3,
       discussing_card_id: null,
+      discussed: new Set<string>(),
       actions_by_card_id: {},
       is_host: false,
     })

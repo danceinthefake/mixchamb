@@ -1065,7 +1065,11 @@ defmodule Mixchamb.Chambers.Server do
     else
       case Mixchamb.Retro.EphemeralState.set_discussing(rs, card_id_or_nil) do
         {:ok, new_rs} ->
-          broadcast_retro(state.slug, {:retro, :discussing, card_id_or_nil})
+          broadcast_retro(
+            state.slug,
+            {:retro, :discussing, card_id_or_nil, MapSet.to_list(new_rs.discussed)}
+          )
+
           {:noreply, %{state | retro_state: new_rs}}
 
         _ ->

@@ -46,6 +46,7 @@ const baseProps = {
   votes_remaining: 3,
   is_host: false,
   is_discussing: false,
+  is_discussed: false,
   tied_actions: [],
 }
 

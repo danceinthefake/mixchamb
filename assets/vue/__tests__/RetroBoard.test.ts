@@ -45,6 +45,7 @@ const baseProps = {
   my_votes: [],
   discussing_card_id: null,
   timer_deadline: null,
+  discussed: [],
   participant_aliases: [],
   last_archived: null,
   previous_actions: [],

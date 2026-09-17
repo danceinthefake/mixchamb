@@ -10,6 +10,8 @@ import type { RetroSession } from "./RetroBoard.vue"
 const props = defineProps<{
   session: RetroSession
   is_host: boolean
+  discussing_card_id?: string | null
+  discussed?: string[]
 }>()
 
 const live = useLiveVue()
@@ -70,6 +72,25 @@ const showVotingHint = computed(
     props.session.cards.length >= CARD_THRESHOLD,
 )
 
+// "Next →" during :discuss: cards by votes desc (insertion order as
+// tiebreak), skipping ones already focused this phase. The server
+// records the visited set via retro_set_discussing, so every client
+// agrees on what's left.
+const discussQueue = computed(() => {
+  const seen = new Set(props.discussed ?? [])
+  return [...props.session.cards]
+    .sort((a, b) => b.vote_count - a.vote_count)
+    .filter((c) => !seen.has(c.id))
+})
+const nextCard = computed(() => discussQueue.value[0] ?? null)
+const discussedCount = computed(() => (props.discussed ?? []).length)
+
+function focusNext() {
+  const next = nextCard.value
+  if (!next) return
+  live.pushEvent("retro_set_discussing", { card_id: next.id })
+}
+
 function advance() {
   if (advanceConfirm.value && !confirm(advanceConfirm.value)) return
   live.pushEvent("retro_advance_phase", {})
@@ -103,6 +124,22 @@ function toggleVoting() {
       />
       Enable voting
     </label>
+
+    <template v-if="phase === 'discuss' && session.cards.length > 0">
+      <span class="text-[11px] text-muted-foreground tabular-nums" role="status">
+        {{ discussedCount }} / {{ session.cards.length }} discussed
+      </span>
+      <button
+        id="retro-discuss-next"
+        type="button"
+        :disabled="!nextCard"
+        @click="focusNext"
+        class="rounded-md border px-3 py-1.5 text-sm font-medium hover:bg-accent disabled:opacity-50 disabled:cursor-not-allowed"
+        :title="nextCard ? nextCard.body : 'Every card has been discussed'"
+      >
+        {{ nextCard ? "Next card →" : "All discussed" }}
+      </button>
+    </template>
 
     <button
       v-if="advanceLabel"

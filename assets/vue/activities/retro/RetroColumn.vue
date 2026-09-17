@@ -67,6 +67,7 @@ const props = defineProps<{
   // Currently-focused card id during :discuss; passed through to
   // RetroCard so the highlight ring appears on the matching one.
   discussing_card_id: string | null
+  discussed: Set<string>
   // Action items grouped by their source_card_id. RetroCard
   // reads this to render its tied actions nested below the card
   // body during :discuss / :archived (spec §6).
@@ -130,6 +131,7 @@ function submit() {
         :votes_remaining="votes_remaining"
         :is_host="is_host"
         :is_discussing="card.id === discussing_card_id"
+        :is_discussed="discussed.has(card.id)"
         :tied_actions="actions_by_card_id[card.id] ?? []"
       />
 

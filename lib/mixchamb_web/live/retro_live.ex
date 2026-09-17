@@ -68,6 +68,7 @@ defmodule MixchambWeb.RetroLive do
           tallies={%{}}
           my_votes={[]}
           discussing_card_id={nil}
+          discussed={[]}
           timer_deadline={nil}
           participant_aliases={[]}
           previous_actions={[]}

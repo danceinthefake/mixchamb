@@ -62,14 +62,20 @@ defmodule Mixchamb.Retro.EphemeralState do
             phase: :setup,
             votes: %{},
             discussing_card_id: nil,
-            timer_deadline: nil
+            # Cards the host has focused at least once this :discuss —
+            # drives the "Next →" stepper + visited marks (§7a step 9).
+            discussed: MapSet.new(),
+            timer_deadline: nil,
+            auto_advance: false
 
   @type t :: %__MODULE__{
           session_id: binary() | nil,
           phase: :setup | :brainstorm | :reveal | :voting | :discuss | :archived,
           votes: %{optional(binary()) => MapSet.t(binary())},
           discussing_card_id: binary() | nil,
-          timer_deadline: integer() | nil
+          discussed: MapSet.t(binary()),
+          timer_deadline: integer() | nil,
+          auto_advance: boolean()
         }
 
   @doc """
@@ -162,10 +168,20 @@ defmodule Mixchamb.Retro.EphemeralState do
   @doc "Set the discussing-card focus (or clear with nil)."
   def set_discussing(%__MODULE__{phase: :discuss} = s, card_id_or_nil)
       when is_binary(card_id_or_nil) or is_nil(card_id_or_nil) do
-    if s.discussing_card_id == card_id_or_nil do
-      {:noop, s}
-    else
-      {:ok, %{s | discussing_card_id: card_id_or_nil}}
+    cond do
+      s.discussing_card_id == card_id_or_nil ->
+        {:noop, s}
+
+      is_nil(card_id_or_nil) ->
+        {:ok, %{s | discussing_card_id: nil}}
+
+      true ->
+        {:ok,
+         %{
+           s
+           | discussing_card_id: card_id_or_nil,
+             discussed: MapSet.put(s.discussed, card_id_or_nil)
+         }}
     end
   end
 
@@ -191,8 +207,8 @@ defmodule Mixchamb.Retro.EphemeralState do
         # expected to have been materialised by the caller before
         # this fires).
         {:voting, _} -> %{s | votes: %{}}
-        # Exiting :discuss clears the discussing focus.
-        {:discuss, _} -> %{s | discussing_card_id: nil}
+        # Exiting :discuss clears the discussing focus + visited set.
+        {:discuss, _} -> %{s | discussing_card_id: nil, discussed: MapSet.new()}
         _ -> s
       end
 

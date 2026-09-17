@@ -500,6 +500,7 @@ re-debated on each pass.
 - **Card grouping / merging during `:reveal`.** Drag to cluster,
   vote on the cluster instead of individual cards. EasyRetro
   ships this; high UI complexity. Add when teams ask.
+- ✅ **Discussion stepping.** §16 (2026-09-18).
 - **"Currently discussing" highlight animation.** During
   `:discuss`, the host's clicked card gets a soft pulse / border
   glow so latecomers' eyes go to the focused card. Polish, not
@@ -614,6 +615,19 @@ need sizing go straight into planning poker in the same chamber.
   included, per the poker spec's multi-host rule).
 - Retro state persists across the switch (spec §9), so the host
   flips back via the Activity chips to archive when done.
+
+## 16. Discussion stepper _(shipped 2026-09-18)_
+
+- `EphemeralState.discussed` — cards focused at least once this
+  `:discuss`; `set_discussing/2` adds to it, `set_phase/2` clears
+  it on exit. `{:retro, :discussing, card_id, discussed_list}`
+  (4-tuple now) so every client agrees on what's been covered.
+- Host controls in `:discuss`: **Next card →** focuses the
+  highest-voted undiscussed card (insertion order as tiebreak),
+  "N / M discussed" counter, "All discussed" when the queue is
+  empty. Uses `retro_set_discussing` unchanged.
+- Cards render a ✓ and dim once discussed (still clickable to
+  re-focus).
 
 ## Ready-to-build checklist
 

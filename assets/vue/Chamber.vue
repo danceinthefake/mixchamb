@@ -88,6 +88,8 @@ const props = defineProps<{
   // ephemeral state.
   retro_discussing_card_id?: string | null
   retro_timer_deadline?: number | null
+  // Cards the host has already focused this :discuss (visited marks).
+  retro_discussed?: string[]
   // Current chamber participants' alias_or_name strings — feeds
   // the assignee-input <datalist> autocomplete during :discuss
   // (spec §6).
@@ -582,6 +584,7 @@ live.handleEvent("play_remote_note", async (payload: RemoteNote) => {
     :my_votes="props.retro_my_votes ?? []"
     :discussing_card_id="props.retro_discussing_card_id ?? null"
     :timer_deadline="props.retro_timer_deadline ?? null"
+    :discussed="props.retro_discussed ?? []"
     :participant_aliases="props.retro_participant_aliases ?? []"
     :last_archived="props.retro_last_archived ?? null"
     :previous_actions="props.retro_previous_actions ?? []"

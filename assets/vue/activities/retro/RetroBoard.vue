@@ -106,6 +106,9 @@ const props = defineProps<{
   discussing_card_id: string | null
   // Host's phase timer as an absolute ms deadline (null = none).
   timer_deadline: number | null
+  // Cards already focused this :discuss — the "Next →" stepper
+  // skips them and cards render a visited mark.
+  discussed: string[]
   // Current chamber participants' alias_or_name strings. Provided
   // to descendants via inject so RetroActionRow / RetroDiscussPanel
   // can offer assignee autocomplete without prop-drilling.
@@ -218,6 +221,8 @@ const actionsByCardId = computed(() => {
   }
   return grouped
 })
+
+const discussedSet = computed(() => new Set(props.discussed))
 
 const freeformActions = computed(() => actionsByCardId.value.__freeform__ ?? [])
 
@@ -532,6 +537,7 @@ async function copyMarkdown() {
           :my_votes="myVoteSet"
           :votes_remaining="votesRemaining"
           :discussing_card_id="discussing_card_id"
+          :discussed="discussedSet"
           :actions_by_card_id="actionsByCardId"
         />
       </div>
@@ -552,6 +558,12 @@ async function copyMarkdown() {
       />
     </div>
 
-    <RetroHostControls v-if="session && is_host" :session="session" :is_host="is_host" />
+    <RetroHostControls
+      v-if="session && is_host"
+      :session="session"
+      :is_host="is_host"
+      :discussing_card_id="discussing_card_id"
+      :discussed="discussed"
+    />
   </div>
 </template>

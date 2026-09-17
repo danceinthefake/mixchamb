@@ -145,6 +145,12 @@ defmodule MixchambWeb.ChamberLiveActivitiesTest do
       render_hook(host, "retro_set_discussing", %{"card_id" => host_card.id})
       settle(slug)
       assert Server.retro_state(slug).discussing_card_id == host_card.id
+      # Visited set reaches every client (drives the Next → stepper).
+      assert :sys.get_state(guest.pid).socket.assigns.retro_discussed == [host_card.id]
+      render_hook(host, "retro_set_discussing", %{"card_id" => nil})
+      settle(slug)
+      assert Server.retro_state(slug).discussing_card_id == nil
+      assert MapSet.member?(Server.retro_state(slug).discussed, host_card.id)
 
       render_hook(guest, "retro_add_action_item", %{
         "body" => "do it",
@@ -198,7 +204,7 @@ defmodule MixchambWeb.ChamberLiveActivitiesTest do
             {:retro, :vote_cast, "u", "c", %{"c" => 1}},
             {:retro, :vote_withdrawn, "u", "c", %{}},
             {:retro, :reaction_toggled, "c", "u", "🔥", :added},
-            {:retro, :discussing, "card-1"},
+            {:retro, :discussing, "card-1", ["card-1"]},
             {:retro, :timer, 123},
             {:retro, :team_changed, nil},
             {:retro, :phase_changed, :brainstorm},

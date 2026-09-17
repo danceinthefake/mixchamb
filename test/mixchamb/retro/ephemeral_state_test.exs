@@ -163,4 +163,17 @@ defmodule Mixchamb.Retro.EphemeralStateTest do
       end
     end
   end
+
+  describe "discussed set" do
+    test "set_discussing records visited cards; leaving :discuss clears them" do
+      s = EphemeralState.new("sess", :discuss)
+      {:ok, s} = EphemeralState.set_discussing(s, "c1")
+      {:ok, s} = EphemeralState.set_discussing(s, nil)
+      {:ok, s} = EphemeralState.set_discussing(s, "c2")
+      assert MapSet.equal?(s.discussed, MapSet.new(["c1", "c2"]))
+      {:ok, s} = EphemeralState.set_phase(s, :archived)
+      assert s.discussed == MapSet.new()
+      assert s.discussing_card_id == nil
+    end
+  end
 end

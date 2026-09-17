@@ -506,7 +506,7 @@ Honest audit after a 3.5-month idle stretch (last feature commit
 
 ### Batch 2 (locked 2026-09-18) — make retro #2 better, still no auth
 
-9. ⬜ **Discussion "Next →".** In `:discuss` the host steps through
+9. ✅ **Discussion "Next →"** _(2026-09-18, §16)_. In `:discuss` the host steps through
    cards by votes desc; visited cards are marked. Uses
    `retro_set_discussing` as-is.
 10. ⬜ **Timer auto-advance (opt-in).** Host ticks "advance when
