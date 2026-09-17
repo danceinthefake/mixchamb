@@ -171,6 +171,11 @@ defmodule Mixchamb.Chambers.Server do
   def retro_set_title(slug, user_id, title) when is_binary(user_id),
     do: GenServer.cast(via(slug), {:retro_set_title, user_id, title})
 
+  @doc "Start (seconds) or clear (nil) the phase timer. Host-only."
+  def retro_set_timer(slug, user_id, seconds)
+      when is_binary(user_id) and (is_nil(seconds) or is_integer(seconds)),
+      do: GenServer.cast(via(slug), {:retro_set_timer, user_id, seconds})
+
   @doc "Tag the session with a team name (blank clears). Host-only."
   def retro_set_team(slug, user_id, name) when is_binary(user_id) and is_binary(name),
     do: GenServer.cast(via(slug), {:retro_set_team, user_id, name})
@@ -795,6 +800,17 @@ defmodule Mixchamb.Chambers.Server do
     end
   end
 
+  def handle_cast({:retro_set_timer, user_id, seconds}, %{retro_state: rs} = state)
+      when not is_nil(rs) do
+    with true <- MapSet.member?(state.hosts, user_id),
+         {:ok, new_rs} <- Mixchamb.Retro.EphemeralState.set_timer(rs, seconds) do
+      broadcast_retro(state.slug, {:retro, :timer, new_rs.timer_deadline})
+      {:noreply, %{state | retro_state: new_rs}}
+    else
+      _ -> {:noreply, state}
+    end
+  end
+
   def handle_cast({:retro_set_team, user_id, name}, %{retro_state: rs} = state)
       when not is_nil(rs) do
     if not MapSet.member?(state.hosts, user_id) do
@@ -1257,6 +1273,8 @@ defmodule Mixchamb.Chambers.Server do
   # fall-through for :retro_start_session — its primary handler
   # doesn't gate on retro_state, so it always matches.
   def handle_cast({:retro_set_title, _, _}, state), do: {:noreply, state}
+  def handle_cast({:retro_set_team, _, _}, state), do: {:noreply, state}
+  def handle_cast({:retro_set_timer, _, _}, state), do: {:noreply, state}
   def handle_cast({:retro_set_brainstorm_visible, _, _}, state), do: {:noreply, state}
   def handle_cast({:retro_set_voting_enabled, _, _}, state), do: {:noreply, state}
   def handle_cast({:retro_rename_column, _, _, _}, state), do: {:noreply, state}

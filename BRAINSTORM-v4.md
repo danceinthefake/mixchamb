@@ -496,7 +496,7 @@ Honest audit after a 3.5-month idle stretch (last feature commit
    retro output actually travels (Slack / Notion).
 5. ✅ **Column presets** _(2026-09-17)_ on `:setup` — Start/Stop/Continue, 4Ls,
    Mad/Sad/Glad, Sailboat. Prefill the name inputs; no schema.
-6. ⬜ **Phase timer.** Host sets e.g. "brainstorm 5 min", everyone
+6. ✅ **Phase timer** _(2026-09-17, §14)_. Host sets e.g. "brainstorm 5 min", everyone
    sees the countdown. Reuse Pictionary's server-side tick.
 7. ⬜ **Retro → poker handoff.** Action item "estimate X" → one
    click flips the chamber to poker with that story queued. Makes

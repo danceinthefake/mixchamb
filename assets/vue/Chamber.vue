@@ -87,6 +87,7 @@ const props = defineProps<{
   // when no card has the focus. Sourced from the GenServer
   // ephemeral state.
   retro_discussing_card_id?: string | null
+  retro_timer_deadline?: number | null
   // Current chamber participants' alias_or_name strings — feeds
   // the assignee-input <datalist> autocomplete during :discuss
   // (spec §6).
@@ -580,6 +581,7 @@ live.handleEvent("play_remote_note", async (payload: RemoteNote) => {
     :tallies="props.retro_tallies ?? {}"
     :my_votes="props.retro_my_votes ?? []"
     :discussing_card_id="props.retro_discussing_card_id ?? null"
+    :timer_deadline="props.retro_timer_deadline ?? null"
     :participant_aliases="props.retro_participant_aliases ?? []"
     :last_archived="props.retro_last_archived ?? null"
     :previous_actions="props.retro_previous_actions ?? []"

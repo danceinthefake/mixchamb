@@ -48,6 +48,36 @@ defmodule Mixchamb.Chambers.ServerRetroTest do
       assert_receive {:retro, :title_changed, "Sprint 23 retro"}, 500
     end
 
+    test "retro_set_team tags the session and broadcasts", %{chamber: chamber, host: host} do
+      Server.retro_set_team(chamber.slug, host.id, "Payments")
+      assert_receive {:retro, :team_changed, team_id}, 500
+      assert Retro.get_team_by_slug("payments").id == team_id
+
+      Server.retro_set_team(chamber.slug, host.id, "")
+      assert_receive {:retro, :team_changed, nil}, 500
+    end
+
+    test "retro_set_timer stores an absolute deadline, clears on phase change",
+         %{chamber: chamber, host: host, other: other} do
+      Server.retro_set_timer(chamber.slug, other.id, 60)
+      refute_receive {:retro, :timer, _}, 100
+
+      before = System.system_time(:millisecond)
+      Server.retro_set_timer(chamber.slug, host.id, 60)
+      assert_receive {:retro, :timer, deadline}, 500
+      assert deadline >= before + 60_000
+      assert Server.retro_state(chamber.slug).timer_deadline == deadline
+
+      Server.retro_advance_phase(chamber.slug, host.id)
+      assert_receive {:retro, :phase_changed, :brainstorm}, 500
+      assert Server.retro_state(chamber.slug).timer_deadline == nil
+
+      Server.retro_set_timer(chamber.slug, host.id, 30)
+      assert_receive {:retro, :timer, _}, 500
+      Server.retro_set_timer(chamber.slug, host.id, nil)
+      assert_receive {:retro, :timer, nil}, 500
+    end
+
     test "retro_set_voting_enabled broadcasts the new value", %{chamber: chamber, host: host} do
       Server.retro_set_voting_enabled(chamber.slug, host.id, true)
       assert_receive {:retro, :voting_enabled_changed, true}, 500

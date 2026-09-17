@@ -583,6 +583,22 @@ The §11 item that made retro #2 better than retro #1. With teams
 - Not host-gated: anyone in the chamber can add action items in
   `:discuss`, so carry-over follows the same rule.
 
+## 14. Phase timer _(shipped 2026-09-17)_
+
+Facilitators time-box phases; every real retro tool has a clock.
+
+- `EphemeralState.timer_deadline` — absolute ms since epoch, so
+  late joiners and laggy clients all count down to the same
+  instant (Pictionary's trick). Cleared by `set_phase/2`: a timer
+  belongs to the phase it was set in.
+- `:retro_set_timer` cast (host-only; `seconds` or `nil`) →
+  `{:retro, :timer, deadline}`. Seeded on mount from
+  `retro_state/1` like the other ephemerals.
+- `RetroTimer.vue` under the phase stepper (brainstorm →
+  discuss): 3 / 5 / 10 min presets + Clear for the host, the
+  countdown for everyone, `playTimeUp` buzzer at 0:00.
+  Display-only — nothing auto-advances; the host moves on.
+
 ## Ready-to-build checklist
 
 Implementation order I'd recommend, sized in working-day units:

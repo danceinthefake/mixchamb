@@ -919,6 +919,7 @@ defmodule MixchambWeb.ChamberLive do
               retro_tallies={@retro_tallies}
               retro_my_votes={MapSet.to_list(@retro_my_votes)}
               retro_discussing_card_id={@retro_discussing_card_id}
+              retro_timer_deadline={@retro_timer_deadline}
               retro_participant_aliases={Retro.participant_aliases(@presences)}
               retro_last_archived={Retro.last_archived(@past_retros)}
               retro_previous_actions={Retro.previous_actions_view(@retro_previous_actions)}

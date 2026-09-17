@@ -10,6 +10,7 @@ import { computed, provide, ref } from "vue"
 import { useLiveVue } from "live_vue"
 import RetroSetup from "./RetroSetup.vue"
 import RetroCarryOver from "./RetroCarryOver.vue"
+import RetroTimer from "./RetroTimer.vue"
 import { retroToMarkdown } from "./markdown"
 import type { PreviousAction } from "./RetroCarryOver.vue"
 import RetroColumn from "./RetroColumn.vue"
@@ -103,6 +104,8 @@ const props = defineProps<{
   // Surfaced as a ring + scale highlight on the matching card so
   // the room knows which one is being talked about.
   discussing_card_id: string | null
+  // Host's phase timer as an absolute ms deadline (null = none).
+  timer_deadline: number | null
   // Current chamber participants' alias_or_name strings. Provided
   // to descendants via inject so RetroActionRow / RetroDiscussPanel
   // can offer assignee autocomplete without prop-drilling.
@@ -350,6 +353,12 @@ async function copyMarkdown() {
           </li>
         </template>
       </ol>
+
+      <RetroTimer
+        v-if="session && !['setup', 'archived'].includes(session.status)"
+        :deadline="timer_deadline"
+        :is_host="is_host"
+      />
     </header>
 
     <!-- Collapsible process guide. Helps first-time users (and

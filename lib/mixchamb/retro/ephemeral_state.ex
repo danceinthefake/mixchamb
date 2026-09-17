@@ -14,6 +14,9 @@ defmodule Mixchamb.Retro.EphemeralState do
       MapSet[card_id]}`. Cleared on phase exit; counts materialise
       into `retro_cards.vote_count`.
     * the "currently discussing" card focus during `:discuss`
+    * the host's phase timer as an absolute deadline (ms since
+      epoch) so every client counts down in agreement; cleared on
+      phase change
 
   Persistent state (sessions, columns, cards, action items) lives
   in Postgres via the `Mixchamb.Retro` context — this struct is
@@ -58,13 +61,15 @@ defmodule Mixchamb.Retro.EphemeralState do
   defstruct session_id: nil,
             phase: :setup,
             votes: %{},
-            discussing_card_id: nil
+            discussing_card_id: nil,
+            timer_deadline: nil
 
   @type t :: %__MODULE__{
           session_id: binary() | nil,
           phase: :setup | :brainstorm | :reveal | :voting | :discuss | :archived,
           votes: %{optional(binary()) => MapSet.t(binary())},
-          discussing_card_id: binary() | nil
+          discussing_card_id: binary() | nil,
+          timer_deadline: integer() | nil
         }
 
   @doc """
@@ -166,6 +171,18 @@ defmodule Mixchamb.Retro.EphemeralState do
 
   def set_discussing(%__MODULE__{} = s, _), do: {:noop, s}
 
+  @doc """
+  Start a phase timer of `seconds` (nil clears). Stored as an
+  absolute deadline so late joiners get the same clock.
+  """
+  def set_timer(%__MODULE__{} = s, nil), do: {:ok, %{s | timer_deadline: nil}}
+
+  def set_timer(%__MODULE__{} = s, seconds) when is_integer(seconds) and seconds > 0 do
+    {:ok, %{s | timer_deadline: System.system_time(:millisecond) + seconds * 1000}}
+  end
+
+  def set_timer(_, _), do: {:error, :invalid_seconds}
+
   @doc "Advance to a new phase. Clears phase-scoped state on exit."
   def set_phase(%__MODULE__{} = s, phase) when is_atom(phase) do
     cleared =
@@ -179,6 +196,7 @@ defmodule Mixchamb.Retro.EphemeralState do
         _ -> s
       end
 
-    {:ok, %{cleared | phase: phase}}
+    # A timer belongs to the phase it was set in.
+    {:ok, %{cleared | phase: phase, timer_deadline: nil}}
   end
 end

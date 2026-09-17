@@ -40,6 +40,7 @@ const baseProps = {
   tallies: {},
   my_votes: [],
   discussing_card_id: null,
+  timer_deadline: null,
   participant_aliases: [],
   last_archived: null,
   previous_actions: [],
