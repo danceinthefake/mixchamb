@@ -1,0 +1,63 @@
+lib/mixchamb/retro.ex
+  s_ae52c82cfbb39d::t_cd50d829b536f1 469-513
+lib/mixchamb_web/live/chamber_live/retro.ex
+  s_ae52c82cfbb39d::t_93882e18b19b78 251-277,601,618-668
+  s_ae52c82cfbb39d::t_12fd2336567c9f 669
+assets/vue/activities/retro/RetroCard.vue
+  s_ae52c82cfbb39d::t_fb8a2d82719a45 7,129-140,203-204,206,231-232,234-253,286-296
+  s_ae52c82cfbb39d::t_65f8b3ba213e0d 13-18
+  s_ae52c82cfbb39d::t_a3781b987e7d03 233
+  s_ae52c82cfbb39d::t_cefdf62b5ec4ef 297
+lib/mixchamb/chambers/server.ex
+  s_ae52c82cfbb39d::t_cd50d829b536f1 271-279,1038-1063,1336-1337
+test/mixchamb_web/live/chamber_live_activities_test.exs
+  s_ae52c82cfbb39d::t_0b826a044a9aef 116-120,123-130,138-144,232-233
+  s_ae52c82cfbb39d::t_72ca26f8c1d7ac 131-137
+assets/vue/__tests__/RetroHostControls.test.ts
+  s_ae52c82cfbb39d::t_65f8b3ba213e0d 40
+priv/repo/migrations/20260917195717_add_merged_into_to_retro_cards.exs
+  s_ae52c82cfbb39d::t_cd50d829b536f1 1-17
+lib/mixchamb/retro/retro_card.ex
+  s_ae52c82cfbb39d::t_cd50d829b536f1 27-28,36-39
+assets/vue/__tests__/retro_components.test.ts
+  s_ae52c82cfbb39d::t_65f8b3ba213e0d 40
+assets/vue/activities/retro/markdown.ts
+  s_ae52c82cfbb39d::t_65f8b3ba213e0d 27
+assets/vue/__tests__/RetroBoard.test.ts
+  s_ae52c82cfbb39d::t_a3781b987e7d03 387
+  s_ae52c82cfbb39d::t_a4a467c7227ca9 475-544
+  s_ae52c82cfbb39d::t_65f8b3ba213e0d 103,114,125,154,165,193,219,230,254,265,356,367
+assets/vue/__tests__/retro_markdown.test.ts
+  s_ae52c82cfbb39d::t_65f8b3ba213e0d 25,37
+e2e/retro.spec.ts
+  s_ae52c82cfbb39d::t_c3188ba84d1b5f 63-66
+  s_ae52c82cfbb39d::t_dc47d379ba998a 47-55,60-62,67-69
+  s_ae52c82cfbb39d::t_52ed9fe37ec1e6 70
+assets/vue/__tests__/RetroCard.test.ts
+  s_ae52c82cfbb39d::t_65f8b3ba213e0d 31
+assets/vue/activities/retro/RetroBoard.vue
+  s_ae52c82cfbb39d::t_fb8a2d82719a45 9,56-58,67-82,248-269
+  s_ae52c82cfbb39d::t_1cd6cf86afcaed 270
+test/mixchamb/retro_test.exs
+  s_ae52c82cfbb39d::t_0b826a044a9aef 701-747
+BRAINSTORM-v4.md
+  s_ae52c82cfbb39d::t_eef6df1953bf92 520
+features/retrospective.md
+  s_ae52c82cfbb39d::t_d71a3bffc323fe 500-502,660-685
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "c642eb79cceecc7869f4fb9c9a32b5ac71e12bed",
+  "prompts": {},
+  "sessions": {
+    "s_ae52c82cfbb39d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1de5c5ca-1395-4e73-b795-ed7057489ec8",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Hafidz Bahtiar <hafidz.bahtiar@hypefast.id>"
+    }
+  }
+}
