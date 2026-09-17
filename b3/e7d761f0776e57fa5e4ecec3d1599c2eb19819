@@ -1,0 +1,29 @@
+lib/mixchamb_web/live/team_live.ex
+  s_ae52c82cfbb39d::t_a1159bbc934f80 28,53-76,93-106,153-154
+  s_ae52c82cfbb39d::t_329379f4583ced 44,47-49
+lib/mixchamb/retro.ex
+  s_ae52c82cfbb39d::t_a1159bbc934f80 209-253
+test/mixchamb_web/live/team_live_test.exs
+  s_ae52c82cfbb39d::t_bada8a06d84765 58-59
+  s_ae52c82cfbb39d::t_a1159bbc934f80 53-57,60-76
+BRAINSTORM-v4.md
+  s_ae52c82cfbb39d::t_b6a7011e285ac0 515
+features/retrospective.md
+  s_ae52c82cfbb39d::t_89720be036986a 643-650
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "b3e7d761f0776e57fa5e4ecec3d1599c2eb19819",
+  "prompts": {},
+  "sessions": {
+    "s_ae52c82cfbb39d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1de5c5ca-1395-4e73-b795-ed7057489ec8",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Hafidz Bahtiar <hafidz.bahtiar@hypefast.id>"
+    }
+  }
+}
