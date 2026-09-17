@@ -1,0 +1,56 @@
+assets/vue/Chamber.vue
+  s_ae52c82cfbb39d::t_fd8d623414ec2c 91-92,587
+lib/mixchamb/chambers/server.ex
+  s_ae52c82cfbb39d::t_fcf05b930ed189 1072
+  s_ae52c82cfbb39d::t_14e6cb01e24dc2 1068-1071
+assets/vue/__tests__/RetroBoard.test.ts
+  s_ae52c82cfbb39d::t_38b60f8b6e08e2 48
+assets/vue/activities/retro/RetroColumn.vue
+  s_ae52c82cfbb39d::t_fcf05b930ed189 70,134
+lib/mixchamb_web/live/chamber_live/retro.ex
+  s_ae52c82cfbb39d::t_fd8d623414ec2c 47,87,462,508-512
+lib/mixchamb_web/live/retro_live.ex
+  s_ae52c82cfbb39d::t_fd8d623414ec2c 71
+assets/vue/__tests__/RetroCard.test.ts
+  s_ae52c82cfbb39d::t_38b60f8b6e08e2 49
+assets/vue/__tests__/retro_components.test.ts
+  s_ae52c82cfbb39d::t_38b60f8b6e08e2 91,284
+lib/mixchamb/retro/ephemeral_state.ex
+  s_ae52c82cfbb39d::t_14e6cb01e24dc2 65-69,76-78,171-179,210-211
+  s_ae52c82cfbb39d::t_fcf05b930ed189 180-184
+test/mixchamb_web/live/chamber_live_activities_test.exs
+  s_ae52c82cfbb39d::t_7c36183a0e4d93 148-153,207
+assets/vue/activities/retro/RetroCard.vue
+  s_ae52c82cfbb39d::t_fcf05b930ed189 46-48,185,190-196
+lib/mixchamb_web/live/chamber_live.ex
+  s_ae52c82cfbb39d::t_fd8d623414ec2c 922
+test/mixchamb/retro/ephemeral_state_test.exs
+  s_ae52c82cfbb39d::t_7c36183a0e4d93 166-178
+assets/vue/activities/retro/RetroBoard.vue
+  s_ae52c82cfbb39d::t_fd8d623414ec2c 109-111,225-226,540,561-567
+assets/vue/__tests__/RetroHostControls.test.ts
+  s_ae52c82cfbb39d::t_7c36183a0e4d93 165-201
+assets/vue/activities/retro/RetroHostControls.vue
+  s_ae52c82cfbb39d::t_fcf05b930ed189 13-14,75-93,128-142
+  s_ae52c82cfbb39d::t_14c1075efd3108 143
+BRAINSTORM-v4.md
+  s_ae52c82cfbb39d::t_390f286430a4a0 509
+features/retrospective.md
+  s_ae52c82cfbb39d::t_b22f01244ab039 503,619-631
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "dde3f5afeff9994dddb1e9d48a31be23bee4b90b",
+  "prompts": {},
+  "sessions": {
+    "s_ae52c82cfbb39d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1de5c5ca-1395-4e73-b795-ed7057489ec8",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Hafidz Bahtiar <hafidz.bahtiar@hypefast.id>"
+    }
+  }
+}
