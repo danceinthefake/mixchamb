@@ -1,0 +1,29 @@
+assets/vue/activities/retro/RetroDiscussPanel.vue
+  s_ae52c82cfbb39d::t_824c93dc9c3577 29-44,70,74-83
+e2e/retro.spec.ts
+  s_ae52c82cfbb39d::t_115c9e191cce25 57-68
+lib/mixchamb_web/live/chamber_live/retro.ex
+  s_ae52c82cfbb39d::t_31251790da6590 326-345
+test/mixchamb_web/live/chamber_live_test.exs
+  s_ae52c82cfbb39d::t_6c4098edd650d9 255-289,538-544
+BRAINSTORM-v4.md
+  s_ae52c82cfbb39d::t_3f3eef4a92d688 501
+features/retrospective.md
+  s_ae52c82cfbb39d::t_d5b1acab896e45 602-617
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "3d07b55e21bc4617f71b9f258cff74b18c021c74",
+  "prompts": {},
+  "sessions": {
+    "s_ae52c82cfbb39d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1de5c5ca-1395-4e73-b795-ed7057489ec8",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Hafidz Bahtiar <hafidz.bahtiar@hypefast.id>"
+    }
+  }
+}
