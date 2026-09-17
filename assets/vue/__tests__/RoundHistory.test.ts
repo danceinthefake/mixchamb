@@ -141,3 +141,58 @@ describe("RoundHistory", () => {
     })
   })
 })
+
+describe("RoundHistory verdict labels + clipboard fallbacks", () => {
+  const entry = (round: number, values: string[]) => ({
+    round,
+    story: null,
+    deck: "fibonacci" as const,
+    cards: FIB,
+    values,
+  })
+
+  it("renders every verdict kind", () => {
+    const wrapper = mount(RoundHistory, {
+      props: {
+        history: [entry(1, ["?", "?"]), entry(2, ["☕", "☕"]), entry(3, []), entry(4, ["5", "5"])],
+      },
+    })
+    const text = wrapper.text()
+    expect(text).toContain("?")
+    expect(text).toContain("☕")
+    expect(text).toContain("—")
+  })
+
+  it("falls back to execCommand when the clipboard API is unavailable, and reports failure", async () => {
+    vi.useFakeTimers()
+    Object.defineProperty(navigator, "clipboard", { configurable: true, value: undefined })
+    ;(document as any).execCommand = vi.fn(() => true)
+    const wrapper = mount(RoundHistory, { props: { history: [entry(1, ["5"])] } })
+    await wrapper.find("details").trigger("toggle")
+    const btn = () => wrapper.findAll("button").find((b) => /Cop/.test(b.text()))!
+    await btn().trigger("click")
+    await Promise.resolve()
+    await Promise.resolve()
+    expect((document as any).execCommand).toHaveBeenCalledWith("copy")
+    expect(btn().text()).toBe("Copied!")
+    vi.advanceTimersByTime(1600)
+    await wrapper.vm.$nextTick()
+    expect(btn().text()).toBe("Copy as text")
+
+    // clipboard.writeText rejects → fallback throws → "Copy failed".
+    Object.defineProperty(navigator, "clipboard", {
+      configurable: true,
+      value: { writeText: vi.fn().mockRejectedValue(new Error("denied")) },
+    })
+    Object.defineProperty(window, "isSecureContext", { configurable: true, value: true })
+    ;(document as any).execCommand = vi.fn(() => {
+      throw new Error("nope")
+    })
+    await btn().trigger("click")
+    await Promise.resolve()
+    await Promise.resolve()
+    await Promise.resolve()
+    expect(btn().text()).toBe("Copy failed")
+    vi.useRealTimers()
+  })
+})

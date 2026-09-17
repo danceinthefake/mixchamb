@@ -10,6 +10,10 @@ vi.mock("live_vue", () => ({
 
 import { mount, enableAutoUnmount } from "@vue/test-utils"
 import RetroBoard from "../activities/retro/RetroBoard.vue"
+
+const flush = async () => {
+  for (let i = 0; i < 4; i++) await Promise.resolve()
+}
 import type { RetroSession } from "../activities/retro/RetroBoard.vue"
 
 enableAutoUnmount(afterEach)
@@ -355,5 +359,102 @@ describe("RetroBoard", () => {
     const w = mount(RetroBoard, { props: { ...baseProps, session } })
     const html = w.html()
     expect(html.indexOf("high priority")).toBeLessThan(html.indexOf("low priority"))
+  })
+
+  describe("archived banner + clipboard", () => {
+    const card = (id: string, col: string, body: string, vote_count: number) => ({
+      id,
+      retro_column_id: col,
+      body,
+      author_user_id: "u1",
+      author_alias: "ana",
+      author_display_name: null,
+      vote_count,
+      reactions: [],
+      comments: [],
+    })
+    const archived = makeSession({
+      status: "archived",
+      team: { slug: "core", name: "Core" },
+      cards: [
+        card("k1", "c1", "low", 1),
+        card("k2", "c1", "high", 4),
+        card("k3", "ghost", "orphan", 0),
+      ],
+      action_items: [
+        {
+          id: "a1",
+          source_card_id: "k2",
+          body: "tied",
+          assignee_alias: null,
+          due_date: null,
+          completed: false,
+        },
+        {
+          id: "a2",
+          source_card_id: null,
+          body: "free",
+          assignee_alias: null,
+          due_date: null,
+          completed: true,
+        },
+      ],
+    })
+
+    it("copies the permalink and the markdown snapshot, with separate flashes", async () => {
+      vi.useFakeTimers()
+      const writeText = vi.fn().mockResolvedValue(undefined)
+      Object.defineProperty(navigator, "clipboard", { configurable: true, value: { writeText } })
+      const w = mount(RetroBoard, { props: { ...baseProps, session: archived } })
+      expect(w.text()).toContain("Filed under")
+
+      const btn = (re: RegExp) => w.findAll("button").find((b) => re.test(b.text()))!
+      await btn(/Copy share link/).trigger("click")
+      await flush()
+      expect(writeText).toHaveBeenCalledWith(expect.stringContaining("/archives/retros/s1"))
+      expect(btn(/Copied!/).exists()).toBe(true)
+
+      await btn(/Copy as markdown/).trigger("click")
+      await flush()
+      expect(writeText.mock.calls[1][0]).toContain("# ")
+      expect(writeText.mock.calls[1][0]).toContain("Team: Core")
+      vi.advanceTimersByTime(1600)
+      await w.vm.$nextTick()
+      expect(w.findAll("button").filter((b) => /Copied!/.test(b.text()))).toHaveLength(0)
+
+      // Clipboard blocked → silent, no flash.
+      writeText.mockRejectedValueOnce(new Error("blocked"))
+      await btn(/Copy share link/).trigger("click")
+      await flush()
+      expect(w.findAll("button").filter((b) => /Copied!/.test(b.text()))).toHaveLength(0)
+      writeText.mockRejectedValueOnce(new Error("blocked"))
+      await btn(/Copy as markdown/).trigger("click")
+      await flush()
+      vi.useRealTimers()
+    })
+
+    it("empty-state share link copies the last archived permalink", async () => {
+      const writeText = vi.fn().mockResolvedValue(undefined)
+      Object.defineProperty(navigator, "clipboard", { configurable: true, value: { writeText } })
+      const w = mount(RetroBoard, {
+        props: {
+          ...baseProps,
+          session: null,
+          last_archived: { id: "past-9", title: null, archived_at: null },
+        },
+      })
+      await w
+        .findAll("button")
+        .find((b) => /Copy share link/.test(b.text()))!
+        .trigger("click")
+      await flush()
+      expect(writeText).toHaveBeenCalledWith(expect.stringContaining("/archives/retros/past-9"))
+    })
+
+    it("sorts cards by votes in :archived and tolerates cards in unknown columns", () => {
+      const w = mount(RetroBoard, { props: { ...baseProps, session: archived } })
+      const bodies = w.findAll("[data-card-body], .break-words").map((n) => n.text())
+      expect(bodies.indexOf("high")).toBeLessThan(bodies.indexOf("low"))
+    })
   })
 })

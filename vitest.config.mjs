@@ -28,7 +28,9 @@ export default defineConfig({
       // badge script parses; text gives a CLI summary too.
       reporter: ["text", "json-summary"],
       include: ["assets/vue/**/*.{ts,vue}"],
-      exclude: ["assets/vue/**/__tests__/**", "assets/vue/components/ui/**"],
+      // index.ts is the live_vue bootstrap (glob imports + app mount) —
+      // only runs in a browser against a real LiveView socket.
+      exclude: ["assets/vue/**/__tests__/**", "assets/vue/components/ui/**", "assets/vue/index.ts"],
     },
   },
 });

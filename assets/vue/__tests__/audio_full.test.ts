@@ -106,6 +106,7 @@ const DRUMS = [
   "tom_floor",
 ]
 const NOTES = ["C4", "D#3", "A2", "G5", "nope"]
+const KENDANG = ["dang", "tut", "dut", "tung", "tak", "pak", "nope"]
 const CHORDS = Object.keys(audio.CHORDS)
 
 describe("every engine plays every note shape without throwing", () => {
@@ -128,9 +129,11 @@ describe("every engine plays every note shape without throwing", () => {
       const notes =
         instrument === "drums"
           ? DRUMS
-          : instrument === "guitar" || instrument === "pad"
-            ? [...CHORDS, ...NOTES]
-            : NOTES
+          : instrument === "kendang"
+            ? KENDANG
+            : instrument === "guitar" || instrument === "pad"
+              ? [...CHORDS, ...NOTES]
+              : NOTES
       engine.preload?.()
       for (const note of notes) {
         for (const oct of [0, 1, -1]) {

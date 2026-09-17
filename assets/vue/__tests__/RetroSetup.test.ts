@@ -58,4 +58,52 @@ describe("RetroSetup", () => {
     await w.get("#retro-team").trigger("keydown.enter")
     expect(pushEvent).toHaveBeenCalledWith("retro_set_team", { team: "Payments" })
   })
+
+  it("title + column edits commit only real changes; blank column restores", async () => {
+    const w = mount(RetroSetup, { props: { session, is_host: true } })
+    const title = w.get("#retro-title")
+    await title.setValue("Sprint 5")
+    await title.trigger("blur")
+    expect(pushEvent).toHaveBeenCalledWith("retro_set_title", { title: "Sprint 5" })
+    pushEvent.mockClear()
+    await title.setValue("  ")
+    await title.trigger("blur")
+    expect(pushEvent).not.toHaveBeenCalled()
+
+    const cols = w.findAll('input[aria-label^="Rename column"]')
+    await cols[0].setValue("Wins")
+    await cols[0].trigger("keydown.enter")
+    expect(pushEvent).toHaveBeenCalledWith("retro_rename_column", { column_id: "c1", name: "Wins" })
+    pushEvent.mockClear()
+    await cols[1].setValue("   ")
+    await cols[1].trigger("blur")
+    expect(pushEvent).not.toHaveBeenCalled()
+    expect((cols[1].element as HTMLInputElement).value).toBe("Bad")
+    await cols[2].setValue("Start")
+    await cols[2].trigger("blur")
+    expect(pushEvent).not.toHaveBeenCalled()
+
+    // Same team name → no event; toggle brainstorm visibility.
+    await w.get("#retro-team").setValue("")
+    await w.get("#retro-team").trigger("blur")
+    expect(pushEvent).not.toHaveBeenCalled()
+    await w.get('input[type="checkbox"]').trigger("change")
+    expect(pushEvent).toHaveBeenCalledWith("retro_set_brainstorm_visible", { visible: true })
+
+    // Broadcast updates re-seed the drafts.
+    await w.setProps({
+      session: {
+        ...session,
+        title: "From server",
+        team: { slug: "ops", name: "Ops" },
+        columns: [{ id: "c1", name: "Renamed", position: 0 }, ...session.columns.slice(1)],
+      },
+    })
+    expect((w.get("#retro-title").element as HTMLInputElement).value).toBe("From server")
+    expect((w.get("#retro-team").element as HTMLInputElement).value).toBe("Ops")
+    expect(w.text()).toContain("/t/ops")
+
+    const guest = mount(RetroSetup, { props: { session, is_host: false } })
+    expect(guest.text()).toContain("host is setting up")
+  })
 })
