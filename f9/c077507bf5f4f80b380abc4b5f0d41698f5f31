@@ -1,0 +1,27 @@
+e2e/retro.spec.ts
+  s_ae52c82cfbb39d::t_79399c6c4247d2 78-82
+lib/mixchamb_web/live/landing_live.ex
+  s_ae52c82cfbb39d::t_071deeacb3ce99 239-276
+lib/mixchamb_web/live/team_live.ex
+  s_ae52c82cfbb39d::t_071deeacb3ce99 82-109
+BRAINSTORM-v4.md
+  s_ae52c82cfbb39d::t_1a098b15caf604 518
+features/retrospective.md
+  s_ae52c82cfbb39d::t_ac8592c4e8a241 651-659
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "f9c077507bf5f4f80b380abc4b5f0d41698f5f31",
+  "prompts": {},
+  "sessions": {
+    "s_ae52c82cfbb39d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1de5c5ca-1395-4e73-b795-ed7057489ec8",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Hafidz Bahtiar <hafidz.bahtiar@hypefast.id>"
+    }
+  }
+}
