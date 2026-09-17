@@ -1,0 +1,46 @@
+assets/vue/activities/retro/RetroTimer.vue
+  s_ae52c82cfbb39d::t_4ea02e1d5132b5 13-14,22-29,31,81,83-84,97-105
+assets/vue/__tests__/RetroBoard.test.ts
+  s_ae52c82cfbb39d::t_4ea02e1d5132b5 48
+lib/mixchamb/retro/ephemeral_state.ex
+  s_ae52c82cfbb39d::t_69f68aabf8960e 194,196-204,207
+lib/mixchamb/chambers/server.ex
+  s_ae52c82cfbb39d::t_69f68aabf8960e 175,177,803,806-819,1293,1664-1676
+  s_ae52c82cfbb39d::t_4eec39e4ca5e0b 1677
+lib/mixchamb_web/live/chamber_live/retro.ex
+  s_ae52c82cfbb39d::t_69f68aabf8960e 50,90,127,133-134,467,519-523
+assets/vue/activities/retro/RetroBoard.vue
+  s_ae52c82cfbb39d::t_4ea02e1d5132b5 109-110,367
+lib/mixchamb_web/live/chamber_live.ex
+  s_ae52c82cfbb39d::t_69f68aabf8960e 924
+lib/mixchamb_web/live/retro_live.ex
+  s_ae52c82cfbb39d::t_4ea02e1d5132b5 73
+test/mixchamb/chambers/server_retro_test.exs
+  s_ae52c82cfbb39d::t_4ea02e1d5132b5 67,76,78-96
+assets/vue/Chamber.vue
+  s_ae52c82cfbb39d::t_4ea02e1d5132b5 91,588
+test/mixchamb_web/live/chamber_live_activities_test.exs
+  s_ae52c82cfbb39d::t_4ea02e1d5132b5 70,80-81,210
+assets/vue/__tests__/RetroTimer.test.ts
+  s_ae52c82cfbb39d::t_4ea02e1d5132b5 20,25-27,29-35,41-43,45
+BRAINSTORM-v4.md
+  s_ae52c82cfbb39d::t_1644b8a738f67a 512
+features/retrospective.md
+  s_ae52c82cfbb39d::t_68fa375b657e1c 632-642
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "3e5b61e4915cc21418e824c54121258e7f5a6eca",
+  "prompts": {},
+  "sessions": {
+    "s_ae52c82cfbb39d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1de5c5ca-1395-4e73-b795-ed7057489ec8",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Hafidz Bahtiar <hafidz.bahtiar@hypefast.id>"
+    }
+  }
+}
