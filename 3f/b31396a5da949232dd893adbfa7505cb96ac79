@@ -1,0 +1,31 @@
+assets/vue/__tests__/RoundHistory.test.ts
+  s_ae52c82cfbb39d::t_2610580a654cde 172
+  s_ae52c82cfbb39d::t_87a7dae520cb1d 144-171,173-198
+assets/vue/__tests__/RetroBoard.test.ts
+  s_ae52c82cfbb39d::t_ba5e63e9204676 13-16,363-364,378-379,383-384,401,403-445,450-458
+  s_ae52c82cfbb39d::t_734256c305d9aa 365-377,380-382,385-400,402,446-449
+  s_ae52c82cfbb39d::t_b4a943f08238a2 459
+assets/vue/__tests__/RetroSetup.test.ts
+  s_ae52c82cfbb39d::t_762040aef896e1 61-108
+assets/vue/__tests__/audio_full.test.ts
+  s_ae52c82cfbb39d::t_0699c410e9fd9a 109
+  s_ae52c82cfbb39d::t_340ccba30fe807 132-136
+vitest.config.mjs
+  s_ae52c82cfbb39d::t_4c6c9b64d00478 31-33
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "3fb31396a5da949232dd893adbfa7505cb96ac79",
+  "prompts": {},
+  "sessions": {
+    "s_ae52c82cfbb39d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1de5c5ca-1395-4e73-b795-ed7057489ec8",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Hafidz Bahtiar <hafidz.bahtiar@hypefast.id>"
+    }
+  }
+}
